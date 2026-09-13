@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title data-bind="brandName">Trading Hub • High Probability Drawn Charts & Bilingual Telugu/English Analysis</title>
+  <meta name="description" content="Master stock and index trading with hand-drawn technical charts and detailed video breakdowns in Telugu and English. Get lifetime access for just ₹399." />
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet" />
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="/css/styles.css" />
+  <link rel="icon" type="image/png" href="/brand-logo" />
+</head>
+<body>
+
+  <!-- ==================== 1. INTRO VIDEO OVERLAY ==================== -->
+  <div id="intro-overlay">
+    <div class="intro-video-container">
+      <div id="intro-progress-line" class="intro-progress-line"></div>
+      <video id="intro-video-element" playsinline>
+        <source src="/intro-video" type="video/mp4" />
+      </video>
+      <div class="intro-controls-bar">
+        <button id="intro-mute-btn" class="intro-pill-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+          <span>Tap for Sound</span>
+        </button>
+        <button id="intro-skip-btn" class="intro-pill-btn">
+          <span>Skip to Platform</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 2. MARKET TICKER TAPE ==================== -->
+  <div class="market-ticker-wrap">
+    <div id="market-ticker-content" class="market-ticker">
+      <!-- Injected via JavaScript -->
+    </div>
+  </div>
+
+  <!-- ==================== 3. NAVIGATION BAR ==================== -->
+  <nav class="main-nav">
+    <div class="nav-container">
+      <div class="brand-group">
+        <img src="/brand-logo" alt="Trading Hub Crest" class="brand-logo-img" />
+        <div class="brand-text-col">
+          <div class="brand-title">
+            <span data-bind="brandName">TRADING HUB</span>
+            <span class="brand-badge">TELUGU &amp; ENGLISH</span>
+          </div>
+          <span class="brand-subtitle" data-bind="tagline">Drawn Charts &amp; Video Analysis</span>
+        </div>
+      </div>
+
+      <div class="nav-actions">
+        <button class="btn btn-sm btn-secondary" onclick="replayIntro()" title="Replay intro video">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Watch Intro
+        </button>
+
+        <a href="#pricing-section" class="btn btn-sm btn-gold">
+          <span>Get ₹399 Lifetime Access</span>
+        </a>
+
+        <!-- Dynamic Auth / User / Admin Buttons -->
+        <div id="nav-auth-actions">
+          <!-- Populated by app.js -->
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ==================== 4. HERO SECTION ==================== -->
+  <header class="hero-section">
+    <div class="hero-content-col">
+      <div class="hero-pill-tag">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <span data-bind="heroBadge">INSTAGRAM TRADING COMMUNITY • 24+ LESSONS</span>
+      </div>
+
+      <h1 class="hero-title" data-bind="heroTitle">
+        Master Price Action with Hand-Drawn Charts &amp; <span class="highlight">Bilingual Videos</span>
+      </h1>
+
+      <p class="hero-subtitle" data-bind="heroSubtitle">
+        Step-by-step drawn technical charts with in-depth video explanations in Telugu and English. Master Smart Money Concepts (SMC), Liquidity Traps, Order Blocks, and High Win-Rate Breakouts.
+      </p>
+
+      <div class="hero-cta-group">
+        <button class="btn btn-primary btn-lg" data-action="checkout-razorpay" data-bind="heroCta">
+          <span>Unlock Lifetime Access - ₹399</span>
+          <span class="price-pill">₹399</span>
+        </button>
+        <a href="#charts-section" class="btn btn-secondary btn-lg">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <span>Explore 24+ Chart Setups</span>
+        </a>
+      </div>
+
+      <div class="hero-trust-bar">
+        <div class="trust-item">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          <div class="trust-item-text">
+            <strong>24+ Lessons</strong>
+            <span>Paired Telugu &amp; English</span>
+          </div>
+        </div>
+        <div class="trust-item">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          <div class="trust-item-text">
+            <strong>One-Time ₹399</strong>
+            <span>Lifetime Unlimited Access</span>
+          </div>
+        </div>
+        <div class="trust-item">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          <div class="trust-item-text">
+            <strong>Daily Setups</strong>
+            <span>Continuous Mentor Uploads</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hero Right Graphic Preview -->
+    <div class="hero-visual-card">
+      <div class="hero-visual-header">
+        <div class="window-dots">
+          <span class="window-dot dot-red"></span>
+          <span class="window-dot dot-yellow"></span>
+          <span class="window-dot dot-green"></span>
+        </div>
+        <span style="font-size: 0.78rem; color: var(--text-muted); font-family: var(--font-mono);">CHART_SETUP_PRO.SVG</span>
+      </div>
+
+      <div class="hero-chart-preview">
+        <img src="/assets/charts/chart-1.svg" alt="Institutional Chart Breakdown" />
+        <div class="hero-badge-overlay">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span>LESSON PREVIEW</span>
+        </div>
+      </div>
+
+      <div class="hero-visual-footer">
+        <div>
+          <div style="font-weight: 700; font-size: 0.95rem; color: #fff;">Volume Secret &amp; Liquidity Trap</div>
+          <div style="font-size: 0.8rem; color: var(--text-secondary);">High Win-Rate Institutional Clues</div>
+        </div>
+        <div class="bilingual-badge-preview">
+          <span class="lang-tag active">తెలుగు</span>
+          <span class="lang-tag active">English</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== 5. WHAT YOU GET (FEATURES GRID) ==================== -->
+  <section class="section">
+    <div class="section-header">
+      <span class="section-tag">COMPLETE VALUE PROPOSITION</span>
+      <h2 class="section-title">What Is Provided When You Join</h2>
+      <p class="section-subtitle">
+        Everything you need to stop losing money to fakeouts, stop-loss hunts, and retail indicators.
+      </p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon-box">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        </div>
+        <h3 class="feature-card-title">Hand-Drawn Technical Charts</h3>
+        <p class="feature-card-desc">Every setup comes with precision-drawn chart markings showing exact Entry triggers, Stop Loss levels, Target ratios, and Liquidity pools.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-box">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        </div>
+        <h3 class="feature-card-title">Dual Telugu &amp; English Videos</h3>
+        <p class="feature-card-desc">Switch seamlessly between Telugu (తెలుగు) and English audio explanations for each chart so you never miss a critical concept.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-box">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h3 class="feature-card-title">Smart Money &amp; Liquidity Traps</h3>
+        <p class="feature-card-desc">Learn how institutional operators manipulate retail traders with Order Blocks, FVG imbalances, SL sweeps, and BOS/CHoCH structural shifts.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-box">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <h3 class="feature-card-title">Daily Fresh Uploads</h3>
+        <p class="feature-card-desc">Your membership never expires. Get access to newly uploaded daily charts and market analysis added continuously by the admin.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-box">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+        <h3 class="feature-card-title">91% Accuracy Framework</h3>
+        <p class="feature-card-desc">Includes high-probability sniper setups engineered for Nifty 50, Bank Nifty, Stock Options, and Forex intraday trading.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-box">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        </div>
+        <h3 class="feature-card-title">Mobile &amp; Desktop Optimized</h3>
+        <p class="feature-card-desc">Stream and learn from anywhere. Fully responsive video controls with speed adjustment (0.75x to 2.0x) on any device.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 6. CHARTS & VIDEOS CURRICULUM ==================== -->
+  <section id="charts-section" class="section">
+    <div class="dashboard-header-bar">
+      <div>
+        <span class="section-tag">LESSON CURRICULUM</span>
+        <h2 class="section-title" style="margin-bottom: 4px;">Trading Charts &amp; Bilingual Videos</h2>
+        <p style="color: var(--text-secondary); font-size: 0.95rem;">
+          Click on any chart to inspect the high-resolution drawn levels and watch the Telugu/English breakdown.
+        </p>
+      </div>
+      <div id="charts-total-count" class="pricing-lifetime-pill" style="font-size: 0.9rem;">
+        24 Charts &amp; Lessons
+      </div>
+    </div>
+
+    <!-- Search and Filter Controls -->
+    <div class="dashboard-controls">
+      <div class="search-input-box">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input 
+          type="text" 
+          class="search-input" 
+          placeholder="Search setups (e.g. Liquidity, FVG, Breakout, Doji, Order Block)..." 
+          oninput="handleChartSearch(this.value)" 
+        />
+      </div>
+
+      <div class="category-pills-list">
+        <button class="category-pill active" onclick="setChartCategoryFilter('all', this)">All Setups</button>
+        <button class="category-pill" onclick="setChartCategoryFilter('SMC & Liquidity', this)">SMC &amp; Liquidity</button>
+        <button class="category-pill" onclick="setChartCategoryFilter('Traps & Fakeouts', this)">Traps &amp; Fakeouts</button>
+        <button class="category-pill" onclick="setChartCategoryFilter('Price Action Core', this)">Price Action Core</button>
+        <button class="category-pill" onclick="setChartCategoryFilter('Candlestick Patterns', this)">Candlestick Patterns</button>
+        <button class="category-pill" onclick="setChartCategoryFilter('Advanced Strategies', this)">Advanced Strategies</button>
+        <button class="category-pill" onclick="setChartCategoryFilter('Index Strategies', this)">Index Strategies</button>
+      </div>
+    </div>
+
+    <!-- Cards Grid -->
+    <div id="charts-grid-container" class="charts-grid">
+      <!-- Dynamically rendered via JavaScript -->
+    </div>
+  </section>
+
+  <!-- ==================== 7. PRICING & RAZORPAY CHECKOUT CARD ==================== -->
+  <section id="pricing-section" class="section">
+    <div class="section-header">
+      <span class="section-tag">EXCLUSIVE ACCESS</span>
+      <h2 class="section-title">One-Time Payment. Lifetime Access.</h2>
+      <p class="section-subtitle">
+        Join hundreds of successful Telugu &amp; English traders. No recurring monthly subscriptions.
+      </p>
+    </div>
+
+    <div class="pricing-wrapper">
+      <div class="pricing-card">
+        <div class="pricing-badge-strip">
+          <span class="pricing-discount-pill" data-bind="discountBadge">80% LIMITED LAUNCH OFFER</span>
+          <span class="pricing-lifetime-pill" data-bind="accessType">LIFETIME UNLIMITED ACCESS</span>
+        </div>
+
+        <div class="price-display-row">
+          <div class="price-amount" data-bind="price">₹399</div>
+          <div class="price-original" data-bind="originalPrice">₹1,999</div>
+          <div class="price-one-time-text">One-time payment • Lifetime validity</div>
+        </div>
+
+        <p style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 24px;">
+          Includes immediate access to all 24+ drawn trading setups, dual Telugu &amp; English video breakdown players, daily updates, and member support.
+        </p>
+
+        <ul class="pricing-checklist">
+          <li>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>24+ High Probability Hand-Drawn Charts</span>
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>Dual Telugu (తెలుగు) &amp; English Videos</span>
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>SMC, Liquidity, FVG &amp; Fake Breakout Secrets</span>
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>All Future Daily Charts &amp; Reels Uploaded Free</span>
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>Instant Access On Any Mobile or Laptop</span>
+          </li>
+          <li>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>Direct Razorpay Gateway (UPI, GPay, PhonePe, Cards)</span>
+          </li>
+        </ul>
+
+        <div class="checkout-box">
+          <button class="btn-checkout-rzp" data-action="checkout-razorpay">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            <span>PAY ₹399 &amp; UNLOCK LIFETIME ACCESS</span>
+          </button>
+          
+          <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 8px;">
+            Secure 256-Bit Encrypted Razorpay Checkout • UPI, Cards, Netbanking &amp; Wallets Supported
+          </div>
+
+          <!-- Explicit Strict No-Refund Policy Box -->
+          <div id="no-refund-policy-display" class="no-refund-alert-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <div class="no-refund-alert-text">
+              <strong>STRICT NO-REFUND POLICY:</strong> Due to immediate digital access to intellectual property, charts, and educational video materials, all purchases are strictly NON-REFUNDABLE under any circumstances.
+            </div>
+          </div>
+
+          <!-- Already Paid Button for Instant Unlock -->
+          <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <span style="font-size: 0.85rem; color: var(--text-secondary);">Already paid via Razorpay?</span>
+            <button class="btn btn-sm btn-secondary" onclick="openPaymentVerificationModal()">
+              Verify Payment / Unlock
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 8. FAQ & DISCLAIMER ==================== -->
+  <section class="section" style="max-width: 860px;">
+    <div class="section-header">
+      <span class="section-tag">COMMON QUESTIONS</span>
+      <h2 class="section-title">Frequently Asked Questions</h2>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 16px;">
+      <div class="feature-card" style="padding: 20px 24px;">
+        <h4 style="color: #fff; font-size: 1.05rem; margin-bottom: 8px;">1. How do I access the Telugu and English videos?</h4>
+        <p style="color: var(--text-secondary); font-size: 0.9rem;">
+          Once you complete the ₹399 payment, click on any chart from the curriculum. You will see a dedicated toggle switch with <strong>"తెలుగు (Telugu)"</strong> and <strong>"English"</strong>. Simply click your preferred language to watch that video breakdown instantly.
+        </p>
+      </div>
+
+      <div class="feature-card" style="padding: 20px 24px;">
+        <h4 style="color: #fff; font-size: 1.05rem; margin-bottom: 8px;">2. Will I get future daily uploaded charts and videos?</h4>
+        <p style="color: var(--text-secondary); font-size: 0.9rem;">
+          Yes! The mentor regularly uploads fresh daily charts and setups from the admin dashboard. As a lifetime member, all new uploads are automatically unlocked for you without any extra charge.
+        </p>
+      </div>
+
+      <div class="feature-card" style="padding: 20px 24px;">
+        <h4 style="color: #fff; font-size: 1.05rem; margin-bottom: 8px;">3. What is the refund policy?</h4>
+        <p style="color: var(--text-secondary); font-size: 0.9rem;">
+          As explicitly stated in our Terms &amp; Conditions, all sales are final and strictly <strong>NON-REFUNDABLE</strong>. Because full digital access to proprietary drawn charts and educational videos is granted instantly upon payment, refunds cannot be issued.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 9. FOOTER ==================== -->
+  <footer class="site-footer">
+    <div class="footer-container">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <img src="/brand-logo" alt="" style="width: 38px; height: 38px; border-radius: 50%;" />
+            <strong style="font-family: var(--font-display); font-size: 1.2rem; color: #fff;" data-bind="brandName">TRADING HUB</strong>
+          </div>
+          <p>
+            Dedicated to empowering retail traders across India with institutional price action charts and bilingual education in Telugu and English.
+          </p>
+        </div>
+
+        <div>
+          <div class="footer-col-title">Quick Links</div>
+          <ul class="footer-links">
+            <li><a href="#charts-section">All Chart Setups</a></li>
+            <li><a href="#pricing-section">Pricing &amp; Checkout</a></li>
+            <li><a href="javascript:void(0)" onclick="replayIntro()">Watch Intro Video</a></li>
+            <li><a href="javascript:void(0)" onclick="openTermsModal()">Terms &amp; No Refund Policy</a></li>
+          </ul>
+        </div>
+
+        <div>
+          <div class="footer-col-title">Platform Access</div>
+          <ul class="footer-links">
+            <li><a href="javascript:void(0)" onclick="openAuthModal('login')">Member Sign In</a></li>
+            <li><a href="javascript:void(0)" onclick="openAuthModal('register')">Create New Account</a></li>
+            <li><a href="javascript:void(0)" onclick="openPaymentVerificationModal()">Verify Razorpay Payment</a></li>
+            <li><a href="javascript:void(0)" onclick="quickLoginAsAdmin()">Admin Login</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>
+          &copy; 2026 <span data-bind="brandName">Trading Hub</span>. All rights reserved. Strictly Non-Refundable Educational Platform.
+        </div>
+        <div style="font-size: 0.75rem; color: var(--text-muted); max-width: 600px; text-align: right;">
+          Disclaimer: Content is for educational purposes only. We are not SEBI registered advisors. Trading carries substantial risk of financial loss.
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- A. CHART & BILINGUAL VIDEO MODAL -->
+  <div id="chart-video-modal" class="modal-overlay">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-chart-title">Chart Analysis</h3>
+        <button class="btn-close-modal" onclick="closeChartModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="chart-detail-layout">
+          <!-- Left: Drawn High-Res Chart -->
+          <div class="chart-view-panel">
+            <div class="chart-display-container">
+              <img id="modal-chart-image" src="" alt="Drawn Trading Chart" />
+            </div>
+            <div class="chart-notes-card">
+              <h4>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                Institutional Setup Rules:
+              </h4>
+              <p id="modal-chart-summary" style="margin-bottom: 8px;"></p>
+              <div style="font-size: 0.84rem; color: var(--accent-green);">
+                <strong>Key Takeaway:</strong> <span id="modal-chart-takeaway"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Video Player with Telugu & English Switch -->
+          <div class="video-player-panel">
+            <div id="modal-player-container">
+              <!-- Injected via app.js with Telugu & English switches -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B. AUTH MODAL (SIGN IN / SIGN UP) -->
+  <div id="auth-modal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 id="auth-modal-title">Sign In</h3>
+        <button class="btn-close-modal" onclick="closeAuthModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="auth-name-group" class="form-group" style="display: none;">
+          <label class="form-label">Full Name</label>
+          <input type="text" id="auth-name-input" class="form-input" placeholder="e.g. Ramesh Reddy" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Gmail / Email Address</label>
+          <input type="email" id="auth-email-input" class="form-input" placeholder="you@gmail.com" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" id="auth-password-input" class="form-input" placeholder="••••••••" required />
+        </div>
+
+        <button id="auth-submit-btn" class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="handleAuthSubmit()">
+          Sign In
+        </button>
+
+        <div id="auth-toggle-prompt" style="text-align: center; font-size: 0.88rem; color: var(--text-secondary); margin-top: 16px;">
+          Need an account? <a href="javascript:void(0)" onclick="setAuthModalMode('register')" style="color: var(--accent-green); font-weight: bold;">Sign Up</a>
+        </div>
+
+        <div style="margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--border-subtle); text-align: center;">
+          <button class="btn btn-sm btn-secondary" onclick="quickLoginAsAdmin()" style="width: 100%;">
+            ⚡ Quick Sign In as Admin
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- C. PAYMENT VERIFICATION MODAL -->
+  <div id="payment-verify-modal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3>Verify Payment &amp; Unlock</h3>
+        <button class="btn-close-modal" onclick="closePaymentVerificationModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 16px;">
+          If you completed payment on Razorpay (UPI, GPay, PhonePe, Cards), enter your email below to immediately activate your lifetime membership.
+        </p>
+
+        <div class="form-group">
+          <label class="form-label">Email Used for Payment</label>
+          <input type="email" id="verify-email-input" class="form-input" placeholder="you@gmail.com" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Razorpay Payment ID (Optional)</label>
+          <input type="text" id="verify-payment-id-input" class="form-input" placeholder="e.g. pay_OhXyZ123" />
+        </div>
+
+        <button class="btn btn-primary" style="width: 100%; margin-top: 8px;" onclick="submitPaymentVerification()">
+          Confirm &amp; Unlock Lifetime Access
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- D. TERMS & CONDITIONS / NO REFUND MODAL -->
+  <div id="terms-modal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 680px;">
+      <div class="modal-header">
+        <h3>Terms &amp; Conditions and Refund Policy</h3>
+        <button class="btn-close-modal" onclick="closeTermsModal()">✕</button>
+      </div>
+      <div class="modal-body" style="font-size: 0.92rem; color: var(--text-secondary); line-height: 1.8;">
+        <div class="no-refund-alert-box" style="margin-bottom: 20px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <div class="no-refund-alert-text">
+            <strong>STRICT NO-REFUND POLICY:</strong> All sales are final. Since all drawn charts, setups, and educational video recordings are delivered immediately in digital form, absolutely NO REFUNDS or chargebacks will be entertained under any circumstances.
+          </div>
+        </div>
+
+        <h4 style="color: #fff; margin-bottom: 6px;">1. Intellectual Property &amp; Access</h4>
+        <p style="margin-bottom: 14px;">
+          All drawn charts, educational videos in Telugu and English, and textual summaries are the proprietary property of Trading Hub. Sharing accounts, recording, redistributing, or re-selling content is strictly prohibited and subject to immediate termination.
+        </p>
+
+        <h4 style="color: #fff; margin-bottom: 6px;">2. Financial Disclaimer</h4>
+        <p style="margin-bottom: 14px;">
+          We are not SEBI registered research analysts or financial advisors. Content provided on this platform is purely educational. We do not guarantee profits or provide buy/sell recommendations. You trade at your own risk.
+        </p>
+
+        <h4 style="color: #fff; margin-bottom: 6px;">3. Razorpay Payment Agreement</h4>
+        <p>
+          By proceeding with the ₹399 payment via Razorpay, you confirm that you have read, understood, and consented to these terms and our non-refundable agreement.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- E. ADMIN PORTAL (PLUS ICON UPLOAD, BULK DELETE, LIVE CMS) -->
+  <div id="admin-modal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 1100px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <h3>Admin Control Center</h3>
+          <span class="admin-badge-indicator">AWS CLOUD CMS</span>
+        </div>
+
+        <div class="admin-header-actions">
+          <!-- Plus Icon Button to upload directly -->
+          <button class="btn-plus-icon" onclick="openAddChartModal()" title="Add / Upload New Chart &amp; Videos">
+            +
+          </button>
+          <button class="btn-close-modal" onclick="closeAdminModal()">✕</button>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <!-- Admin Navigation Tabs -->
+        <div class="admin-tabs-nav">
+          <button class="admin-tab-btn active" onclick="switchAdminTab('charts', this)">
+            Manage Charts &amp; Bulk Delete
+          </button>
+          <button class="admin-tab-btn" onclick="switchAdminTab('cms', this)">
+            Live Site Text CMS Editor
+          </button>
+          <button class="admin-tab-btn" onclick="switchAdminTab('aws', this)">
+            AWS Cloud Status
+          </button>
+        </div>
+
+        <!-- Tab 1: Charts Table with Bulk Delete -->
+        <div id="admin-tab-charts" class="admin-tab-content">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+            <p style="color: var(--text-secondary); font-size: 0.9rem;">
+              Click the <strong>Plus (+) button</strong> above to upload a new chart. Use checkboxes to delete single or multiple charts simultaneously.
+            </p>
+            <button class="btn btn-sm btn-primary" onclick="openAddChartModal()">
+              <span style="font-size: 1.1rem; line-height: 1;">+</span> Upload New Chart Setup
+            </button>
+          </div>
+
+          <!-- Bulk Action Bar -->
+          <div id="admin-bulk-actions-bar" class="bulk-actions-bar" style="display: none;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span id="admin-selected-count" style="font-weight: 700; color: #fff;">0 charts selected</span>
+            </div>
+            <button class="btn btn-sm btn-danger" onclick="handleBulkDeleteSelected()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              Delete Selected Charts
+            </button>
+          </div>
+
+          <div class="admin-table-container">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th style="width: 40px;">
+                    <input type="checkbox" onchange="toggleSelectAllCharts(this.checked)" title="Select All" />
+                  </th>
+                  <th style="width: 65px;">Preview</th>
+                  <th>Title &amp; Info</th>
+                  <th>Category</th>
+                  <th>Videos</th>
+                  <th style="width: 150px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="admin-charts-table-body">
+                <!-- Dynamically populated -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab 2: Live Site Text CMS Editor -->
+        <!-- User prompt: "MOST OVER THE ADMIN PAGE I WANT ADMIN LIKE I CAN EDIT TEXT OF WEBSITE FOR THE ADMIN PAGE ONLY NOT TO COME HERE AGAIN" -->
+        <div id="admin-tab-cms" class="admin-tab-content" style="display: none;">
+          <form id="cms-text-editor-form" onsubmit="handleSaveCmsChanges(event)">
+            <div class="cms-form-section">
+              <h3>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Live Brand &amp; Hero Headline Settings
+              </h3>
+              
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label class="form-label">Brand Name</label>
+                  <input type="text" id="cms-brand-name" class="form-input" required />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Tagline / Header Subtitle</label>
+                  <input type="text" id="cms-tagline" class="form-input" />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Hero Badge Text</label>
+                <input type="text" id="cms-hero-badge" class="form-input" />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Main Hero Headline (HTML allowed)</label>
+                <input type="text" id="cms-hero-title" class="form-input" required />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Hero Subtitle</label>
+                <textarea id="cms-hero-subtitle" class="form-textarea"></textarea>
+              </div>
+            </div>
+
+            <div class="cms-form-section">
+              <h3>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+                Pricing &amp; Razorpay Payment Configuration
+              </h3>
+
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label class="form-label">Lifetime Price (₹)</label>
+                  <input type="number" id="cms-price" class="form-input" required />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Original Strikethrough Price (₹)</label>
+                  <input type="number" id="cms-original-price" class="form-input" />
+                </div>
+              </div>
+
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label class="form-label">Discount Badge Text</label>
+                  <input type="text" id="cms-discount-badge" class="form-input" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Razorpay Checkout URL</label>
+                  <input type="url" id="cms-razorpay-url" class="form-input" required />
+                </div>
+              </div>
+            </div>
+
+            <div class="cms-form-section">
+              <h3>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                Legal Terms &amp; Strict No-Refund Notice
+              </h3>
+
+              <div class="form-group">
+                <label class="form-label">Strict No-Refund Policy Text (Displayed on Checkout)</label>
+                <textarea id="cms-no-refund-text" class="form-textarea" required></textarea>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">SEBI Educational Disclaimer</label>
+                <textarea id="cms-disclaimer" class="form-textarea"></textarea>
+              </div>
+
+              <div class="form-grid-2">
+                <div class="form-group">
+                  <label class="form-label">Support Email</label>
+                  <input type="email" id="cms-support-email" class="form-input" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Instagram Handle</label>
+                  <input type="text" id="cms-instagram" class="form-input" />
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" id="cms-save-btn" class="btn btn-primary btn-lg" style="width: 100%;">
+              Save All Website Changes Instantly
+            </button>
+          </form>
+        </div>
+
+        <!-- Tab 3: AWS Cloud Status -->
+        <div id="admin-tab-aws" class="admin-tab-content" style="display: none;">
+          <div id="aws-status-info" style="margin-bottom: 24px;">
+            <!-- Loaded via app.js -->
+          </div>
+
+          <div class="cms-form-section">
+            <h3>AWS Backend Architecture &amp; Production Setup</h3>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.7; margin-bottom: 16px;">
+              This backend is architected to run seamlessly on Amazon Web Services (AWS App Runner, Elastic Beanstalk, or EC2 + S3).
+              Video streaming uses HTTP 206 Range headers, delivering smooth scrubbing for large video files.
+            </p>
+            <div style="background: #060910; border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 16px; font-family: var(--font-mono); font-size: 0.84rem; color: var(--accent-green); line-height: 1.6;">
+              # Run deployment locally or on AWS EC2:<br/>
+              npm install<br/>
+              npm start<br/><br/>
+              # For AWS S3 direct cloud uploads, configure your .env file:<br/>
+              AWS_REGION=ap-south-1<br/>
+              AWS_S3_BUCKET=your-s3-bucket-name<br/>
+              AWS_ACCESS_KEY_ID=your-key-id<br/>
+              AWS_SECRET_ACCESS_KEY=your-secret-key
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- F. ADD NEW CHART MODAL (TRIGGERED BY PLUS ICON) -->
+  <div id="add-chart-modal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 650px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="background: var(--accent-green); color: #000; font-weight: 900; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">+</span>
+          <h3>Upload New Chart &amp; Bilingual Videos</h3>
+        </div>
+        <button class="btn-close-modal" onclick="closeAddChartModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="add-chart-form" onsubmit="submitNewChart(event)">
+          <div class="form-group">
+            <label class="form-label">Setup Title</label>
+            <input type="text" id="new-chart-title" class="form-input" placeholder="e.g. Reel 25: Fair Value Gap Sniper Retest" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <select id="new-chart-category" class="form-select">
+              <option value="SMC & Liquidity">SMC &amp; Liquidity</option>
+              <option value="Traps & Fakeouts">Traps &amp; Fakeouts</option>
+              <option value="Price Action Core">Price Action Core</option>
+              <option value="Candlestick Patterns">Candlestick Patterns</option>
+              <option value="Advanced Strategies">Advanced Strategies</option>
+              <option value="Index Strategies">Index Strategies</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Setup Summary &amp; Strategy Description</label>
+            <textarea id="new-chart-summary" class="form-textarea" placeholder="Explain the context of this drawn chart..." required></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Key Institutional Takeaway</label>
+            <input type="text" id="new-chart-takeaway" class="form-input" placeholder="e.g. Wait for 5-minute liquidity sweep before entering" required />
+          </div>
+
+          <!-- Chart Image File -->
+          <div class="form-group">
+            <label class="form-label">Upload Chart Image (PNG, JPG, or SVG)</label>
+            <input type="file" id="new-chart-image-file" class="form-input" accept="image/*" />
+            <span class="form-help-text">Leave blank to use dynamic institutional SVG template.</span>
+          </div>
+
+          <!-- Telugu Video -->
+          <div class="form-group">
+            <label class="form-label">Telugu (తెలుగు) Explanation Video</label>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <input type="file" id="new-chart-telugu-file" class="form-input" accept="video/mp4,video/*" />
+              <div style="text-align: center; font-size: 0.8rem; color: var(--text-muted);">- OR select existing from repository -</div>
+              <select id="new-chart-telugu-select" class="form-select"></select>
+            </div>
+          </div>
+
+          <!-- English Video -->
+          <div class="form-group">
+            <label class="form-label">English Explanation Video</label>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <input type="file" id="new-chart-english-file" class="form-input" accept="video/mp4,video/*" />
+              <div style="text-align: center; font-size: 0.8rem; color: var(--text-muted);">- OR select existing from repository -</div>
+              <select id="new-chart-english-select" class="form-select"></select>
+            </div>
+          </div>
+
+          <button type="submit" id="new-chart-submit-btn" class="btn btn-primary" style="width: 100%; margin-top: 14px;">
+            Publish Chart Setup
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- G. EDIT / RENAME CHART MODAL -->
+  <div id="rename-chart-modal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 580px;">
+      <div class="modal-header">
+        <h3>Edit / Rename Chart Setup</h3>
+        <button class="btn-close-modal" onclick="closeRenameModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="edit-chart-form" onsubmit="submitEditChart(event)">
+          <input type="hidden" id="edit-chart-id" />
+
+          <div class="form-group">
+            <label class="form-label">Chart Title</label>
+            <input type="text" id="edit-chart-title" class="form-input" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <select id="edit-chart-category" class="form-select">
+              <option value="SMC & Liquidity">SMC &amp; Liquidity</option>
+              <option value="Traps & Fakeouts">Traps &amp; Fakeouts</option>
+              <option value="Price Action Core">Price Action Core</option>
+              <option value="Candlestick Patterns">Candlestick Patterns</option>
+              <option value="Advanced Strategies">Advanced Strategies</option>
+              <option value="Index Strategies">Index Strategies</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Summary</label>
+            <textarea id="edit-chart-summary" class="form-textarea"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Key Takeaway</label>
+            <input type="text" id="edit-chart-takeaway" class="form-input" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Telugu Video URL / Path</label>
+            <input type="text" id="edit-chart-telugu-url" class="form-input" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">English Video URL / Path</label>
+            <input type="text" id="edit-chart-english-url" class="form-input" />
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+            Save Changes
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="/js/app.js"></script>
+</body>
+</html>

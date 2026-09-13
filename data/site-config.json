@@ -1,0 +1,65 @@
+{
+  "brandName": "TRADING HUB",
+  "tagline": "High Probability Drawn Charts & Bilingual Telugu/English Analysis",
+  "introVideo": "/videos/intro/lv_0_20260901105849.mp4",
+  "autoPlayIntro": true,
+  "pricing": {
+    "price": 399,
+    "currencySymbol": "₹",
+    "originalPrice": 1999,
+    "discountBadge": "80% LIMITED LAUNCH OFFER",
+    "accessType": "LIFETIME UNLIMITED ACCESS",
+    "razorpayUrl": "https://rzp.io/rzp/2a3h6cU"
+  },
+  "hero": {
+    "badge": "INSTAGRAM TRADING COMMUNITY • 24+ LESSONS",
+    "title": "Master Price Action & Institutional Trading with Drawn Charts",
+    "subtitle": "Step-by-step drawn technical charts with in-depth explained video breakdowns in Telugu and English. Master SMC, Liquidity Sweeps, Order Blocks, and Fake Breakouts.",
+    "ctaText": "Unlock Lifetime Access - ₹399",
+    "secondaryCtaText": "Explore Chart Setups"
+  },
+  "features": [
+    {
+      "icon": "chart-candlestick",
+      "title": "24+ Hand-Drawn Charts",
+      "desc": "Crystal-clear chart markings showing exact Entry, Stop Loss, Target, and Liquidity zones."
+    },
+    {
+      "icon": "languages",
+      "title": "Dual Language Video Player",
+      "desc": "Watch the breakdown of every single chart in your preferred language: Telugu (తెలుగు) or English."
+    },
+    {
+      "icon": "shield-check",
+      "title": "Institutional SMC & Liquidity",
+      "desc": "Learn why retail traders fail: Order Blocks, FVG Traps, Stop Loss Hunts, and BOS/CHoCH."
+    },
+    {
+      "icon": "infinity",
+      "title": "One-Time ₹399 Lifetime Access",
+      "desc": "Pay once, access forever. No monthly subscriptions, no hidden fees. Instant access right after payment."
+    },
+    {
+      "icon": "upload-cloud",
+      "title": "Daily New Setups",
+      "desc": "Get fresh daily market charts and bilingual breakdown videos updated directly by the mentor."
+    },
+    {
+      "icon": "smartphone",
+      "title": "Mobile & Desktop Optimized",
+      "desc": "Learn on the go directly from your smartphone, tablet, or desktop with instant video playback."
+    }
+  ],
+  "termsAndConditions": {
+    "heading": "Terms & Conditions and Non-Refundable Agreement",
+    "noRefundPolicy": "STRICT NO-REFUND POLICY: All sales are final. Due to the immediate digital delivery and non-tangible nature of our proprietary drawn trading charts, strategic setups, and educational video recordings, NO REFUNDS OR CANCELLATIONS WILL BE ISSUED under any circumstances once payment of ₹399 is completed.",
+    "disclaimer": "DISCLAIMER: Content provided is solely for educational and training purposes. Trading stocks, futures, options, and forex involves substantial risk of loss. Past performance of any chart setup or strategy is not indicative of future results. We are not SEBI registered advisors. Trade responsibly.",
+    "agreementNotice": "By clicking checkout or completing the ₹399 payment via Razorpay, you explicitly agree to these terms and confirm that you waive any rights to chargebacks or refund requests."
+  },
+  "contact": {
+    "supportEmail": "support@tradinghub.in",
+    "instagramHandle": "@tradinghub",
+    "telegramHandle": "t.me/tradinghub"
+  },
+  "lastUpdated": "2026-09-13T14:41:37.374Z"
+}
