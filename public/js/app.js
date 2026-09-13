@@ -308,10 +308,11 @@ function renderNavbar() {
 
     authNavGroup.innerHTML = `
       <div class="nav-user-cluster">
-        <div class="nav-profile-pill" title="${isAdmin ? 'Authorized Owner' : (user.email || 'Member')}">
+        <div class="nav-profile-pill" onclick="openUserProfileModal()" title="View Profile & Provided Features">
           <svg class="nav-profile-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           <strong class="nav-user-name">${isAdmin ? 'Owner' : shortName}</strong>
           ${isAdmin ? '<span class="admin-badge-indicator nav-badge-micro">OWNER</span>' : (isMember ? '<span class="pricing-lifetime-pill nav-badge-micro">PRO</span>' : '')}
+          <svg class="nav-profile-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
 
         ${isAdmin ? `
@@ -864,6 +865,238 @@ function handleLogout() {
   saveAuthState(null);
   showToast('Logged out successfully.', 'info');
 }
+
+// ==================== USER PROFILE MODAL & ENTITLEMENTS ====================
+function openUserProfileModal() {
+  const user = state.currentUser;
+  if (!user) {
+    openAuthModal('login');
+    return;
+  }
+
+  const modal = document.getElementById('user-profile-modal');
+  if (!modal) return;
+
+  const nameEl = document.getElementById('profile-modal-name');
+  const emailEl = document.getElementById('profile-modal-email');
+  const avatarEl = document.getElementById('profile-modal-avatar-icon');
+  const bannerEl = document.getElementById('profile-status-banner');
+  const featuresList = document.getElementById('profile-features-list');
+
+  const isAdmin = user.role === 'admin';
+  const isMember = user.hasPaid || isAdmin;
+
+  // Name & Email
+  if (nameEl) nameEl.textContent = user.name || (isAdmin ? 'Platform Owner' : 'Registered Member');
+  if (emailEl) emailEl.textContent = user.email || 'Member Account';
+
+  // Avatar styling
+  if (avatarEl) {
+    if (isAdmin) {
+      avatarEl.className = 'profile-avatar-badge admin-avatar';
+      avatarEl.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`;
+    } else {
+      avatarEl.className = 'profile-avatar-badge';
+      avatarEl.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`;
+    }
+  }
+
+  // Membership status banner
+  if (bannerEl) {
+    if (isAdmin) {
+      bannerEl.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="background: var(--accent-gold); color: #000; font-weight: 900; font-size: 0.76rem; padding: 4px 10px; border-radius: var(--radius-full);">OWNER</span>
+          <div>
+            <strong style="color: #fff; font-size: 0.92rem; display: block;">Platform Administrator</strong>
+            <span style="font-size: 0.78rem; color: var(--text-secondary);">Full access to charts, videos &amp; CMS</span>
+          </div>
+        </div>
+        <span style="font-size: 0.8rem; color: var(--accent-gold); font-weight: 700;">ACTIVE</span>
+      `;
+    } else if (isMember) {
+      bannerEl.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="background: var(--accent-green); color: #000; font-weight: 900; font-size: 0.76rem; padding: 4px 10px; border-radius: var(--radius-full);">LIFETIME PRO</span>
+          <div>
+            <strong style="color: #fff; font-size: 0.92rem; display: block;">Lifetime Membership</strong>
+            <span style="font-size: 0.78rem; color: var(--text-secondary);">All charts, videos &amp; future setups unlocked</span>
+          </div>
+        </div>
+        <span style="font-size: 0.8rem; color: var(--accent-green); font-weight: 700;">VERIFIED</span>
+      `;
+    } else {
+      bannerEl.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="background: rgba(255, 255, 255, 0.15); color: #fff; font-weight: 800; font-size: 0.76rem; padding: 4px 10px; border-radius: var(--radius-full);">FREE</span>
+          <div>
+            <strong style="color: #fff; font-size: 0.92rem; display: block;">Preview Account</strong>
+            <span style="font-size: 0.78rem; color: var(--text-secondary);">Upgrade for ₹399 to unlock all videos</span>
+          </div>
+        </div>
+        <button class="btn btn-sm btn-gold" onclick="redirectToFeature('pricing')" style="padding: 4px 12px; font-size: 0.78rem;">Unlock Pro</button>
+      `;
+    }
+  }
+
+  // Feature cards
+  if (featuresList) {
+    const totalCharts = state.charts?.length || 50;
+    let items = [
+      {
+        id: 'charts',
+        title: 'Institutional Drawn Charts',
+        badge: `${totalCharts}+ Charts`,
+        badgeColor: 'var(--accent-green)',
+        desc: 'Explore all high-probability Price Action, SMC & Trap setups',
+        icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>`,
+        isAdminOnly: false
+      },
+      {
+        id: 'videos',
+        title: 'Bilingual Video Breakdowns',
+        badge: 'TEL & ENG',
+        badgeColor: 'var(--accent-cyan)',
+        desc: 'Detailed breakdown videos in Telugu (తెలుగు) & English for every chart',
+        icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>`,
+        isAdminOnly: false
+      },
+      {
+        id: 'daily',
+        title: 'Daily Setups & Lifetime Updates',
+        badge: 'LIFETIME',
+        badgeColor: 'var(--accent-gold)',
+        desc: 'Continuous additions of daily market analysis setups at no extra cost',
+        icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
+        isAdminOnly: false
+      }
+    ];
+
+    if (isAdmin) {
+      items.push({
+        id: 'admin-cms',
+        title: 'Admin CMS Control Center',
+        badge: 'OWNER ONLY',
+        badgeColor: 'var(--accent-gold)',
+        desc: 'Upload new charts & videos, edit live text, prices & AWS cloud settings',
+        icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`,
+        isAdminOnly: true
+      });
+    }
+
+    if (!isMember) {
+      items.push({
+        id: 'verify-payment',
+        title: 'Verify Razorpay Payment',
+        badge: 'UNLOCK',
+        badgeColor: 'var(--accent-gold)',
+        desc: 'Already paid ₹399 on Razorpay? Enter details to activate lifetime access',
+        icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`,
+        isAdminOnly: false
+      });
+    }
+
+    items.push({
+      id: 'terms',
+      title: 'Terms & Strict Non-Refund Policy',
+      badge: 'POLICY',
+      badgeColor: 'var(--text-muted)',
+      desc: 'Digital sales finality, educational usage rights & SEBI disclaimer',
+      icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`,
+      isAdminOnly: false
+    });
+
+    items.push({
+      id: 'intro',
+      title: 'Watch Platform Intro Video',
+      badge: 'REPLAY',
+      badgeColor: 'var(--text-muted)',
+      desc: 'Watch the full introduction video explaining trading methodology',
+      icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>`,
+      isAdminOnly: false
+    });
+
+    featuresList.innerHTML = items.map(item => `
+      <div class="profile-feature-card ${item.isAdminOnly ? 'admin-feature' : ''}" onclick="redirectToFeature('${item.id}')">
+        <div class="profile-feature-icon ${item.isAdminOnly ? 'admin-icon' : ''}">
+          ${item.icon}
+        </div>
+        <div class="profile-feature-info">
+          <div class="profile-feature-title">
+            <span>${item.title}</span>
+            <span style="font-size: 0.68rem; padding: 1px 6px; border-radius: 4px; background: rgba(255,255,255,0.08); color: ${item.badgeColor}; font-weight: 700;">
+              ${item.badge}
+            </span>
+          </div>
+          <div class="profile-feature-desc">${item.desc}</div>
+        </div>
+        <div class="profile-feature-arrow">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeUserProfileModal() {
+  const modal = document.getElementById('user-profile-modal');
+  if (modal) modal.classList.remove('active');
+  const otherActive = document.querySelector('.modal-overlay.active');
+  if (!otherActive) {
+    document.body.style.overflow = '';
+  }
+}
+
+function handleProfileLogout() {
+  closeUserProfileModal();
+  handleLogout();
+}
+
+function redirectToFeature(featureId) {
+  closeUserProfileModal();
+
+  setTimeout(() => {
+    switch (featureId) {
+      case 'charts':
+      case 'daily':
+        document.getElementById('charts-section')?.scrollIntoView({ behavior: 'smooth' });
+        break;
+      case 'videos':
+        const isUnlocked = state.currentUser?.hasPaid || state.currentUser?.role === 'admin';
+        if (isUnlocked && state.charts && state.charts.length > 0) {
+          openChartModal(state.charts[0].id);
+        } else {
+          document.getElementById('charts-section')?.scrollIntoView({ behavior: 'smooth' });
+        }
+        break;
+      case 'admin-cms':
+        openAdminModal();
+        break;
+      case 'pricing':
+        document.getElementById('pricing-section')?.scrollIntoView({ behavior: 'smooth' });
+        break;
+      case 'verify-payment':
+        openPaymentVerificationModal();
+        break;
+      case 'terms':
+        openTermsModal();
+        break;
+      case 'intro':
+        replayIntro();
+        break;
+      default:
+        break;
+    }
+  }, 150);
+}
+
+window.openUserProfileModal = openUserProfileModal;
+window.closeUserProfileModal = closeUserProfileModal;
+window.handleProfileLogout = handleProfileLogout;
+window.redirectToFeature = redirectToFeature;
 
 // Backward compatibility redirect to main login modal
 function openAdminSecurityModal() {
