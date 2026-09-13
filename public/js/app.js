@@ -250,7 +250,7 @@ function toggleShowAllGallery(show) {
 
 // Redirect Unpaid Visitor Directly to Payment Section
 function handleUnpaidChartClick() {
-  showToast('🔒 High-Resolution Chart Setup Locked. Unlock with ₹399 Lifetime Access.', 'info');
+  showToast('🔒 High-Resolution Chart Setup Locked. Unlock Full Member Access to View.', 'info');
   relocateToPricingSection();
   openCheckoutAuthPromptModal();
 }
@@ -660,7 +660,7 @@ function renderCharts() {
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                   <span>LOCKED SETUP</span>
                 </div>
-                <span style="font-size: 0.72rem; color: var(--accent-gold); font-weight: 700; margin-top: 4px;">Click to Unlock (₹399)</span>
+                <span style="font-size: 0.72rem; color: var(--accent-gold); font-weight: 700; margin-top: 4px;">Locked / Unlock to View</span>
               </div>
             ` : ''}
             <span class="chart-reel-badge" style="background: rgba(0, 242, 152, 0.2); color: var(--accent-green); border: 1px solid rgba(0, 242, 152, 0.4);">
@@ -678,7 +678,7 @@ function renderCharts() {
                   <span>Inspect Chart</span>
                 ` : `
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                  <span>🔒 Unlock (₹399)</span>
+                  <span>🔒 Unlock to View</span>
                 `}
               </button>
               ${(isAdmin && item.isGallery) ? `
@@ -940,7 +940,7 @@ async function openChartModal(chartId) {
       sumEl.innerHTML = `<span style="filter: blur(4px); user-select: none; opacity: 0.5;">Institutional entry zones, order flow liquidity, and confirmation trigger levels.</span> <span style="font-size: 0.76rem; color: var(--accent-gold); font-weight: 700; margin-left: 6px;">[🔒 LOCKED]</span>`;
     }
     if (takeawayEl) {
-      takeawayEl.innerHTML = `<span style="filter: blur(4px); user-select: none; opacity: 0.5;">Institutional risk:reward calculation and sniper invalidation rule.</span> <span style="font-size: 0.76rem; color: var(--accent-gold); font-weight: 700; margin-left: 6px;">[🔒 UNLOCKS WITH ₹399]</span>`;
+      takeawayEl.innerHTML = `<span style="filter: blur(4px); user-select: none; opacity: 0.5;">Institutional risk:reward calculation and sniper invalidation rule.</span> <span style="font-size: 0.76rem; color: var(--accent-gold); font-weight: 700; margin-left: 6px;">[🔒 LOCKED / UNLOCK TO VIEW]</span>`;
     }
 
     // Locked Video Player Container
@@ -2418,7 +2418,7 @@ function renderChartGallery() {
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                 <span>LOCKED SETUP</span>
               </div>
-              <span style="font-size: 0.72rem; color: var(--accent-gold); font-weight: 700; margin-top: 4px;">Click to Unlock (₹399)</span>
+              <span style="font-size: 0.72rem; color: var(--accent-gold); font-weight: 700; margin-top: 4px;">Locked / Unlock to View</span>
             </div>
           ` : ''}
         </div>
@@ -2431,7 +2431,7 @@ function renderChartGallery() {
                 <span>Inspect</span>
               ` : `
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                <span>🔒 Unlock (₹399)</span>
+                <span>🔒 Unlock to View</span>
               `}
             </button>
             ${isAdmin ? `
