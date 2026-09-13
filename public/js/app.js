@@ -4,6 +4,23 @@
  * Razorpay Payment Integration, Admin Plus (+) Upload, Rename, and Bulk Delete.
  */
 
+// Immediately flush any stale/legacy demo sessions from browser cache
+try {
+  const stale = localStorage.getItem('tradinghub_user');
+  if (stale && (stale.includes('Master') || stale.includes('admin@') || stale.includes('"role":"admin"'))) {
+    localStorage.removeItem('tradinghub_user');
+    sessionStorage.removeItem('tradinghub_user');
+  }
+} catch (_) {}
+
+// Fallback safety: If old quickLoginAsAdmin is somehow triggered, force security modal instead
+window.quickLoginAsAdmin = function() {
+  localStorage.removeItem('tradinghub_user');
+  sessionStorage.removeItem('tradinghub_user');
+  state.currentUser = null;
+  openAdminSecurityModal();
+};
+
 // Global Application State
 const state = {
   siteConfig: null,
@@ -29,24 +46,52 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderApp();
 });
 
-// Load Authentication State from Local Storage
+// Load Authentication State from Storage
 function initAuthState() {
-  const savedUser = localStorage.getItem('tradinghub_user');
-  if (savedUser) {
-    try {
-      state.currentUser = JSON.parse(savedUser);
-    } catch (e) {
-      state.currentUser = null;
+  try {
+    const raw = sessionStorage.getItem('tradinghub_user') || localStorage.getItem('tradinghub_user');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // STRICT OWNER SECURITY POLICY:
+      // If someone has an old admin session or non-owner admin session, wipe it immediately!
+      if (parsed.role === 'admin' && parsed.email?.toLowerCase() !== 'abhisheknaidus093@gmail.com') {
+        localStorage.removeItem('tradinghub_user');
+        sessionStorage.removeItem('tradinghub_user');
+        state.currentUser = null;
+        return;
+      }
+      // Never allow auto-login as admin from localStorage across browser restarts!
+      // Admin must explicitly enter abhisheknaidus093@gmail.com and password 22NE1A04E1!
+      if (parsed.role === 'admin') {
+        const sessionAuth = sessionStorage.getItem('tradinghub_user');
+        if (!sessionAuth) {
+          localStorage.removeItem('tradinghub_user');
+          state.currentUser = null;
+          return;
+        }
+      }
+      state.currentUser = parsed;
     }
+  } catch (e) {
+    localStorage.removeItem('tradinghub_user');
+    sessionStorage.removeItem('tradinghub_user');
+    state.currentUser = null;
   }
 }
 
 function saveAuthState(user) {
   state.currentUser = user;
   if (user) {
-    localStorage.setItem('tradinghub_user', JSON.stringify(user));
+    if (user.role === 'admin') {
+      // Store admin session strictly in sessionStorage so closing browser requires re-entry of password
+      sessionStorage.setItem('tradinghub_user', JSON.stringify(user));
+      localStorage.removeItem('tradinghub_user');
+    } else {
+      localStorage.setItem('tradinghub_user', JSON.stringify(user));
+    }
   } else {
     localStorage.removeItem('tradinghub_user');
+    sessionStorage.removeItem('tradinghub_user');
   }
   renderApp();
 }
@@ -664,6 +709,10 @@ function handleLogout() {
 // ==================== SECURE OWNER / ADMIN AUTHENTICATION ====================
 function openAdminSecurityModal() {
   const modal = document.getElementById('admin-security-modal');
+  const emailInput = document.getElementById('admin-security-email');
+  const passInput = document.getElementById('admin-security-password');
+  if (emailInput) emailInput.value = 'abhisheknaidus093@gmail.com';
+  if (passInput) passInput.value = '';
   if (modal) modal.classList.add('active');
 }
 
