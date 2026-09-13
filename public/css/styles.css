@@ -2574,5 +2574,23 @@ button, input, select, textarea {
   color: #fff;
 }
 
+.comment-user-email {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+@media (max-width: 600px) {
+  .comment-inputs-row {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+}
+
+
 
 

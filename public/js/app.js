@@ -2074,6 +2074,15 @@ function renderComments() {
     const firstLetter = (c.name || 'T')[0].toUpperCase();
     const timeFormatted = formatTimeAgo(c.timestamp);
 
+    // Privacy Protection: Author sees their full email; all other users see starred email (e.g. pr****ma@gmail.com)
+    let emailDisplay = '';
+    if (c.email) {
+      const isAuthor = state.currentUser?.email && state.currentUser.email.toLowerCase() === c.email.toLowerCase();
+      const isAdmin = state.currentUser?.role === 'admin';
+      const displayEmail = (isAuthor || isAdmin) ? c.email : maskEmail(c.email);
+      emailDisplay = `<span class="comment-user-email" title="${isAuthor ? 'Your verified email' : 'Protected Email'}">${escapeHtml(displayEmail)}</span>`;
+    }
+
     return `
       <div class="comment-bubble" id="comment-bubble-${c.id}">
         <div class="comment-avatar ${c.role === 'admin' ? 'admin-avatar' : ''}">
@@ -2083,6 +2092,7 @@ function renderComments() {
           <div class="comment-header-row">
             <div class="comment-user-info">
               <span class="comment-user-name">${escapeHtml(c.name)}</span>
+              ${emailDisplay}
               <span class="comment-badge ${roleBadgeClass}">${roleLabel}</span>
               <span class="comment-time">${timeFormatted}</span>
             </div>
@@ -2104,8 +2114,10 @@ async function handleCommentSubmit(event) {
   if (event) event.preventDefault();
 
   const nameInput = document.getElementById('comment-author-name');
+  const emailInput = document.getElementById('comment-author-email');
   const textInput = document.getElementById('comment-message-text');
-  const name = nameInput?.value?.trim();
+  const name = nameInput?.value?.trim() || state.currentUser?.name;
+  const email = emailInput?.value?.trim() || state.currentUser?.email || null;
   const text = textInput?.value?.trim();
 
   if (!name || !text) {
@@ -2114,7 +2126,6 @@ async function handleCommentSubmit(event) {
   }
 
   const role = state.currentUser?.role === 'admin' ? 'admin' : (state.currentUser?.hasPaid ? 'member' : 'trader');
-  const email = state.currentUser?.email || null;
 
   const btn = document.getElementById('comment-submit-btn');
   if (btn) btn.disabled = true;
@@ -2129,6 +2140,7 @@ async function handleCommentSubmit(event) {
     if (data.success) {
       showToast('💬 Message posted to community board!', 'success');
       if (textInput) textInput.value = '';
+      if (emailInput && !state.currentUser?.email) emailInput.value = '';
       await loadComments();
     } else {
       showToast(data.error || 'Failed to post message', 'error');
@@ -2155,6 +2167,20 @@ async function handleDeleteComment(commentId) {
   } catch (err) {
     showToast('Delete error: ' + err.message, 'error');
   }
+}
+
+function maskEmail(email) {
+  if (!email) return '';
+  const parts = email.split('@');
+  if (parts.length !== 2) return '******';
+  const username = parts[0];
+  const domain = parts[1];
+  if (username.length <= 2) {
+    return username[0] + '***@' + domain;
+  }
+  const visibleStart = username.slice(0, 2);
+  const visibleEnd = username.slice(-2);
+  return `${visibleStart}****${visibleEnd}@${domain}`;
 }
 
 function formatTimeAgo(isoString) {
