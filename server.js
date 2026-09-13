@@ -163,8 +163,24 @@ function streamVideoFile(req, res, filePath) {
 
 // ==================== STATIC & MEDIA ROUTES ====================
 
-// Static Web App
-app.use(express.static(PUBLIC_DIR));
+// Root Route with aggressive no-cache to force browser to load latest HTML
+app.get('/', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+});
+
+// Static Web App with strict no-cache headers
+app.use(express.static(PUBLIC_DIR, {
+  etag: false,
+  lastModified: false,
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+}));
 
 // Static Logo
 app.use('/logo', express.static(LOGO_DIR));

@@ -53,16 +53,7 @@ function initAuthState() {
     const raw = sessionStorage.getItem('tradinghub_user') || localStorage.getItem('tradinghub_user');
     if (raw) {
       const parsed = JSON.parse(raw);
-      // STRICT OWNER SECURITY POLICY:
-      // If someone has an old admin session or non-owner admin session, wipe it immediately!
-      if (parsed.role === 'admin' && parsed.email?.toLowerCase() !== 'abhisheknaidus093@gmail.com') {
-        localStorage.removeItem('tradinghub_user');
-        sessionStorage.removeItem('tradinghub_user');
-        state.currentUser = null;
-        return;
-      }
-      // Never allow auto-login as admin from localStorage across browser restarts!
-      // Admin must explicitly enter abhisheknaidus093@gmail.com and password 22NE1A04E1!
+      // Only keep admin session if active in current browser session
       if (parsed.role === 'admin') {
         const sessionAuth = sessionStorage.getItem('tradinghub_user');
         if (!sessionAuth) {
@@ -311,15 +302,15 @@ function renderNavbar() {
   const user = state.currentUser;
 
   if (user) {
-    const isAdmin = user.role === 'admin' && user.email?.toLowerCase() === 'abhisheknaidus093@gmail.com';
+    const isAdmin = user.role === 'admin';
     const isMember = user.hasPaid || isAdmin;
     const shortName = (user.name || user.email.split('@')[0]).split(' ')[0];
 
     authNavGroup.innerHTML = `
       <div class="nav-user-cluster">
-        <div class="nav-profile-pill" title="${user.email}">
+        <div class="nav-profile-pill" title="${isAdmin ? 'Authorized Owner' : (user.email || 'Member')}">
           <svg class="nav-profile-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          <strong class="nav-user-name">${shortName}</strong>
+          <strong class="nav-user-name">${isAdmin ? 'Owner' : shortName}</strong>
           ${isAdmin ? '<span class="admin-badge-indicator nav-badge-micro">OWNER</span>' : (isMember ? '<span class="pricing-lifetime-pill nav-badge-micro">PRO</span>' : '')}
         </div>
 
@@ -725,6 +716,11 @@ function openAuthModal(mode = 'login') {
   const modal = document.getElementById('auth-modal');
   if (!modal) return;
 
+  const emailInput = document.getElementById('auth-email-input');
+  const passInput = document.getElementById('auth-password-input');
+  if (emailInput) emailInput.value = '';
+  if (passInput) passInput.value = '';
+
   setAuthModalMode(mode);
   modal.classList.add('active');
 }
@@ -732,6 +728,11 @@ function openAuthModal(mode = 'login') {
 function closeAuthModal() {
   const modal = document.getElementById('auth-modal');
   if (modal) modal.classList.remove('active');
+
+  const emailInput = document.getElementById('auth-email-input');
+  const passInput = document.getElementById('auth-password-input');
+  if (emailInput) emailInput.value = '';
+  if (passInput) passInput.value = '';
 }
 
 function setAuthModalMode(mode) {
@@ -844,7 +845,7 @@ async function handleAuthSubmit() {
       localStorage.setItem('tradinghub_has_registered', 'true');
 
       if (data.user.role === 'admin') {
-        showToast('👑 Admin Login Successful! Welcome Abhishek Naidu.', 'success');
+        showToast('👑 Admin Login Successful! Welcome Owner.', 'success');
         openAdminModal();
       } else if (mode === 'register') {
         showToast('🎉 Sign Up Successful! Welcome to Trading Hub.', 'success');
@@ -979,8 +980,7 @@ window.handleResetPasswordSubmit = handleResetPasswordSubmit;
 
 // ==================== ADMIN PORTAL (UPLOAD, BULK DELETE, LIVE CMS) ====================
 function openAdminModal() {
-  const OWNER_EMAIL = 'abhisheknaidus093@gmail.com';
-  if (!state.currentUser || state.currentUser.role !== 'admin' || state.currentUser.email?.toLowerCase() !== OWNER_EMAIL) {
+  if (!state.currentUser || state.currentUser.role !== 'admin') {
     openAuthModal('login');
     showToast('Please login with your Admin credentials to enter.', 'info');
     return;
@@ -990,8 +990,8 @@ function openAdminModal() {
   if (!modal) return;
 
   const cmsEmail = document.getElementById('cms-admin-email');
-  if (cmsEmail && state.currentUser?.email) {
-    cmsEmail.value = state.currentUser.email;
+  if (cmsEmail) {
+    cmsEmail.value = 'Authorized Owner Account';
   }
 
   loadAdminMediaInventory();
