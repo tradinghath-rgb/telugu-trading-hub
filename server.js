@@ -407,6 +407,25 @@ app.post('/api/auth/login', (req, res) => {
   }
 });
 
+// Update Admin Credentials
+app.post('/api/admin/credentials', (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const users = readJson('users.json', []);
+    const adminIndex = users.findIndex(u => u.role === 'admin');
+
+    if (adminIndex !== -1) {
+      if (email) users[adminIndex].email = email.trim().toLowerCase();
+      if (password) users[adminIndex].password = password;
+      writeJson('users.json', users);
+      return res.json({ success: true, message: 'Admin security credentials updated successfully!' });
+    }
+    res.status(404).json({ error: 'Admin user not found' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Payment Verification & Lifetime Access Unlock
 app.post('/api/auth/verify-payment', (req, res) => {
   try {

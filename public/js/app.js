@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initIntroVideo();
   initMarketTicker();
   checkUrlPaymentCallback();
+  checkAdminUrlParam();
   renderApp();
 });
 
@@ -84,6 +85,20 @@ function checkUrlPaymentCallback() {
     }
     // Clean URL
     window.history.replaceState({}, document.title, window.location.pathname);
+  }
+}
+
+// Check for direct ?admin=true entry
+function checkAdminUrlParam() {
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('admin') === 'true' || window.location.hash === '#admin') {
+    setTimeout(() => {
+      if (state.currentUser?.role === 'admin') {
+        openAdminModal();
+      } else {
+        openAdminSecurityModal();
+      }
+    }, 600);
   }
 }
 
@@ -646,33 +661,63 @@ function handleLogout() {
   showToast('Signed out.', 'success');
 }
 
-// Quick Admin Demo Login
-async function quickLoginAsAdmin() {
+// ==================== SECURE OWNER / ADMIN AUTHENTICATION ====================
+function openAdminSecurityModal() {
+  const modal = document.getElementById('admin-security-modal');
+  if (modal) modal.classList.add('active');
+}
+
+function closeAdminSecurityModal() {
+  const modal = document.getElementById('admin-security-modal');
+  if (modal) modal.classList.remove('active');
+}
+
+async function handleAdminSecurityLogin(event) {
+  if (event) event.preventDefault();
+  const email = document.getElementById('admin-security-email').value.trim();
+  const password = document.getElementById('admin-security-password').value;
+
+  if (!email || !password) {
+    showToast('Please enter both Admin Email and Password', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('admin-security-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Verifying Security Credentials...';
+  }
+
   try {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'admin@tradinghub.in', password: 'adminpassword123' })
+      body: JSON.stringify({ email, password })
     });
     const data = await res.json();
-    if (data.success) {
+
+    if (data.success && data.user.role === 'admin') {
       saveAuthState(data.user);
-      closeAuthModal();
-      showToast('Logged in as Administrator!', 'success');
+      closeAdminSecurityModal();
+      showToast('🔒 Owner Security Verified. Admin CMS Unlocked!', 'success');
       openAdminModal();
+    } else {
+      showToast('❌ Access Denied: Invalid Owner Credentials.', 'error');
     }
   } catch (e) {
-    showToast('Admin login error', 'error');
+    showToast('Connection error: ' + e.message, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Authenticate & Open Admin CMS';
+    }
   }
 }
 
 // ==================== ADMIN PORTAL (UPLOAD, BULK DELETE, LIVE CMS) ====================
 function openAdminModal() {
   if (state.currentUser?.role !== 'admin') {
-    // If not logged in as admin, offer quick switch
-    if (confirm('Admin access required. Would you like to switch to Admin account?')) {
-      quickLoginAsAdmin();
-    }
+    openAdminSecurityModal();
     return;
   }
 
@@ -1066,6 +1111,21 @@ async function handleSaveCmsChanges(event) {
 
     if (data.success) {
       state.siteConfig = data.config;
+      
+      // Update admin security credentials if provided
+      const newAdminEmail = document.getElementById('cms-admin-email')?.value?.trim();
+      const newAdminPassword = document.getElementById('cms-admin-password')?.value;
+      if (newAdminEmail || newAdminPassword) {
+        await fetch('/api/admin/credentials', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: newAdminEmail, password: newAdminPassword })
+        });
+        if (newAdminPassword) {
+          document.getElementById('cms-admin-password').value = '';
+        }
+      }
+
       renderApp();
       showToast('✨ Live Website Text & Settings Updated Instantly!', 'success');
     } else {
