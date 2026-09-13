@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/css/styles.css?v=20260914_v1" />
+  <link rel="stylesheet" href="/css/styles.css?v=20260914_v2" />
   <link rel="icon" type="image/png" href="/brand-logo" />
 </head>
 <body>
@@ -281,12 +281,12 @@
       <!-- Dynamically rendered via JavaScript -->
     </div>
 
-    <!-- More Videos / More Charts Redirection Bar -->
+    <!-- More Videos / More Charts Action Bar -->
     <div id="charts-more-banner" class="more-redirect-banner">
-      <a href="/all-videos" id="charts-more-link" class="btn btn-secondary btn-lg" style="display: inline-flex; align-items: center; gap: 10px; border-color: var(--accent-green); background: rgba(0,242,152,0.06);">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        <span id="charts-more-btn-text">View All 24+ Trading Videos &amp; Reels (Explore Next Page) &rarr;</span>
-      </a>
+      <button type="button" id="charts-more-toggle-btn" class="btn btn-secondary btn-lg" onclick="toggleShowAllVideos(true)" style="display: inline-flex; align-items: center; gap: 10px; border-color: var(--accent-green); background: rgba(0,242,152,0.08); font-weight: 700; color: #fff; cursor: pointer;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        <span id="charts-more-btn-text">+ More Videos (Click to Display All 24+ Lessons) ▼</span>
+      </button>
     </div>
   </section>
 
@@ -546,6 +546,16 @@
           <div class="chart-view-panel">
             <div class="chart-display-container">
               <img id="modal-chart-image" src="" alt="Drawn Trading Chart" />
+              <div id="modal-chart-lock-overlay" class="chart-locked-overlay" style="display: none;">
+                <div class="chart-lock-icon-circle">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                </div>
+                <h4>Institutional Chart Setup Locked</h4>
+                <p>Technical entry zones, stop loss levels, and SMC target markings unlock with ₹399 Lifetime Access.</p>
+                <button class="btn btn-gold btn-sm" onclick="handleCheckoutRedirect('https://rzp.io/rzp/2a3h6cU')">
+                  ⚡ Unlock Videos &amp; Charts - ₹399
+                </button>
+              </div>
             </div>
             <div class="chart-notes-card">
               <h4>
@@ -607,6 +617,29 @@
             Direct Razorpay (₹399) &rarr;
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B0-B. CONCURRENT SESSION TERMINATED MODAL (SINGLE DEVICE POLICY) -->
+  <div id="concurrent-session-modal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 440px; text-align: center;">
+      <div class="modal-header" style="justify-content: flex-end; border-bottom: none; padding: 16px 20px 0;">
+        <button class="btn-close-modal" onclick="closeConcurrentSessionModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 6px 24px 24px;">
+        <div style="width: 58px; height: 58px; border-radius: 50%; background: rgba(255, 68, 68, 0.15); border: 2px solid var(--accent-red); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent-red)" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        </div>
+        <h3 style="font-family: var(--font-display); font-size: 1.25rem; color: #fff; margin-bottom: 8px; font-weight: 800;">
+          Logged Out from This Device
+        </h3>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6; margin-bottom: 20px;">
+          Your account was logged in from another device (mobile, laptop, or PC). In accordance with our single-device policy, an account can only be active on one device at a time.
+        </p>
+        <button class="btn btn-primary btn-lg" onclick="closeConcurrentSessionModal(); openAuthModal('login');" style="width: 100%; justify-content: center;">
+          Log In Again on This Device
+        </button>
       </div>
     </div>
   </div>
@@ -1218,6 +1251,6 @@
   <div id="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="/js/app.js?v=20260914_v1"></script>
+  <script src="/js/app.js?v=20260914_v2"></script>
 </body>
 </html>

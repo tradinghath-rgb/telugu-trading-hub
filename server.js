@@ -696,6 +696,7 @@ app.post('/api/auth/register', (req, res) => {
       return res.status(400).json({ error: 'An account with this email already exists. Please log in.' });
     }
 
+    const sessionToken = crypto.randomBytes(16).toString('hex');
     const newUser = {
       id: `user-${Date.now()}`,
       email: cleanEmail,
@@ -703,6 +704,7 @@ app.post('/api/auth/register', (req, res) => {
       name: name ? name.trim() : email.split('@')[0],
       role: 'member',
       hasPaid: false,
+      activeSessionToken: sessionToken,
       createdAt: new Date().toISOString()
     };
 
@@ -711,13 +713,13 @@ app.post('/api/auth/register', (req, res) => {
 
     // Don't return password in response
     const { password: _, ...userSafe } = newUser;
-    res.status(201).json({ success: true, message: 'Account created successfully!', user: userSafe });
+    res.status(201).json({ success: true, message: 'Account created successfully!', user: userSafe, sessionToken });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// User or Admin Login
+// User or Admin Login (Enforces Single Active Device Session)
 app.post('/api/auth/login', (req, res) => {
   try {
     const { email, password } = req.body;
@@ -729,23 +731,32 @@ app.post('/api/auth/login', (req, res) => {
     const OWNER_EMAIL = 'abhisheknaidus093@gmail.com';
     const users = readJson('users.json', []);
 
-    // Exclusive Owner / Admin Check: ONLY abhisheknaidus093@gmail.com can EVER be admin
+    // Generate fresh session token for this device (supersedes any other device)
+    const sessionToken = crypto.randomBytes(16).toString('hex');
+
+    // Exclusive Owner / Admin Check
     if (cleanEmail === OWNER_EMAIL) {
-      const adminUser = users.find(u => u.email.toLowerCase() === OWNER_EMAIL && u.role === 'admin');
-      if (adminUser && adminUser.password === password) {
-        const { password: _, ...userSafe } = adminUser;
-        return res.json({ success: true, message: 'Owner authenticated successfully!', user: userSafe });
+      const adminIndex = users.findIndex(u => u.email.toLowerCase() === OWNER_EMAIL && u.role === 'admin');
+      if (adminIndex !== -1 && users[adminIndex].password === password) {
+        users[adminIndex].activeSessionToken = sessionToken;
+        writeJson('users.json', users);
+        const { password: _, ...userSafe } = users[adminIndex];
+        return res.json({ success: true, message: 'Owner authenticated successfully!', user: userSafe, sessionToken });
       }
       return res.status(401).json({ error: 'Invalid owner credentials' });
     }
 
     // Standard Member Login
-    const user = users.find(u => u.email.toLowerCase() === cleanEmail && u.password === password);
-    if (!user) {
+    const userIndex = users.findIndex(u => u.email.toLowerCase() === cleanEmail && u.password === password);
+    if (userIndex === -1) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    // Strictly enforce role: member for all non-owner accounts
+    // Invalidate any older device session by assigning new activeSessionToken
+    users[userIndex].activeSessionToken = sessionToken;
+    writeJson('users.json', users);
+
+    const user = users[userIndex];
     const userSafe = {
       id: user.id,
       email: user.email,
@@ -755,9 +766,40 @@ app.post('/api/auth/login', (req, res) => {
       paidAt: user.paidAt,
       paymentId: user.paymentId
     };
-    res.json({ success: true, message: 'Logged in successfully!', user: userSafe });
+    res.json({ success: true, message: 'Logged in successfully!', user: userSafe, sessionToken });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Validate Active Session (Single Device Enforcement API)
+app.post('/api/auth/validate-session', (req, res) => {
+  try {
+    const { email, sessionToken } = req.body;
+    if (!email || !sessionToken) {
+      return res.json({ valid: false, reason: 'missing_credentials' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const users = readJson('users.json', []);
+    const user = users.find(u => u.email.toLowerCase() === cleanEmail);
+
+    if (!user) {
+      return res.json({ valid: false, reason: 'user_not_found' });
+    }
+
+    // If activeSessionToken exists and doesn't match this device, user logged in elsewhere
+    if (user.activeSessionToken && user.activeSessionToken !== sessionToken) {
+      return res.json({
+        valid: false,
+        reason: 'concurrent_session',
+        message: 'Your account was logged in from another device (mobile, laptop, or PC). You have been logged out here.'
+      });
+    }
+
+    res.json({ valid: true, hasPaid: !!user.hasPaid, role: user.role });
+  } catch (err) {
+    res.status(500).json({ valid: false, error: err.message });
   }
 });
 

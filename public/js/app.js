@@ -33,7 +33,9 @@ const state = {
   activeModalChart: null,
   activeVideoLang: 'telugu', // default Telugu
   adminSelectedChartIds: new Set(),
-  adminMediaInventory: { teluguVideos: [], englishVideos: [], uploadedMedia: [] }
+  adminMediaInventory: { teluguVideos: [], englishVideos: [], uploadedMedia: [] },
+  showAllVideos: false,
+  showAllCharts: false
 };
 
 // ==================== INITIALIZATION ====================
@@ -121,6 +123,12 @@ function initAuthState() {
       }).catch(() => {});
     }
     syncAllLocalAccountsToServer();
+
+    // Start single device session validation
+    validateActiveSession();
+    if (!window._sessionValidationInterval) {
+      window._sessionValidationInterval = setInterval(validateActiveSession, 25000);
+    }
   } catch (e) {
     localStorage.removeItem('tradinghub_user');
     sessionStorage.removeItem('tradinghub_user');
@@ -128,10 +136,63 @@ function initAuthState() {
   }
 }
 
+// Single Device Session Enforcement
+async function validateActiveSession() {
+  if (!state.currentUser || !state.currentUser.email) return true;
+  const token = state.currentUser.sessionToken || 
+                (state.currentUser.role === 'admin' 
+                  ? sessionStorage.getItem('tradinghub_session_token') 
+                  : localStorage.getItem('tradinghub_session_token'));
+  if (!token) return true;
+
+  try {
+    const res = await fetch('/api/auth/validate-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: state.currentUser.email, sessionToken: token })
+    });
+    const data = await res.json();
+    if (data.valid === false && data.reason === 'concurrent_session') {
+      handleConcurrentLogout(data.message);
+      return false;
+    }
+  } catch (_) {}
+  return true;
+}
+
+function handleConcurrentLogout(message) {
+  closeChartModal();
+  saveAuthState(null);
+  localStorage.removeItem('tradinghub_session_token');
+  sessionStorage.removeItem('tradinghub_session_token');
+  renderApp();
+  const modal = document.getElementById('concurrent-session-modal');
+  if (modal) {
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  } else {
+    showToast(message || '⚠️ Your account was logged in from another device. You have been logged out here.', 'error');
+  }
+}
+
+function closeConcurrentSessionModal() {
+  const modal = document.getElementById('concurrent-session-modal');
+  if (modal) modal.classList.remove('active');
+  const otherActive = document.querySelector('.modal-overlay.active');
+  if (!otherActive) document.body.style.overflow = '';
+}
+
 function saveAuthState(user) {
   state.currentUser = user;
   if (user) {
     saveToLocalAccountVault(user);
+    if (user.sessionToken) {
+      if (user.role === 'admin') {
+        sessionStorage.setItem('tradinghub_session_token', user.sessionToken);
+      } else {
+        localStorage.setItem('tradinghub_session_token', user.sessionToken);
+      }
+    }
     if (user.role === 'admin') {
       // Store admin session strictly in sessionStorage so closing browser requires re-entry of password
       sessionStorage.setItem('tradinghub_user', JSON.stringify(user));
@@ -142,8 +203,34 @@ function saveAuthState(user) {
   } else {
     localStorage.removeItem('tradinghub_user');
     sessionStorage.removeItem('tradinghub_user');
+    localStorage.removeItem('tradinghub_session_token');
+    sessionStorage.removeItem('tradinghub_session_token');
   }
   renderApp();
+}
+
+function toggleShowAllVideos(show) {
+  state.showAllVideos = Boolean(show);
+  renderCharts();
+  const banner = document.getElementById('charts-more-banner');
+  if (state.showAllVideos && banner) {
+    banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } else if (!state.showAllVideos) {
+    const section = document.getElementById('charts-section');
+    if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+function toggleShowAllCharts(show) {
+  state.showAllCharts = Boolean(show);
+  renderCharts();
+  const banner = document.getElementById('charts-more-banner');
+  if (state.showAllCharts && banner) {
+    banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } else if (!state.showAllCharts) {
+    const section = document.getElementById('charts-section');
+    if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 }
 
 // Load Live Site Text Configuration from Backend
@@ -474,18 +561,8 @@ function renderCharts() {
     dailyDropzone.style.display = (isAdmin && state.activeFilter === 'only-charts') ? 'block' : 'none';
   }
 
-  // Update More Redirection Banner
+  // Update More Banner container
   const moreBanner = document.getElementById('charts-more-banner');
-  const moreLink = document.getElementById('charts-more-link');
-  const moreText = document.getElementById('charts-more-btn-text');
-
-  if (state.activeFilter === 'only-charts') {
-    if (moreLink) moreLink.href = '/all-charts';
-    if (moreText) moreText.textContent = 'View All Institutional Charts Vault (Explore Next Page) →';
-  } else {
-    if (moreLink) moreLink.href = '/all-videos';
-    if (moreText) moreText.textContent = 'View All 24+ Trading Videos & Reels (Explore Next Page) →';
-  }
 
   // ==================== MODE A: 'ONLY CHARTS' (Pure Chart Setups, No Videos) ====================
   if (state.activeFilter === 'only-charts') {
@@ -530,15 +607,19 @@ function renderCharts() {
           <p style="font-size: 0.9rem;">Upload a new daily chart setup above or clear your search.</p>
         </div>
       `;
+      if (moreBanner) moreBanner.innerHTML = '';
       return;
     }
 
-    // Limit to 5 on Home Page
+    // Limit to 5 on Home Page unless expanded
     let displayList = allChartSetups;
     let hasMore = false;
-    if (isHomePage && allChartSetups.length > 5) {
+    if (isHomePage && !state.showAllCharts && allChartSetups.length > 5) {
       displayList = allChartSetups.slice(0, 5);
       hasMore = true;
+      container.classList.remove('expanded');
+    } else if (isHomePage && state.showAllCharts) {
+      container.classList.add('expanded');
     }
 
     let cardsHtml = displayList.map(item => {
@@ -558,7 +639,7 @@ function renderCharts() {
             <div class="chart-card-footer" style="align-items: center; justify-content: space-between;">
               <button class="btn btn-sm btn-secondary" onclick="openGalleryLightbox('${item.imageUrl}', '${escapedTitle}')">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                Inspect Chart
+                ${isUnlocked ? 'Inspect Chart' : '🔒 Locked Chart'}
               </button>
               ${(isAdmin && item.isGallery) ? `
                 <div style="display: flex; gap: 4px;">
@@ -576,22 +657,54 @@ function renderCharts() {
       `;
     }).join('');
 
-    // Append stylish "+ More Charts" card if on home page
+    // Append interactive "+ More Charts" card if on home page and not expanded
     if (hasMore) {
       cardsHtml += `
-        <div class="chart-card more-explore-card" onclick="window.location.href='/all-charts'">
+        <div class="chart-card more-explore-card" onclick="toggleShowAllCharts(true)" style="cursor: pointer;" title="Click to display all charts">
           <div class="more-card-content">
             <div class="more-card-icon">📊</div>
             <div class="more-card-badge">+ MORE CHARTS</div>
-            <h3 class="more-card-title">Explore All Daily Charts</h3>
-            <p class="more-card-desc">Access the full archive of daily hand-drawn setups, SMC markings & templates.</p>
-            <span class="btn btn-sm btn-primary">Open Full Vault &rarr;</span>
+            <h3 class="more-card-title">+ More Charts</h3>
+            <p class="more-card-desc">Click here to reveal all institutional hand-drawn charts and templates.</p>
+            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleShowAllCharts(true);" style="margin-top: 8px;">
+              Show All Charts ▼
+            </button>
           </div>
         </div>
       `;
     }
 
     container.innerHTML = cardsHtml;
+
+    if (moreBanner) {
+      if (isHomePage) {
+        if (!state.showAllCharts && allChartSetups.length > 5) {
+          moreBanner.innerHTML = `
+            <button type="button" class="btn btn-secondary btn-lg" onclick="toggleShowAllCharts(true)" style="display: inline-flex; align-items: center; gap: 10px; border-color: var(--accent-green); background: rgba(0,242,152,0.08); font-weight: 700; color: #fff; cursor: pointer;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+              <span>+ More Charts (Click to Display All Hand-Drawn Setups) ▼</span>
+            </button>
+          `;
+        } else if (state.showAllCharts) {
+          moreBanner.innerHTML = `
+            <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; align-items: center;">
+              <button type="button" class="btn btn-secondary btn-lg" onclick="toggleShowAllCharts(false)" style="border-color: rgba(255,255,255,0.25); color: #fff; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+                <span>▲ Show Less (Collapse to 5 Charts)</span>
+              </button>
+              <a href="/all-charts" class="btn btn-primary btn-lg" style="display: inline-flex; align-items: center; gap: 8px;">
+                <span>Open Full Chart Vault &rarr;</span>
+              </a>
+            </div>
+          `;
+        } else {
+          moreBanner.innerHTML = '';
+        }
+      } else {
+        moreBanner.innerHTML = '';
+      }
+    }
+
     return;
   }
 
@@ -625,15 +738,19 @@ function renderCharts() {
         <p style="font-size: 0.9rem;">Try selecting another category or clearing your search term.</p>
       </div>
     `;
+    if (moreBanner) moreBanner.innerHTML = '';
     return;
   }
 
-  // Limit to 5 on Home Page
+  // Strict 5-Video Display Limit on Home Page until user hits More
   let displayList = filtered;
   let hasMore = false;
-  if (isHomePage && filtered.length > 5) {
+  if (isHomePage && !state.showAllVideos && filtered.length > 5) {
     displayList = filtered.slice(0, 5);
     hasMore = true;
+    container.classList.remove('expanded');
+  } else if (isHomePage && state.showAllVideos) {
+    container.classList.add('expanded');
   }
 
   let cardsHtml = displayList.map(chart => {
@@ -656,7 +773,7 @@ function renderCharts() {
               ${chart.views ? `${chart.views.toLocaleString()} traders studied` : 'Updated'}
             </span>
             <button class="btn btn-sm ${isUnlocked ? 'btn-primary' : 'btn-secondary'}">
-              ${isUnlocked ? 'Watch Breakdown' : 'Preview Chart'}
+              ${isUnlocked ? 'Watch Breakdown' : '🔒 Preview (Locked)'}
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             </button>
           </div>
@@ -665,22 +782,54 @@ function renderCharts() {
     `;
   }).join('');
 
-  // Append stylish "+ More Videos" card if on home page
+  // Append stylish "+ More Videos" card if on home page and not expanded
   if (hasMore) {
     cardsHtml += `
-      <div class="chart-card more-explore-card" onclick="window.location.href='/all-videos'">
+      <div class="chart-card more-explore-card" onclick="toggleShowAllVideos(true)" style="cursor: pointer;" title="Click to display all 24+ videos">
         <div class="more-card-content">
-          <div class="more-card-icon">▶</div>
-          <div class="more-card-badge">+19 MORE LESSONS</div>
-          <h3 class="more-card-title">Explore All 24+ Videos</h3>
-          <p class="more-card-desc">Access all bilingual Telugu & English video breakdowns, SMC traps, and setups.</p>
-          <span class="btn btn-sm btn-primary">Open Video Library &rarr;</span>
+          <div class="more-card-icon" style="font-size: 2.2rem; margin-bottom: 8px;">➕</div>
+          <div class="more-card-badge" style="background: rgba(0, 242, 152, 0.15); color: var(--accent-green);">+ MORE VIDEOS</div>
+          <h3 class="more-card-title">+ More Videos</h3>
+          <p class="more-card-desc">Click here to reveal all 24+ Telugu &amp; English trading lessons in this view.</p>
+          <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleShowAllVideos(true);" style="margin-top: 8px;">
+            Show All 24+ Videos ▼
+          </button>
         </div>
       </div>
     `;
   }
 
   container.innerHTML = cardsHtml;
+
+  // More Videos Banner
+  if (moreBanner) {
+    if (isHomePage) {
+      if (!state.showAllVideos && filtered.length > 5) {
+        moreBanner.innerHTML = `
+          <button type="button" class="btn btn-secondary btn-lg" onclick="toggleShowAllVideos(true)" style="display: inline-flex; align-items: center; gap: 10px; border-color: var(--accent-green); background: rgba(0,242,152,0.08); font-weight: 700; color: #fff; cursor: pointer;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            <span>+ More Videos (Click to Display All 24+ Lessons) ▼</span>
+          </button>
+        `;
+      } else if (state.showAllVideos) {
+        moreBanner.innerHTML = `
+          <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; align-items: center;">
+            <button type="button" class="btn btn-secondary btn-lg" onclick="toggleShowAllVideos(false)" style="border-color: rgba(255,255,255,0.25); color: #fff; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+              <span>▲ Show Less (Hide &amp; Collapse to 5 Videos)</span>
+            </button>
+            <a href="/all-videos" class="btn btn-primary btn-lg" style="display: inline-flex; align-items: center; gap: 8px;">
+              <span>Explore in Full Video Library Page &rarr;</span>
+            </a>
+          </div>
+        `;
+      } else {
+        moreBanner.innerHTML = '';
+      }
+    } else {
+      moreBanner.innerHTML = '';
+    }
+  }
 }
 
 // Category selection
@@ -703,7 +852,11 @@ function handleChartSearch(query) {
 }
 
 // ==================== BILINGUAL VIDEO & CHART MODAL ====================
-function openChartModal(chartId) {
+async function openChartModal(chartId) {
+  // Validate active device session first
+  const isValid = await validateActiveSession();
+  if (!isValid) return;
+
   // Graceful chart resolution: matches by id, or chart-01 / chart-1, or first available chart
   const chart = state.charts.find(c => c.id === chartId) || 
                 state.charts.find(c => c.id === 'chart-01' || c.id === 'chart-1') || 
@@ -720,18 +873,27 @@ function openChartModal(chartId) {
   if (titleEl) titleEl.textContent = chart.title;
 
   const imgEl = document.getElementById('modal-chart-image');
-  if (imgEl) imgEl.src = chart.chartImage || '/assets/charts/chart-1.svg';
-
+  const lockOverlay = document.getElementById('modal-chart-lock-overlay');
   const sumEl = document.getElementById('modal-chart-summary');
-  if (sumEl) sumEl.textContent = chart.summary || '';
-
   const takeawayEl = document.getElementById('modal-chart-takeaway');
-  if (takeawayEl) takeawayEl.textContent = chart.keyTakeaway || '';
-
   const playerContainer = document.getElementById('modal-player-container');
 
   if (!isUnlocked) {
-    // Locked Preview View for Free/Unpaid Users
+    // Both Chart and Video Locked for Free / Unpaid Users
+    if (imgEl) {
+      imgEl.src = chart.chartImage || '/assets/charts/chart-1.svg';
+      imgEl.classList.add('locked');
+    }
+    if (lockOverlay) lockOverlay.style.display = 'flex';
+
+    if (sumEl) {
+      sumEl.innerHTML = `<span style="filter: blur(4px); user-select: none; opacity: 0.5;">Institutional entry zones, order flow liquidity, and confirmation trigger levels.</span> <span style="font-size: 0.76rem; color: var(--accent-gold); font-weight: 700; margin-left: 6px;">[🔒 LOCKED]</span>`;
+    }
+    if (takeawayEl) {
+      takeawayEl.innerHTML = `<span style="filter: blur(4px); user-select: none; opacity: 0.5;">Institutional risk:reward calculation and sniper invalidation rule.</span> <span style="font-size: 0.76rem; color: var(--accent-gold); font-weight: 700; margin-left: 6px;">[🔒 UNLOCKS WITH ₹399]</span>`;
+    }
+
+    // Locked Video Player Container
     playerContainer.innerHTML = `
       <div style="padding: 36px 20px; text-align: center; background: rgba(14, 20, 34, 0.95); border-radius: var(--radius-md); border: 1px dashed var(--accent-gold);">
         <div style="width: 54px; height: 54px; border-radius: 50%; background: rgba(255, 215, 0, 0.15); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; color: var(--accent-gold);">
@@ -739,10 +901,10 @@ function openChartModal(chartId) {
         </div>
         <h4 style="font-size: 1.2rem; font-weight: 800; color: #fff; margin-bottom: 8px;">Telugu &amp; English Explanation Video Locked</h4>
         <p style="color: var(--text-secondary); font-size: 0.9rem; max-width: 440px; margin: 0 auto 20px; line-height: 1.6;">
-          Unlock this video along with all 24+ drawn charts and daily setups for a one-time fee of ₹399.
+          When you complete payment of ₹399, all videos and full high-resolution chart setups open immediately with lifetime access.
         </p>
         <button class="btn btn-gold btn-lg" onclick="handleCheckoutRedirect('https://rzp.io/rzp/2a3h6cU')" style="width: 100%; max-width: 360px; margin: 0 auto; display: inline-flex; justify-content: center;">
-          ⚡ Unlock All Lessons - ₹399 Lifetime Access
+          ⚡ Unlock Videos &amp; Charts - ₹399 Lifetime Access
         </button>
         <div style="margin-top: 14px;">
           <a href="javascript:void(0)" onclick="closeChartModal(); relocateToPricingSection();" style="color: var(--accent-gold); font-size: 0.88rem; text-decoration: underline; cursor: pointer; font-weight: 600;">
@@ -753,6 +915,13 @@ function openChartModal(chartId) {
     `;
   } else {
     // Member Unlocked View with Bilingual Video Player
+    if (imgEl) {
+      imgEl.src = chart.chartImage || '/assets/charts/chart-1.svg';
+      imgEl.classList.remove('locked');
+    }
+    if (lockOverlay) lockOverlay.style.display = 'none';
+    if (sumEl) sumEl.textContent = chart.summary || '';
+    if (takeawayEl) takeawayEl.textContent = chart.keyTakeaway || '';
     loadActiveModalVideo();
   }
 
@@ -1140,6 +1309,14 @@ async function handleAuthSubmit() {
     }
 
     if (data.success) {
+      if (data.sessionToken) {
+        data.user.sessionToken = data.sessionToken;
+        if (data.user.role === 'admin') {
+          sessionStorage.setItem('tradinghub_session_token', data.sessionToken);
+        } else {
+          localStorage.setItem('tradinghub_session_token', data.sessionToken);
+        }
+      }
       saveAuthState(data.user);
       saveToLocalAccountVault({
         email,
@@ -2085,6 +2262,10 @@ async function handleDedicatedAdminLoginSubmit(event) {
       if (emailInput) emailInput.value = '';
       if (passInput) passInput.value = '';
 
+      if (data.sessionToken) {
+        data.user.sessionToken = data.sessionToken;
+        sessionStorage.setItem('tradinghub_session_token', data.sessionToken);
+      }
       saveAuthState(data.user);
       closeDedicatedAdminLoginModal();
       renderApp();
@@ -2335,6 +2516,12 @@ async function handleGalleryFileInput(files) {
 }
 
 function openGalleryLightbox(imageUrl, title) {
+  const isUnlocked = Boolean(state.currentUser?.hasPaid || state.currentUser?.role === 'admin');
+  if (!isUnlocked) {
+    showToast('🔒 High-Resolution Institutional Chart Locked. Unlock with ₹399 Lifetime Access.', 'info');
+    openCheckoutAuthPromptModal();
+    return;
+  }
   const modal = document.getElementById('gallery-lightbox-modal');
   const img = document.getElementById('lightbox-image');
   const titleEl = document.getElementById('lightbox-title');
@@ -2605,4 +2792,7 @@ window.loadComments = loadComments;
 window.renderComments = renderComments;
 window.handleCommentSubmit = handleCommentSubmit;
 window.handleDeleteComment = handleDeleteComment;
+window.toggleShowAllVideos = toggleShowAllVideos;
+window.toggleShowAllCharts = toggleShowAllCharts;
+window.closeConcurrentSessionModal = closeConcurrentSessionModal;
 
