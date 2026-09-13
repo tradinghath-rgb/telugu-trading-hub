@@ -391,14 +391,14 @@ const initialCharts = [
 // 3. Initial Users & Admin Seed
 const initialUsers = [
   {
-    id: "admin-1",
-    email: "admin@tradinghub.in",
-    password: "adminpassword123", // In production hashed, for CMS simplicity clear/sha256
-    name: "Master Trader (Admin)",
-    role: "admin",
-    hasPaid: true,
-    paidAt: "2026-09-01T00:00:00.000Z",
-    paymentId: "ADMIN_PROVISIONED"
+    "id": "admin-1",
+    "email": "abhisheknaidus093@gmail.com",
+    "password": "22NE1A04E1",
+    "name": "Abhishek Naidu (Owner)",
+    "role": "admin",
+    "hasPaid": true,
+    "paidAt": "2026-09-01T00:00:00.000Z",
+    "paymentId": "ADMIN_PROVISIONED"
   },
   {
     id: "demo-member-1",

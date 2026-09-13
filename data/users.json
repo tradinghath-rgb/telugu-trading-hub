@@ -1,9 +1,9 @@
 [
   {
     "id": "admin-1",
-    "email": "admin@tradinghub.in",
-    "password": "adminpassword123",
-    "name": "Master Trader (Admin)",
+    "email": "abhisheknaidus093@gmail.com",
+    "password": "22NE1A04E1",
+    "name": "Abhishek Naidu (Owner)",
     "role": "admin",
     "hasPaid": true,
     "paidAt": "2026-09-01T00:00:00.000Z",
@@ -18,24 +18,5 @@
     "hasPaid": true,
     "paidAt": "2026-09-10T12:00:00.000Z",
     "paymentId": "pay_DEMO_VERIFIED_LIFETIME"
-  },
-  {
-    "id": "user-1789310497422",
-    "email": "newbuyer@example.com",
-    "password": "ChangeMe@123",
-    "name": "newbuyer",
-    "role": "member",
-    "hasPaid": true,
-    "paidAt": "2026-09-13T14:41:37.422Z",
-    "paymentId": "pay_test123"
-  },
-  {
-    "id": "user-1789311863028",
-    "email": "abhisheknaidu2005@gmail.com",
-    "password": "22NE1A04E1",
-    "name": "abhi",
-    "role": "member",
-    "hasPaid": false,
-    "createdAt": "2026-09-13T15:04:23.028Z"
   }
 ]

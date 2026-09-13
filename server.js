@@ -108,8 +108,21 @@ function streamVideoFile(req, res, filePath) {
 
   if (range) {
     const parts = range.replace(/bytes=/, "").split("-");
-    const start = parseInt(parts[0], 10);
-    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+    let start = parseInt(parts[0], 10);
+    let end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+    if (isNaN(start)) {
+      start = fileSize - end;
+      end = fileSize - 1;
+    }
+    if (isNaN(end) || end >= fileSize) {
+      end = fileSize - 1;
+    }
+    if (start >= fileSize || start > end) {
+      res.status(416).setHeader('Content-Range', `bytes */${fileSize}`);
+      return res.end();
+    }
+
     const chunksize = (end - start) + 1;
     const file = fs.createReadStream(filePath, { start, end });
     const head = {
@@ -358,15 +371,21 @@ app.post('/api/auth/register', (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
+    const cleanEmail = email.trim().toLowerCase();
+    const OWNER_EMAIL = 'abhisheknaidus093@gmail.com';
+    if (cleanEmail === OWNER_EMAIL) {
+      return res.status(400).json({ error: 'This is the reserved owner account. Please sign in.' });
+    }
+
     const users = readJson('users.json', []);
-    const existing = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    const existing = users.find(u => u.email.toLowerCase() === cleanEmail);
     if (existing) {
       return res.status(400).json({ error: 'An account with this email already exists. Please log in.' });
     }
 
     const newUser = {
       id: `user-${Date.now()}`,
-      email: email.trim().toLowerCase(),
+      email: cleanEmail,
       password: password,
       name: name ? name.trim() : email.split('@')[0],
       role: 'member',
@@ -393,14 +412,36 @@ app.post('/api/auth/login', (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
+    const cleanEmail = email.trim().toLowerCase();
+    const OWNER_EMAIL = 'abhisheknaidus093@gmail.com';
     const users = readJson('users.json', []);
-    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase().trim() && u.password === password);
 
+    // Exclusive Owner / Admin Check: ONLY abhisheknaidus093@gmail.com can EVER be admin
+    if (cleanEmail === OWNER_EMAIL) {
+      const adminUser = users.find(u => u.email.toLowerCase() === OWNER_EMAIL && u.role === 'admin');
+      if (adminUser && adminUser.password === password) {
+        const { password: _, ...userSafe } = adminUser;
+        return res.json({ success: true, message: 'Owner authenticated successfully!', user: userSafe });
+      }
+      return res.status(401).json({ error: 'Invalid owner credentials' });
+    }
+
+    // Standard Member Login
+    const user = users.find(u => u.email.toLowerCase() === cleanEmail && u.password === password);
     if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    const { password: _, ...userSafe } = user;
+    // Strictly enforce role: member for all non-owner accounts
+    const userSafe = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: 'member',
+      hasPaid: !!user.hasPaid,
+      paidAt: user.paidAt,
+      paymentId: user.paymentId
+    };
     res.json({ success: true, message: 'Logged in successfully!', user: userSafe });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -410,17 +451,17 @@ app.post('/api/auth/login', (req, res) => {
 // Update Admin Credentials
 app.post('/api/admin/credentials', (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { password } = req.body;
+    const OWNER_EMAIL = 'abhisheknaidus093@gmail.com';
     const users = readJson('users.json', []);
-    const adminIndex = users.findIndex(u => u.role === 'admin');
+    const adminIndex = users.findIndex(u => u.email.toLowerCase() === OWNER_EMAIL && u.role === 'admin');
 
     if (adminIndex !== -1) {
-      if (email) users[adminIndex].email = email.trim().toLowerCase();
       if (password) users[adminIndex].password = password;
       writeJson('users.json', users);
-      return res.json({ success: true, message: 'Admin security credentials updated successfully!' });
+      return res.json({ success: true, message: 'Admin security password updated successfully!' });
     }
-    res.status(404).json({ error: 'Admin user not found' });
+    res.status(404).json({ error: 'Owner admin user not found' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -93,7 +93,7 @@ function checkAdminUrlParam() {
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('admin') === 'true' || window.location.hash === '#admin') {
     setTimeout(() => {
-      if (state.currentUser?.role === 'admin') {
+      if (state.currentUser?.role === 'admin' && state.currentUser?.email?.toLowerCase() === 'abhisheknaidus093@gmail.com') {
         openAdminModal();
       } else {
         openAdminSecurityModal();
@@ -252,8 +252,8 @@ function renderNavbar() {
   const user = state.currentUser;
 
   if (user) {
-    const isMember = user.hasPaid || user.role === 'admin';
-    const isAdmin = user.role === 'admin';
+    const isAdmin = user.role === 'admin' && user.email?.toLowerCase() === 'abhisheknaidus093@gmail.com';
+    const isMember = user.hasPaid || isAdmin;
 
     authNavGroup.innerHTML = `
       <div style="display: flex; align-items: center; gap: 10px;">
@@ -678,7 +678,13 @@ async function handleAdminSecurityLogin(event) {
   const password = document.getElementById('admin-security-password').value;
 
   if (!email || !password) {
-    showToast('Please enter both Admin Email and Password', 'error');
+    showToast('Please enter both Owner Email and Password', 'error');
+    return;
+  }
+
+  const OWNER_EMAIL = 'abhisheknaidus093@gmail.com';
+  if (email.toLowerCase() !== OWNER_EMAIL) {
+    showToast('❌ Access Denied: Only owner account abhisheknaidus093@gmail.com is authorized to enter Admin CMS.', 'error');
     return;
   }
 
@@ -696,13 +702,13 @@ async function handleAdminSecurityLogin(event) {
     });
     const data = await res.json();
 
-    if (data.success && data.user.role === 'admin') {
+    if (data.success && data.user.role === 'admin' && data.user.email.toLowerCase() === OWNER_EMAIL) {
       saveAuthState(data.user);
       closeAdminSecurityModal();
-      showToast('🔒 Owner Security Verified. Admin CMS Unlocked!', 'success');
+      showToast('🔒 Owner Security Verified. Welcome Abhishek!', 'success');
       openAdminModal();
     } else {
-      showToast('❌ Access Denied: Invalid Owner Credentials.', 'error');
+      showToast('❌ Access Denied: Invalid Owner Password.', 'error');
     }
   } catch (e) {
     showToast('Connection error: ' + e.message, 'error');
@@ -716,7 +722,8 @@ async function handleAdminSecurityLogin(event) {
 
 // ==================== ADMIN PORTAL (UPLOAD, BULK DELETE, LIVE CMS) ====================
 function openAdminModal() {
-  if (state.currentUser?.role !== 'admin') {
+  const OWNER_EMAIL = 'abhisheknaidus093@gmail.com';
+  if (!state.currentUser || state.currentUser.role !== 'admin' || state.currentUser.email?.toLowerCase() !== OWNER_EMAIL) {
     openAdminSecurityModal();
     return;
   }
