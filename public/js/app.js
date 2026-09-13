@@ -474,36 +474,51 @@ function handleChartSearch(query) {
 
 // ==================== BILINGUAL VIDEO & CHART MODAL ====================
 function openChartModal(chartId) {
-  const chart = state.charts.find(c => c.id === chartId);
+  // Graceful chart resolution: matches by id, or chart-01 / chart-1, or first available chart
+  const chart = state.charts.find(c => c.id === chartId) || 
+                state.charts.find(c => c.id === 'chart-01' || c.id === 'chart-1') || 
+                state.charts[0];
   if (!chart) return;
 
   state.activeModalChart = chart;
   const modal = document.getElementById('chart-video-modal');
   if (!modal) return;
 
-  const isUnlocked = state.currentUser?.hasPaid || state.currentUser?.role === 'admin';
+  const isUnlocked = Boolean(state.currentUser?.hasPaid || state.currentUser?.role === 'admin');
 
-  document.getElementById('modal-chart-title').textContent = chart.title;
-  document.getElementById('modal-chart-image').src = chart.chartImage || '/assets/charts/chart-1.svg';
-  document.getElementById('modal-chart-summary').textContent = chart.summary || '';
-  document.getElementById('modal-chart-takeaway').textContent = chart.keyTakeaway || '';
+  const titleEl = document.getElementById('modal-chart-title');
+  if (titleEl) titleEl.textContent = chart.title;
+
+  const imgEl = document.getElementById('modal-chart-image');
+  if (imgEl) imgEl.src = chart.chartImage || '/assets/charts/chart-1.svg';
+
+  const sumEl = document.getElementById('modal-chart-summary');
+  if (sumEl) sumEl.textContent = chart.summary || '';
+
+  const takeawayEl = document.getElementById('modal-chart-takeaway');
+  if (takeawayEl) takeawayEl.textContent = chart.keyTakeaway || '';
 
   const playerContainer = document.getElementById('modal-player-container');
 
   if (!isUnlocked) {
-    // Locked Preview View
+    // Locked Preview View for Free/Unpaid Users
     playerContainer.innerHTML = `
-      <div style="padding: 40px 24px; text-align: center; background: rgba(14, 20, 34, 0.9); border-radius: var(--radius-md); border: 1px dashed var(--accent-gold);">
+      <div style="padding: 36px 20px; text-align: center; background: rgba(14, 20, 34, 0.95); border-radius: var(--radius-md); border: 1px dashed var(--accent-gold);">
         <div style="width: 54px; height: 54px; border-radius: 50%; background: rgba(255, 215, 0, 0.15); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; color: var(--accent-gold);">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         </div>
-        <h4 style="font-size: 1.25rem; font-weight: 800; color: #fff; margin-bottom: 8px;">Telugu &amp; English Explanation Video Locked</h4>
-        <p style="color: var(--text-secondary); font-size: 0.92rem; max-width: 440px; margin: 0 auto 20px;">
+        <h4 style="font-size: 1.2rem; font-weight: 800; color: #fff; margin-bottom: 8px;">Telugu &amp; English Explanation Video Locked</h4>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; max-width: 440px; margin: 0 auto 20px; line-height: 1.6;">
           Unlock this video along with all 24+ drawn charts and daily setups for a one-time fee of ₹399.
         </p>
-        <button class="btn btn-gold btn-lg" onclick="handleCheckoutRedirect('https://rzp.io/rzp/2a3h6cU')">
-          Unlock All Lessons - ₹399 Lifetime Access
+        <button class="btn btn-gold btn-lg" onclick="handleCheckoutRedirect('https://rzp.io/rzp/2a3h6cU')" style="width: 100%; max-width: 360px; margin: 0 auto; display: inline-flex; justify-content: center;">
+          ⚡ Unlock All Lessons - ₹399 Lifetime Access
         </button>
+        <div style="margin-top: 14px;">
+          <a href="javascript:void(0)" onclick="closeChartModal(); relocateToPricingSection();" style="color: var(--accent-gold); font-size: 0.88rem; text-decoration: underline; cursor: pointer; font-weight: 600;">
+            Or view plan details &amp; payment options ↓
+          </a>
+        </div>
       </div>
     `;
   } else {
@@ -523,8 +538,58 @@ function closeChartModal() {
     videoElem.src = '';
   }
   if (modal) modal.classList.remove('active');
-  document.body.style.overflow = '';
+
+  // Check if any other modal is still active (e.g. admin-modal)
+  const otherActiveModal = document.querySelector('.modal-overlay.active');
+  if (!otherActiveModal) {
+    document.body.style.overflow = '';
+  }
 }
+
+// Relocate to Payment Section with Highlighting Animation
+function relocateToPricingSection() {
+  const pricingSection = document.getElementById('pricing-section');
+  if (pricingSection) {
+    pricingSection.scrollIntoView({ behavior: 'smooth' });
+    const pricingCard = document.querySelector('.pricing-card');
+    if (pricingCard) {
+      pricingCard.classList.remove('pricing-pulse');
+      void pricingCard.offsetWidth; // trigger reflow
+      pricingCard.classList.add('pricing-pulse');
+      setTimeout(() => pricingCard.classList.remove('pricing-pulse'), 3000);
+    }
+    showToast('🔒 Unlock All 24+ Lessons - ₹399 Lifetime Access', 'info');
+  } else {
+    handleCheckoutRedirect('https://rzp.io/rzp/2a3h6cU');
+  }
+}
+
+// Hero Lesson Preview Click Handler
+// Behavior requested by user:
+// For Paid users & Admin: Relocates to and plays the lesson video immediately!
+// For Unpaid users: Relocates directly to the Payment Option (#pricing-section)
+function handleHeroLessonPreviewClick() {
+  const isPaidOrAdmin = Boolean(state.currentUser?.hasPaid || state.currentUser?.role === 'admin');
+
+  if (isPaidOrAdmin) {
+    // Paid Member or Owner Admin: Immediately open the Video Player Breakdown Modal
+    const targetChart = state.charts.find(c => c.id === 'chart-01' || c.id === 'chart-1') || state.charts[0];
+    if (targetChart) {
+      openChartModal(targetChart.id);
+    } else {
+      openChartModal('chart-01');
+    }
+  } else {
+    // Unpaid Visitor / Regular User: Relocate directly to Payment Option
+    relocateToPricingSection();
+  }
+}
+
+// Explicit global exposure for inline HTML handlers
+window.openChartModal = openChartModal;
+window.closeChartModal = closeChartModal;
+window.relocateToPricingSection = relocateToPricingSection;
+window.handleHeroLessonPreviewClick = handleHeroLessonPreviewClick;
 
 // Load Video based on active language (Telugu vs English)
 function switchVideoLanguage(lang) {
@@ -854,10 +919,10 @@ function renderAdminChartsTable() {
           <input type="checkbox" onchange="toggleAdminChartSelect('${chart.id}', this.checked)" ${isSelected ? 'checked' : ''} />
         </td>
         <td>
-          <img src="${chart.chartImage || '/assets/charts/chart-1.svg'}" class="admin-thumb-mini" alt="" />
+          <img src="${chart.chartImage || '/assets/charts/chart-1.svg'}" class="admin-thumb-mini" style="cursor: pointer; transition: transform 0.2s ease;" onclick="openChartModal('${chart.id}')" title="Watch Video Breakdown" alt="" />
         </td>
         <td>
-          <strong>${chart.title}</strong>
+          <strong style="cursor: pointer; color: #fff;" onclick="openChartModal('${chart.id}')" title="Watch Video Breakdown">${chart.title}</strong>
           <div style="font-size: 0.76rem; color: var(--text-muted);">Reel #${chart.reelNumber || '-'} • Added: ${chart.dateAdded || ''}</div>
         </td>
         <td>
@@ -870,12 +935,16 @@ function renderAdminChartsTable() {
           </div>
         </td>
         <td>
-          <div style="display: flex; gap: 8px;">
-            <button class="btn btn-sm btn-secondary" onclick="openRenameModal('${chart.id}')" title="Rename or Edit Chart">
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <button class="btn btn-sm btn-primary" onclick="openChartModal('${chart.id}')" title="Watch Video Breakdown" style="padding: 4px 10px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 4px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Watch
+            </button>
+            <button class="btn btn-sm btn-secondary" onclick="openRenameModal('${chart.id}')" title="Rename or Edit Chart" style="padding: 4px 8px; font-size: 0.75rem;">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               Edit
             </button>
-            <button class="btn btn-sm btn-danger" onclick="deleteSingleChart('${chart.id}')" title="Delete Chart">
+            <button class="btn btn-sm btn-danger" onclick="deleteSingleChart('${chart.id}')" title="Delete Chart" style="padding: 4px 8px; font-size: 0.75rem;">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             </button>
           </div>

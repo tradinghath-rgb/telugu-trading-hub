@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/css/styles.css?v=20260913_v3" />
+  <link rel="stylesheet" href="/css/styles.css?v=20260913_v5" />
   <link rel="icon" type="image/png" href="/brand-logo" />
 </head>
 <body>
@@ -130,7 +130,7 @@
     </div>
 
     <!-- Hero Right Graphic Preview -->
-    <div class="hero-visual-card">
+    <div class="hero-visual-card" onclick="handleHeroLessonPreviewClick()" title="Click to preview lesson or unlock lifetime access">
       <div class="hero-visual-header">
         <div class="window-dots">
           <span class="window-dot dot-red"></span>
@@ -142,8 +142,8 @@
 
       <div class="hero-chart-preview">
         <img src="/assets/charts/chart-1.svg" alt="Institutional Chart Breakdown" />
-        <div class="hero-badge-overlay">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <div class="hero-badge-overlay" onclick="event.stopPropagation(); handleHeroLessonPreviewClick();" title="Click to open lesson breakdown">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg>
           <span>LESSON PREVIEW</span>
         </div>
       </div>
@@ -957,6 +957,6 @@
   <div id="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="/js/app.js?v=20260913_v3"></script>
+  <script src="/js/app.js?v=20260913_v5"></script>
 </body>
 </html>
