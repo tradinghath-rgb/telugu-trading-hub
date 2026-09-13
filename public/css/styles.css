@@ -309,6 +309,7 @@ button, input, select, textarea {
   border-radius: var(--radius-full);
   font-weight: 800;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .brand-subtitle {
@@ -320,6 +321,60 @@ button, input, select, textarea {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.nav-pricing-short {
+  display: none;
+}
+
+.nav-pricing-long {
+  display: inline-flex;
+}
+
+.nav-intro-btn {
+  display: inline-flex;
+}
+
+.nav-auth-group {
+  display: flex;
+  align-items: center;
+}
+
+.nav-guest-cluster {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-signin-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav-user-cluster {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-profile-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
+  padding: 5px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.82rem;
+  color: #fff;
+}
+
+.nav-profile-svg {
+  color: var(--accent-green);
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 /* ==================== BUTTONS ==================== */
@@ -1680,39 +1735,134 @@ button, input, select, textarea {
 
   /* Compact Sleek Navigation Header */
   .main-nav {
-    padding: 10px 16px;
+    padding: 8px 12px;
   }
 
   .nav-container {
-    gap: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .brand-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
   }
 
   .brand-logo-img {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
   }
 
   .brand-title {
-    font-size: 1.05rem;
-    gap: 6px;
+    font-size: 0.95rem;
+    gap: 4px;
+    white-space: nowrap;
   }
 
+  /* Completely remove bulky badge and subtitle from mobile navbar */
   .brand-badge {
-    font-size: 0.6rem;
-    padding: 2px 6px;
+    display: none !important;
   }
 
   .brand-subtitle {
-    display: none; /* Hide subtitle on mobile to keep header clean and single-line */
+    display: none !important;
   }
 
   .nav-actions {
+    display: flex;
+    align-items: center;
     gap: 6px;
+    margin-left: auto;
+    flex-shrink: 0;
   }
 
-  .nav-actions .btn {
-    padding: 7px 12px;
-    font-size: 0.8rem;
+  /* Hide Watch Intro text button from mobile navbar - already prominent in hero */
+  .nav-intro-btn {
+    display: none !important;
+  }
+
+  /* Compact ₹399 Button on Mobile */
+  .nav-pricing-btn {
+    padding: 6px 10px !important;
+    font-size: 0.78rem !important;
+    border-radius: var(--radius-full) !important;
+    white-space: nowrap !important;
+  }
+
+  .nav-pricing-btn .nav-pricing-long {
+    display: none !important;
+  }
+
+  .nav-pricing-btn .nav-pricing-short {
+    display: inline-flex !important;
+    font-weight: 800;
+  }
+
+  /* PROFILE / AUTH CLUSTER ON MOBILE - 100% PROMINENT & VISIBLE */
+  .nav-auth-group {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .nav-signin-btn {
+    padding: 6px 10px !important;
+    font-size: 0.8rem !important;
+    gap: 5px !important;
+    border-radius: var(--radius-sm) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    white-space: nowrap !important;
+  }
+
+  .nav-user-cluster {
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+  }
+
+  .nav-profile-pill {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-subtle);
+    padding: 4px 8px !important;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem !important;
+    color: #fff;
+  }
+
+  .nav-profile-svg {
+    color: var(--accent-green) !important;
+    width: 14px !important;
+    height: 14px !important;
+    flex-shrink: 0;
+  }
+
+  .nav-badge-micro {
+    padding: 1px 4px !important;
+    font-size: 0.55rem !important;
+  }
+
+  .nav-admin-btn {
+    padding: 5px 8px !important;
+    font-size: 0.75rem !important;
+  }
+
+  .nav-signout-btn {
+    padding: 5px 8px !important;
+    font-size: 0.75rem !important;
+  }
+
+  .nav-btn-text {
+    display: none !important;
   }
 
   /* Hero Section: Clean vertical rhythm */

@@ -299,29 +299,38 @@ function renderNavbar() {
   if (user) {
     const isAdmin = user.role === 'admin' && user.email?.toLowerCase() === 'abhisheknaidus093@gmail.com';
     const isMember = user.hasPaid || isAdmin;
+    const shortName = (user.name || user.email.split('@')[0]).split(' ')[0];
 
     authNavGroup.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 10px;">
-        <span style="font-size: 0.86rem; color: var(--text-secondary); display: flex; align-items: center; gap: 6px;">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          <strong style="color: #fff;">${user.name || user.email.split('@')[0]}</strong>
-          ${isAdmin ? '<span class="admin-badge-indicator">ADMIN</span>' : (isMember ? '<span class="pricing-lifetime-pill" style="padding: 2px 8px; font-size: 0.7rem;">LIFETIME ACCESS</span>' : '')}
-        </span>
+      <div class="nav-user-cluster">
+        <div class="nav-profile-pill" title="${user.email}">
+          <svg class="nav-profile-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <strong class="nav-user-name">${shortName}</strong>
+          ${isAdmin ? '<span class="admin-badge-indicator nav-badge-micro">OWNER</span>' : (isMember ? '<span class="pricing-lifetime-pill nav-badge-micro">PRO</span>' : '')}
+        </div>
 
         ${isAdmin ? `
-          <button class="btn btn-sm btn-primary" onclick="openAdminModal()" title="Open Admin CMS">
+          <button class="btn btn-sm btn-primary nav-admin-btn" onclick="openAdminModal()" title="Open Admin CMS">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-            Admin CMS
+            <span class="nav-btn-text">Admin CMS</span>
           </button>
         ` : ''}
 
-        <button class="btn btn-sm btn-secondary" onclick="handleLogout()">Sign Out</button>
+        <button class="btn btn-sm btn-secondary nav-signout-btn" onclick="handleLogout()" title="Sign Out">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          <span class="nav-btn-text">Sign Out</span>
+        </button>
       </div>
     `;
   } else {
+    // Guest view: Show prominent Sign In button with Profile Icon
     authNavGroup.innerHTML = `
-      <button class="btn btn-sm btn-secondary" onclick="openAuthModal('login')">Sign In</button>
-      <button class="btn btn-sm btn-primary" onclick="openAuthModal('register')">Sign Up</button>
+      <div class="nav-guest-cluster">
+        <button class="btn btn-sm btn-primary nav-signin-btn" onclick="openAuthModal('login')" title="Member Sign In">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>Sign In</span>
+        </button>
+      </div>
     `;
   }
 }

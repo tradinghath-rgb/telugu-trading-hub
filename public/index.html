@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/css/styles.css?v=20260913_secure" />
+  <link rel="stylesheet" href="/css/styles.css?v=20260913_v3" />
   <link rel="icon" type="image/png" href="/brand-logo" />
 </head>
 <body>
@@ -59,17 +59,18 @@
       </div>
 
       <div class="nav-actions">
-        <button class="btn btn-sm btn-secondary" onclick="replayIntro()" title="Replay intro video">
+        <button class="btn btn-sm btn-secondary nav-intro-btn" onclick="replayIntro()" title="Replay intro video">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          Watch Intro
+          <span class="nav-intro-text">Watch Intro</span>
         </button>
 
-        <a href="#pricing-section" class="btn btn-sm btn-gold">
-          <span>Get ₹399 Lifetime Access</span>
+        <a href="#pricing-section" class="btn btn-sm btn-gold nav-pricing-btn">
+          <span class="nav-pricing-long">Get ₹399 Lifetime Access</span>
+          <span class="nav-pricing-short">⚡ ₹399</span>
         </a>
 
-        <!-- Dynamic Auth / User / Admin Buttons -->
-        <div id="nav-auth-actions">
+        <!-- Dynamic Auth / User / Admin Buttons (Profile Icon always visible) -->
+        <div id="nav-auth-actions" class="nav-auth-group">
           <!-- Populated by app.js -->
         </div>
       </div>
@@ -494,6 +495,10 @@
 
         <div id="auth-toggle-prompt" style="text-align: center; font-size: 0.88rem; color: var(--text-secondary); margin-top: 16px;">
           Need an account? <a href="javascript:void(0)" onclick="setAuthModalMode('register')" style="color: var(--accent-green); font-weight: bold;">Sign Up</a>
+        </div>
+
+        <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-subtle); text-align: center; font-size: 0.84rem; color: var(--text-muted);">
+          Platform Owner? <a href="javascript:void(0)" onclick="closeAuthModal(); openAdminSecurityModal();" style="color: var(--accent-gold); font-weight: 700;">Owner Login &rarr;</a>
         </div>
       </div>
     </div>
@@ -952,6 +957,6 @@
   <div id="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="/js/app.js?v=20260913_secure"></script>
+  <script src="/js/app.js?v=20260913_v3"></script>
 </body>
 </html>
