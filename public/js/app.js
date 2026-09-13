@@ -653,25 +653,62 @@ function loadActiveModalVideo() {
 }
 
 // ==================== RAZORPAY CHECKOUT & PAYMENT VERIFICATION ====================
+let pendingCheckoutUrl = null;
+
 function handleCheckoutRedirect(url) {
   const checkoutUrl = url || state.siteConfig?.pricing?.razorpayUrl || 'https://rzp.io/rzp/2a3h6cU';
+  pendingCheckoutUrl = checkoutUrl;
 
-  // If user is not logged in, advise them to sign up so lifetime access is registered to their email
+  // If user is not logged in, display the sleek central "Sign In or Login for Access" popup modal
   if (!state.currentUser) {
-    if (confirm('Please sign in or create an account with your Email & Password so your lifetime access is saved. Would you like to sign in now?')) {
-      openAuthModal('register');
-      return;
-    }
+    openCheckoutAuthPromptModal();
+    return;
   }
 
-  // Open Razorpay link in new tab
-  window.open(checkoutUrl, '_blank');
+  // Already logged in: Proceed directly to Razorpay
+  proceedDirectlyToRazorpay(checkoutUrl);
+}
 
-  // Open the post-payment verification modal
+function openCheckoutAuthPromptModal() {
+  const modal = document.getElementById('checkout-auth-prompt-modal');
+  if (modal) {
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closeCheckoutAuthPromptModal() {
+  const modal = document.getElementById('checkout-auth-prompt-modal');
+  if (modal) modal.classList.remove('active');
+  const otherActive = document.querySelector('.modal-overlay.active');
+  if (!otherActive) document.body.style.overflow = '';
+}
+
+function relocateToAuthFromPrompt(mode = 'login') {
+  closeCheckoutAuthPromptModal();
+  setTimeout(() => {
+    openAuthModal(mode);
+  }, 120);
+}
+
+function proceedDirectlyToRazorpayFromPrompt() {
+  const url = pendingCheckoutUrl || state.siteConfig?.pricing?.razorpayUrl || 'https://rzp.io/rzp/2a3h6cU';
+  closeCheckoutAuthPromptModal();
+  proceedDirectlyToRazorpay(url);
+}
+
+function proceedDirectlyToRazorpay(url) {
+  window.open(url, '_blank');
   setTimeout(() => {
     openPaymentVerificationModal();
   }, 1000);
 }
+
+window.openCheckoutAuthPromptModal = openCheckoutAuthPromptModal;
+window.closeCheckoutAuthPromptModal = closeCheckoutAuthPromptModal;
+window.relocateToAuthFromPrompt = relocateToAuthFromPrompt;
+window.proceedDirectlyToRazorpayFromPrompt = proceedDirectlyToRazorpayFromPrompt;
+
 
 function openPaymentVerificationModal() {
   const modal = document.getElementById('payment-verify-modal');
