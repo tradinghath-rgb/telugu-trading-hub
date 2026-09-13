@@ -394,6 +394,136 @@ app.get('/api/media-inventory', (req, res) => {
   }
 });
 
+// ==================== IMAGE-ONLY CHART GALLERY API ====================
+
+// Get all image-only charts
+app.get('/api/chart-gallery', (req, res) => {
+  const gallery = readJson('chart_gallery.json', []);
+  res.json(gallery);
+});
+
+// Upload new chart image (Drag-and-Drop or File Picker)
+app.post('/api/chart-gallery', upload.single('chartImage'), (req, res) => {
+  try {
+    const gallery = readJson('chart_gallery.json', []);
+    const title = req.body.title?.trim() || 'Institutional Chart Setup';
+
+    let imageUrl = '';
+    if (req.file) {
+      imageUrl = `/uploads/${req.file.filename}`;
+    } else if (req.body.customImageUrl) {
+      imageUrl = req.body.customImageUrl;
+    } else {
+      return res.status(400).json({ error: 'No image file uploaded' });
+    }
+
+    const newItem = {
+      id: `gallery-${Date.now()}`,
+      title,
+      imageUrl,
+      dateAdded: new Date().toISOString().split('T')[0]
+    };
+
+    gallery.unshift(newItem);
+    writeJson('chart_gallery.json', gallery);
+    res.json({ success: true, message: 'Chart image uploaded successfully!', chart: newItem });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Rename / Edit title of a chart image
+app.put('/api/chart-gallery/:id', (req, res) => {
+  try {
+    const gallery = readJson('chart_gallery.json', []);
+    const idx = gallery.findIndex(g => g.id === req.params.id);
+    if (idx === -1) return res.status(404).json({ error: 'Chart image not found' });
+
+    const newTitle = req.body.title?.trim();
+    if (!newTitle) return res.status(400).json({ error: 'Title cannot be empty' });
+
+    gallery[idx].title = newTitle;
+    writeJson('chart_gallery.json', gallery);
+    res.json({ success: true, message: 'Chart renamed successfully!', chart: gallery[idx] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Delete chart image
+app.delete('/api/chart-gallery/:id', (req, res) => {
+  try {
+    let gallery = readJson('chart_gallery.json', []);
+    const initialLen = gallery.length;
+    const item = gallery.find(g => g.id === req.params.id);
+    gallery = gallery.filter(g => g.id !== req.params.id);
+    if (gallery.length === initialLen) return res.status(404).json({ error: 'Chart image not found' });
+
+    // Remove local file if under uploads
+    if (item && item.imageUrl && item.imageUrl.startsWith('/uploads/')) {
+      const fileName = item.imageUrl.replace('/uploads/', '');
+      const filePath = path.join(UPLOADS_DIR, decodeURIComponent(fileName));
+      if (fs.existsSync(filePath)) {
+        try { fs.unlinkSync(filePath); } catch (_) {}
+      }
+    }
+
+    writeJson('chart_gallery.json', gallery);
+    res.json({ success: true, message: 'Chart deleted successfully!' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ==================== COMMUNITY COMMENTS & MESSAGE BOARD API ====================
+
+// Get all comments
+app.get('/api/comments', (req, res) => {
+  const comments = readJson('comments.json', []);
+  res.json(comments);
+});
+
+// Post a new comment
+app.post('/api/comments', (req, res) => {
+  try {
+    const { name, text, email, role } = req.body;
+    if (!name?.trim() || !text?.trim()) {
+      return res.status(400).json({ error: 'Name and message are required' });
+    }
+
+    const comments = readJson('comments.json', []);
+    const newComment = {
+      id: `comment-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      name: name.trim().slice(0, 50),
+      role: role || 'trader',
+      text: text.trim().slice(0, 500),
+      email: email ? email.trim() : null,
+      timestamp: new Date().toISOString()
+    };
+
+    comments.unshift(newComment);
+    writeJson('comments.json', comments);
+    res.json({ success: true, message: 'Comment posted successfully!', comment: newComment });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Admin Delete Comment
+app.delete('/api/comments/:id', (req, res) => {
+  try {
+    let comments = readJson('comments.json', []);
+    const initialLen = comments.length;
+    comments = comments.filter(c => c.id !== req.params.id);
+    if (comments.length === initialLen) return res.status(404).json({ error: 'Comment not found' });
+
+    writeJson('comments.json', comments);
+    res.json({ success: true, message: 'Comment deleted successfully by Admin!' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ==================== AUTH & PAYMENT UNLOCK API ====================
 
 // User Sign Up

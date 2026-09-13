@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/css/styles.css?v=20260913_v11" />
+  <link rel="stylesheet" href="/css/styles.css?v=20260913_v12" />
   <link rel="icon" type="image/png" href="/brand-logo" />
 </head>
 <body>
@@ -266,6 +266,76 @@
     </div>
   </section>
 
+  <!-- ==================== 6B. IMAGE-ONLY CHART VAULT ==================== -->
+  <section id="chart-gallery-section" class="section">
+    <div class="section-header">
+      <span class="section-tag">IMAGE ONLY VAULT</span>
+      <h2 class="section-title">Institutional Chart Vault</h2>
+      <p class="section-subtitle">
+        High-resolution drawn setups, price action templates, and candlestick patterns for visual study.
+      </p>
+    </div>
+
+    <!-- Admin Drag-and-Drop Upload Box (Visible Only to Admin) -->
+    <div id="gallery-admin-dropzone" class="gallery-upload-box" style="display: none;">
+      <div class="gallery-dropzone-inner" id="gallery-drop-area" onclick="document.getElementById('gallery-file-input').click()">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--accent-green)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <h4 style="color: #fff; margin: 8px 0 4px; font-size: 1rem;">Drag &amp; Drop Chart Image Here, or Click to Browse</h4>
+        <p style="color: var(--text-secondary); font-size: 0.82rem; margin: 0;">Upload PNG, JPG, SVG, or WebP. Owner / Admin Exclusive Tool.</p>
+        <input type="file" id="gallery-file-input" style="display: none;" accept="image/*" onchange="handleGalleryFileInput(this.files)" />
+      </div>
+    </div>
+
+    <!-- Gallery Grid -->
+    <div id="gallery-grid-container" class="gallery-grid">
+      <!-- Injected via app.js -->
+    </div>
+  </section>
+
+  <!-- ==================== 6C. TRADER COMMUNITY & COMMENTS ==================== -->
+  <section id="comments-section" class="section" style="max-width: 900px;">
+    <div class="section-header">
+      <span class="section-tag">COMMUNITY BOARD</span>
+      <h2 class="section-title">Trader Discussion &amp; Message Board</h2>
+      <p class="section-subtitle">
+        Ask questions about daily setups, share observations, and connect with fellow traders.
+      </p>
+    </div>
+
+    <div class="comments-card-container">
+      <!-- Comment Input Box -->
+      <form id="comment-post-form" class="comment-input-card" onsubmit="handleCommentSubmit(event)">
+        <div style="margin-bottom: 12px;">
+          <input type="text" id="comment-author-name" class="form-input" placeholder="Your Name or Nickname" required autocomplete="off" />
+        </div>
+        <textarea id="comment-message-text" class="form-textarea" placeholder="Write your message or trading question here..." rows="3" required></textarea>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
+          <span style="font-size: 0.78rem; color: var(--text-muted);">Please keep discussions constructive &amp; trading focused.</span>
+          <button type="submit" id="comment-submit-btn" class="btn btn-primary btn-sm" style="display: inline-flex; align-items: center; gap: 6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            <span>Post Message</span>
+          </button>
+        </div>
+      </form>
+
+      <!-- Comments Feed Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin: 24px 0 16px;">
+        <h4 style="font-size: 0.95rem; color: #fff; margin: 0; display: flex; align-items: center; gap: 8px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-green)" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Community Messages (<span id="comments-total-count">0</span>)
+        </h4>
+        <button type="button" class="btn btn-sm btn-secondary" onclick="loadComments(true)" style="padding: 4px 10px; font-size: 0.78rem;">
+          Refresh
+        </button>
+      </div>
+
+      <!-- Comments Feed List -->
+      <div id="comments-feed-list" class="comments-feed-list">
+        <!-- Injected via app.js -->
+      </div>
+    </div>
+  </section>
+
   <!-- ==================== 7. PRICING & RAZORPAY CHECKOUT CARD ==================== -->
   <section id="pricing-section" class="section">
     <div class="section-header">
@@ -411,6 +481,7 @@
             <li><a href="javascript:void(0)" onclick="openAuthModal('login')">Member Login</a></li>
             <li><a href="javascript:void(0)" onclick="openAuthModal('register')">Create New Account</a></li>
             <li><a href="javascript:void(0)" onclick="openPaymentVerificationModal()">Verify Razorpay Payment</a></li>
+            <li><a href="javascript:void(0)" onclick="openDedicatedAdminLoginModal()" style="color: var(--accent-gold); font-weight: 600;">Admin Login</a></li>
           </ul>
         </div>
       </div>
@@ -582,6 +653,71 @@
             <span>Sign Out</span>
           </button>
         </div>
+      </div>
+    </div>
+  <!-- B4. DEDICATED ADMIN LOGIN MODAL (ACCESSIBLE ONLY FROM FOOTER) -->
+  <div id="admin-login-modal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 420px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-gold)" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <h3 style="color: var(--accent-gold); font-size: 1.2rem;">Admin Security Portal</h3>
+        </div>
+        <button class="btn-close-modal" onclick="closeDedicatedAdminLoginModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="color: var(--text-secondary); font-size: 0.86rem; margin-bottom: 16px; line-height: 1.5;">
+          Restricted access. Only platform owner with authorized credentials may enter.
+        </p>
+
+        <form id="admin-login-form" onsubmit="handleDedicatedAdminLoginSubmit(event)">
+          <div class="form-group">
+            <label class="form-label">Admin Email</label>
+            <input type="email" id="dedicated-admin-email" class="form-input" placeholder="Enter admin email" required autocomplete="off" value="" />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Admin Password</label>
+            <input type="password" id="dedicated-admin-password" class="form-input" placeholder="Enter admin password" required autocomplete="new-password" value="" />
+          </div>
+
+          <button type="submit" id="dedicated-admin-submit-btn" class="btn btn-gold" style="width: 100%; margin-top: 10px;">
+            Authenticate &amp; Open Admin CMS
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- B5. GALLERY FULLSCREEN LIGHTBOX MODAL -->
+  <div id="gallery-lightbox-modal" class="modal-overlay" onclick="closeGalleryLightbox()">
+    <div class="modal-card lightbox-card" style="max-width: 900px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="lightbox-title" style="color: #fff; font-size: 1.1rem; margin: 0;">Chart Inspection</h3>
+        <button class="btn-close-modal" onclick="closeGalleryLightbox()">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 16px; display: flex; justify-content: center; background: #060910;">
+        <img id="lightbox-image" src="" alt="High Resolution Chart" style="max-width: 100%; max-height: 78vh; object-fit: contain; border-radius: var(--radius-sm);" />
+      </div>
+    </div>
+  </div>
+
+  <!-- B6. RENAME GALLERY IMAGE MODAL -->
+  <div id="rename-gallery-modal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3>Rename Chart Setup</h3>
+        <button class="btn-close-modal" onclick="closeRenameGalleryModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="submitRenameGalleryImage(event)">
+          <input type="hidden" id="rename-gallery-id" />
+          <div class="form-group">
+            <label class="form-label">Chart Setup Title</label>
+            <input type="text" id="rename-gallery-input" class="form-input" required autocomplete="off" />
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Save Title</button>
+        </form>
       </div>
     </div>
   </div>
@@ -1005,6 +1141,6 @@
   <div id="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="/js/app.js?v=20260913_v11"></script>
+  <script src="/js/app.js?v=20260913_v12"></script>
 </body>
 </html>

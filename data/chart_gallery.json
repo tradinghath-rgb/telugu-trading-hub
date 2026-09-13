@@ -1,0 +1,26 @@
+[
+  {
+    "id": "gallery-1",
+    "title": "Nifty 50 Liquidity Sweep & Mitigation Zone",
+    "imageUrl": "/assets/charts/chart-1.svg",
+    "dateAdded": "2026-09-10"
+  },
+  {
+    "id": "gallery-2",
+    "title": "BankNifty Fake Breakout Trap Setup",
+    "imageUrl": "/assets/charts/chart-2.svg",
+    "dateAdded": "2026-09-11"
+  },
+  {
+    "id": "gallery-3",
+    "title": "Institutional Supply & Demand Order Block",
+    "imageUrl": "/assets/charts/chart-3.svg",
+    "dateAdded": "2026-09-12"
+  },
+  {
+    "id": "gallery-4",
+    "title": "Fair Value Gap (FVG) Sniper Retest",
+    "imageUrl": "/assets/charts/chart-4.svg",
+    "dateAdded": "2026-09-13"
+  }
+]

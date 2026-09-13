@@ -25,6 +25,8 @@ window.quickLoginAsAdmin = function() {
 const state = {
   siteConfig: null,
   charts: [],
+  gallery: [],
+  comments: [],
   currentUser: null,
   activeFilter: 'all',
   searchQuery: '',
@@ -39,8 +41,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   initAuthState();
   await loadSiteConfig();
   await loadCharts();
+  await loadChartGallery();
+  await loadComments();
   initIntroVideo();
   initMarketTicker();
+  initGalleryDragDrop();
   checkUrlPaymentCallback();
   checkAdminUrlParam();
   checkResetPasswordTokenInUrl();
@@ -277,6 +282,8 @@ function renderApp() {
   try { renderNavbar(); } catch (e) { console.error('Error in renderNavbar:', e); }
   try { renderDynamicSiteTexts(); } catch (e) { console.error('Error in renderDynamicSiteTexts:', e); }
   try { renderCharts(); } catch (e) { console.error('Error in renderCharts:', e); }
+  try { renderChartGallery(); } catch (e) { console.error('Error in renderChartGallery:', e); }
+  try { renderComments(); } catch (e) { console.error('Error in renderComments:', e); }
   try { renderTermsAndNoRefund(); } catch (e) { console.error('Error in renderTermsAndNoRefund:', e); }
   try { renderAdminPanel(); } catch (e) { console.error('Error in renderAdminPanel:', e); }
 }
@@ -1716,3 +1723,464 @@ function createToastContainer() {
   document.body.appendChild(c);
   return c;
 }
+
+// ==================== DEDICATED ADMIN LOGIN MODAL (FOOTER ACCESS) ====================
+function openDedicatedAdminLoginModal() {
+  const emailInput = document.getElementById('dedicated-admin-email');
+  const passInput = document.getElementById('dedicated-admin-password');
+  if (emailInput) emailInput.value = '';
+  if (passInput) passInput.value = '';
+
+  const modal = document.getElementById('admin-login-modal');
+  if (modal) {
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closeDedicatedAdminLoginModal() {
+  const emailInput = document.getElementById('dedicated-admin-email');
+  const passInput = document.getElementById('dedicated-admin-password');
+  if (emailInput) emailInput.value = '';
+  if (passInput) passInput.value = '';
+
+  const modal = document.getElementById('admin-login-modal');
+  if (modal) modal.classList.remove('active');
+
+  const otherActive = document.querySelector('.modal-overlay.active');
+  if (!otherActive) {
+    document.body.style.overflow = '';
+  }
+}
+
+async function handleDedicatedAdminLoginSubmit(event) {
+  if (event) event.preventDefault();
+
+  const emailInput = document.getElementById('dedicated-admin-email');
+  const passInput = document.getElementById('dedicated-admin-password');
+  const email = emailInput?.value?.trim();
+  const password = passInput?.value;
+
+  if (!email || !password) {
+    showToast('Please enter both admin email and password.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('dedicated-admin-submit-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Verifying Credentials...';
+  }
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+
+    if (data.success && data.user) {
+      // Clear inputs from memory & DOM immediately
+      if (emailInput) emailInput.value = '';
+      if (passInput) passInput.value = '';
+
+      saveAuthState(data.user);
+      closeDedicatedAdminLoginModal();
+      renderApp();
+
+      if (data.user.role === 'admin') {
+        showToast('👑 Admin Login Successful! Welcome Owner.', 'success');
+        openAdminModal();
+      } else {
+        showToast('✅ Login Successful! Welcome back.', 'success');
+      }
+    } else {
+      showToast(data.error || 'Invalid admin credentials.', 'error');
+    }
+  } catch (err) {
+    showToast('Network error: ' + err.message, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Authenticate & Open Admin CMS';
+    }
+    // Strict privacy: clean inputs again
+    if (emailInput) emailInput.value = '';
+    if (passInput) passInput.value = '';
+  }
+}
+
+window.openDedicatedAdminLoginModal = openDedicatedAdminLoginModal;
+window.closeDedicatedAdminLoginModal = closeDedicatedAdminLoginModal;
+window.handleDedicatedAdminLoginSubmit = handleDedicatedAdminLoginSubmit;
+
+// ==================== IMAGE-ONLY CHART GALLERY & LIGHTBOX ====================
+async function loadChartGallery() {
+  try {
+    const res = await fetch('/api/chart-gallery');
+    state.gallery = await res.json();
+    renderChartGallery();
+  } catch (e) {
+    console.error('Error loading chart gallery:', e);
+  }
+}
+
+function renderChartGallery() {
+  const container = document.getElementById('gallery-grid-container');
+  const dropzone = document.getElementById('gallery-admin-dropzone');
+  if (!container) return;
+
+  const isAdmin = state.currentUser?.role === 'admin';
+
+  // Only Admin sees Drag-and-Drop zone
+  if (dropzone) {
+    dropzone.style.display = isAdmin ? 'block' : 'none';
+  }
+
+  if (!state.gallery || state.gallery.length === 0) {
+    container.innerHTML = `
+      <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-muted);">
+        <p>No standalone chart images uploaded yet.</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = state.gallery.map(item => `
+    <div class="gallery-card">
+      <div class="gallery-thumb-wrap" onclick="openGalleryLightbox('${item.imageUrl}', '${item.title.replace(/'/g, "\\'")}')" title="Click to view full screen">
+        <img src="${item.imageUrl}" alt="${item.title}" loading="lazy" />
+      </div>
+      <div class="gallery-card-body">
+        <h4 class="gallery-card-title">${item.title}</h4>
+        <div class="gallery-card-actions">
+          <button class="btn btn-sm btn-secondary" onclick="openGalleryLightbox('${item.imageUrl}', '${item.title.replace(/'/g, "\\'")}')" style="padding: 4px 8px; font-size: 0.75rem;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Inspect
+          </button>
+          ${isAdmin ? `
+            <div class="gallery-admin-controls">
+              <button class="btn btn-sm btn-secondary" onclick="promptRenameGalleryImage('${item.id}', '${item.title.replace(/'/g, "\\'")}')" title="Rename Title" style="padding: 4px 8px; font-size: 0.75rem;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Rename
+              </button>
+              <button class="btn btn-sm btn-danger" onclick="deleteGalleryImage('${item.id}')" title="Delete Chart" style="padding: 4px 8px; font-size: 0.75rem;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function initGalleryDragDrop() {
+  const dropArea = document.getElementById('gallery-drop-area');
+  if (!dropArea) return;
+
+  ['dragenter', 'dragover'].forEach(eventName => {
+    dropArea.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropArea.classList.add('dragover');
+    }, false);
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    dropArea.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropArea.classList.remove('dragover');
+    }, false);
+  });
+
+  dropArea.addEventListener('drop', (e) => {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    if (files && files.length > 0) {
+      handleGalleryFileInput(files);
+    }
+  }, false);
+}
+
+async function handleGalleryFileInput(files) {
+  if (!files || files.length === 0) return;
+  const file = files[0];
+
+  const defaultTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
+  const title = prompt('Enter a title for this chart setup:', defaultTitle) || defaultTitle;
+
+  const formData = new FormData();
+  formData.append('chartImage', file);
+  formData.append('title', title);
+
+  showToast('Uploading chart image...', 'info');
+
+  try {
+    const res = await fetch('/api/chart-gallery', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('✅ Chart image uploaded successfully!', 'success');
+      await loadChartGallery();
+    } else {
+      showToast(data.error || 'Failed to upload chart image', 'error');
+    }
+  } catch (err) {
+    showToast('Upload error: ' + err.message, 'error');
+  }
+
+  const fileInput = document.getElementById('gallery-file-input');
+  if (fileInput) fileInput.value = '';
+}
+
+function openGalleryLightbox(imageUrl, title) {
+  const modal = document.getElementById('gallery-lightbox-modal');
+  const img = document.getElementById('lightbox-image');
+  const titleEl = document.getElementById('lightbox-title');
+  if (modal && img) {
+    img.src = imageUrl;
+    if (titleEl) titleEl.textContent = title || 'Chart Setup';
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closeGalleryLightbox() {
+  const modal = document.getElementById('gallery-lightbox-modal');
+  if (modal) modal.classList.remove('active');
+  const otherActive = document.querySelector('.modal-overlay.active');
+  if (!otherActive) document.body.style.overflow = '';
+}
+
+function promptRenameGalleryImage(id, currentTitle) {
+  const idInput = document.getElementById('rename-gallery-id');
+  const titleInput = document.getElementById('rename-gallery-input');
+  const modal = document.getElementById('rename-gallery-modal');
+
+  if (idInput && titleInput && modal) {
+    idInput.value = id;
+    titleInput.value = currentTitle;
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closeRenameGalleryModal() {
+  const modal = document.getElementById('rename-gallery-modal');
+  if (modal) modal.classList.remove('active');
+  const otherActive = document.querySelector('.modal-overlay.active');
+  if (!otherActive) document.body.style.overflow = '';
+}
+
+async function submitRenameGalleryImage(event) {
+  if (event) event.preventDefault();
+  const id = document.getElementById('rename-gallery-id')?.value;
+  const newTitle = document.getElementById('rename-gallery-input')?.value?.trim();
+
+  if (!id || !newTitle) return;
+
+  try {
+    const res = await fetch(`/api/chart-gallery/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: newTitle })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('✅ Chart renamed successfully!', 'success');
+      closeRenameGalleryModal();
+      await loadChartGallery();
+    } else {
+      showToast(data.error || 'Failed to rename chart', 'error');
+    }
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+
+async function deleteGalleryImage(id) {
+  if (!confirm('Are you sure you want to delete this chart from the image vault?')) return;
+
+  try {
+    const res = await fetch(`/api/chart-gallery/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('🗑️ Chart deleted successfully!', 'info');
+      await loadChartGallery();
+    } else {
+      showToast(data.error || 'Failed to delete chart', 'error');
+    }
+  } catch (err) {
+    showToast('Delete error: ' + err.message, 'error');
+  }
+}
+
+window.loadChartGallery = loadChartGallery;
+window.renderChartGallery = renderChartGallery;
+window.handleGalleryFileInput = handleGalleryFileInput;
+window.openGalleryLightbox = openGalleryLightbox;
+window.closeGalleryLightbox = closeGalleryLightbox;
+window.promptRenameGalleryImage = promptRenameGalleryImage;
+window.closeRenameGalleryModal = closeRenameGalleryModal;
+window.submitRenameGalleryImage = submitRenameGalleryImage;
+window.deleteGalleryImage = deleteGalleryImage;
+
+// ==================== COMMUNITY COMMENTS & MESSAGE BOARD ====================
+async function loadComments(showFeedback = false) {
+  try {
+    const res = await fetch('/api/comments');
+    state.comments = await res.json();
+    renderComments();
+    if (showFeedback) showToast('Messages refreshed.', 'info');
+  } catch (e) {
+    console.error('Error loading comments:', e);
+  }
+}
+
+function renderComments() {
+  const container = document.getElementById('comments-feed-list');
+  const countEl = document.getElementById('comments-total-count');
+  const nameInput = document.getElementById('comment-author-name');
+
+  if (!container) return;
+
+  const isAdmin = state.currentUser?.role === 'admin';
+
+  // Pre-fill name if user is logged in
+  if (nameInput && state.currentUser?.name && !nameInput.value) {
+    nameInput.value = state.currentUser.name;
+  }
+
+  if (countEl) countEl.textContent = state.comments?.length || 0;
+
+  if (!state.comments || state.comments.length === 0) {
+    container.innerHTML = `
+      <div style="text-align: center; padding: 30px; color: var(--text-muted); font-size: 0.9rem;">
+        No community messages posted yet. Be the first to share your thoughts!
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = state.comments.map(c => {
+    const roleBadgeClass = c.role === 'admin' ? 'badge-owner' : (c.role === 'member' ? 'badge-member' : 'badge-trader');
+    const roleLabel = c.role === 'admin' ? 'OWNER' : (c.role === 'member' ? 'PRO' : 'TRADER');
+    const firstLetter = (c.name || 'T')[0].toUpperCase();
+    const timeFormatted = formatTimeAgo(c.timestamp);
+
+    return `
+      <div class="comment-bubble" id="comment-bubble-${c.id}">
+        <div class="comment-avatar ${c.role === 'admin' ? 'admin-avatar' : ''}">
+          ${firstLetter}
+        </div>
+        <div class="comment-content-wrap">
+          <div class="comment-header-row">
+            <div class="comment-user-info">
+              <span class="comment-user-name">${escapeHtml(c.name)}</span>
+              <span class="comment-badge ${roleBadgeClass}">${roleLabel}</span>
+              <span class="comment-time">${timeFormatted}</span>
+            </div>
+            ${isAdmin ? `
+              <button class="btn-delete-comment" onclick="handleDeleteComment('${c.id}')" title="Delete this comment (Admin Only)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                Delete
+              </button>
+            ` : ''}
+          </div>
+          <p class="comment-body-text">${escapeHtml(c.text)}</p>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function handleCommentSubmit(event) {
+  if (event) event.preventDefault();
+
+  const nameInput = document.getElementById('comment-author-name');
+  const textInput = document.getElementById('comment-message-text');
+  const name = nameInput?.value?.trim();
+  const text = textInput?.value?.trim();
+
+  if (!name || !text) {
+    showToast('Please enter your name and message.', 'error');
+    return;
+  }
+
+  const role = state.currentUser?.role === 'admin' ? 'admin' : (state.currentUser?.hasPaid ? 'member' : 'trader');
+  const email = state.currentUser?.email || null;
+
+  const btn = document.getElementById('comment-submit-btn');
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/comments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, text, role, email })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('💬 Message posted to community board!', 'success');
+      if (textInput) textInput.value = '';
+      await loadComments();
+    } else {
+      showToast(data.error || 'Failed to post message', 'error');
+    }
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function handleDeleteComment(commentId) {
+  if (!confirm('Are you sure you want to delete this comment? This action cannot be undone.')) return;
+
+  try {
+    const res = await fetch(`/api/comments/${commentId}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('🗑️ Comment deleted by Admin.', 'info');
+      await loadComments();
+    } else {
+      showToast(data.error || 'Failed to delete comment', 'error');
+    }
+  } catch (err) {
+    showToast('Delete error: ' + err.message, 'error');
+  }
+}
+
+function formatTimeAgo(isoString) {
+  if (!isoString) return 'recently';
+  const diff = Date.now() - new Date(isoString).getTime();
+  const mins = Math.floor(diff / (1000 * 60));
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/[&<>'"]/g, tag => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    "'": '&#39;',
+    '"': '&quot;'
+  }[tag] || tag));
+}
+
+window.loadComments = loadComments;
+window.renderComments = renderComments;
+window.handleCommentSubmit = handleCommentSubmit;
+window.handleDeleteComment = handleDeleteComment;
+

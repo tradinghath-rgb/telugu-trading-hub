@@ -2294,4 +2294,256 @@ button, input, select, textarea {
   transform: translateY(1px);
 }
 
+/* ==================== IMAGE-ONLY CHART VAULT & DRAG-AND-DROP ==================== */
+.gallery-upload-box {
+  margin-bottom: 28px;
+}
+
+.gallery-dropzone-inner {
+  border: 2px dashed rgba(0, 242, 152, 0.4);
+  background: rgba(14, 20, 34, 0.6);
+  border-radius: var(--radius-lg);
+  padding: 30px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.gallery-dropzone-inner:hover,
+.gallery-dropzone-inner.dragover {
+  border-color: var(--accent-green);
+  background: rgba(0, 242, 152, 0.08);
+  box-shadow: 0 0 25px rgba(0, 242, 152, 0.15);
+  transform: translateY(-2px);
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.gallery-card {
+  background: rgba(14, 20, 32, 0.85);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.gallery-card:hover {
+  border-color: var(--accent-green);
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 242, 152, 0.12);
+}
+
+.gallery-thumb-wrap {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  background: #060910;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+}
+
+.gallery-thumb-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.gallery-card:hover .gallery-thumb-wrap img {
+  transform: scale(1.04);
+}
+
+.gallery-card-body {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.gallery-card-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.gallery-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.gallery-admin-controls {
+  display: flex;
+  gap: 6px;
+}
+
+/* Lightbox Modal */
+.lightbox-card {
+  max-width: 960px !important;
+  width: 95% !important;
+  background: #080c14 !important;
+  border: 1px solid rgba(0, 242, 152, 0.3) !important;
+}
+
+/* ==================== COMMUNITY COMMENTS & MESSAGE BOARD ==================== */
+.comments-card-container {
+  background: rgba(14, 20, 34, 0.7);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+}
+
+.comment-input-card {
+  background: rgba(8, 12, 20, 0.9);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  margin-bottom: 8px;
+}
+
+.comment-input-card:focus-within {
+  border-color: var(--accent-green);
+  box-shadow: 0 0 15px rgba(0, 242, 152, 0.1);
+}
+
+.comments-feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 520px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.comment-bubble {
+  background: rgba(10, 15, 26, 0.85);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  transition: border-color 0.2s ease;
+}
+
+.comment-bubble:hover {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.comment-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(0, 242, 152, 0.15);
+  border: 1px solid var(--accent-green);
+  color: var(--accent-green);
+  font-weight: 800;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.comment-avatar.admin-avatar {
+  background: rgba(255, 184, 0, 0.18);
+  border-color: var(--accent-gold);
+  color: var(--accent-gold);
+}
+
+.comment-content-wrap {
+  flex: 1;
+}
+
+.comment-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.comment-user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.comment-user-name {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.comment-badge {
+  font-size: 0.68rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.comment-badge.badge-owner {
+  background: rgba(255, 184, 0, 0.2);
+  color: var(--accent-gold);
+  border: 1px solid var(--accent-gold);
+}
+
+.comment-badge.badge-member {
+  background: rgba(0, 242, 152, 0.15);
+  color: var(--accent-green);
+  border: 1px solid var(--accent-green);
+}
+
+.comment-badge.badge-trader {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+}
+
+.comment-time {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+}
+
+.comment-body-text {
+  font-size: 0.88rem;
+  color: var(--text-primary);
+  line-height: 1.5;
+  margin: 0;
+  word-break: break-word;
+}
+
+.btn-delete-comment {
+  background: rgba(255, 77, 77, 0.12);
+  color: var(--accent-red);
+  border: 1px solid rgba(255, 77, 77, 0.3);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.74rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+
+.btn-delete-comment:hover {
+  background: var(--accent-red);
+  color: #fff;
+}
+
+
 
