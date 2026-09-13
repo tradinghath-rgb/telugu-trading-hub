@@ -2801,6 +2801,48 @@ body:not(.dedicated-view) #charts-grid-container:not(.expanded) > .chart-card:nt
   display: none !important;
 }
 
+/* Fail-safe: On home page, hide gallery cards after 2 charts + 1 more button unless .expanded is present */
+body:not(.dedicated-view) #gallery-grid-container:not(.expanded) > .gallery-card:nth-child(n+4) {
+  display: none !important;
+}
+
+/* Gallery Locked Thumbnail & Overlay */
+.gallery-thumb-wrap.locked img {
+  filter: blur(10px) brightness(0.55);
+  pointer-events: none;
+  transform: scale(1.05);
+}
+
+.gallery-lock-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 12, 20, 0.72);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.gallery-lock-badge {
+  background: rgba(255, 215, 0, 0.18);
+  border: 1px solid var(--accent-gold);
+  color: var(--accent-gold);
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  letter-spacing: 0.5px;
+  box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+}
+
 
 
 

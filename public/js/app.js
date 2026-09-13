@@ -35,7 +35,8 @@ const state = {
   adminSelectedChartIds: new Set(),
   adminMediaInventory: { teluguVideos: [], englishVideos: [], uploadedMedia: [] },
   showAllVideos: false,
-  showAllCharts: false
+  showAllCharts: false,
+  showAllGalleryCharts: false
 };
 
 // ==================== INITIALIZATION ====================
@@ -231,6 +232,25 @@ function toggleShowAllCharts(show) {
     const section = document.getElementById('charts-section');
     if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
+}
+
+function toggleShowAllGallery(show) {
+  state.showAllGalleryCharts = Boolean(show);
+  renderChartGallery();
+  const banner = document.getElementById('gallery-more-banner');
+  if (state.showAllGalleryCharts && banner) {
+    banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  } else if (!state.showAllGalleryCharts) {
+    const section = document.getElementById('chart-gallery-section');
+    if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+// Redirect Unpaid Visitor Directly to Payment Section
+function handleUnpaidChartClick() {
+  showToast('🔒 High-Resolution Chart Setup Locked. Unlock with ₹399 Lifetime Access.', 'info');
+  relocateToPricingSection();
+  openCheckoutAuthPromptModal();
 }
 
 // Load Live Site Text Configuration from Backend
@@ -611,11 +631,11 @@ function renderCharts() {
       return;
     }
 
-    // Limit to 5 on Home Page unless expanded
+    // Strictly limit to 2 charts on Home Page unless expanded
     let displayList = allChartSetups;
     let hasMore = false;
-    if (isHomePage && !state.showAllCharts && allChartSetups.length > 5) {
-      displayList = allChartSetups.slice(0, 5);
+    if (isHomePage && !state.showAllCharts && allChartSetups.length > 2) {
+      displayList = allChartSetups.slice(0, 2);
       hasMore = true;
       container.classList.remove('expanded');
     } else if (isHomePage && state.showAllCharts) {
@@ -624,10 +644,23 @@ function renderCharts() {
 
     let cardsHtml = displayList.map(item => {
       const escapedTitle = (item.title || 'Chart Setup').replace(/'/g, "\\'");
+      const clickAction = isUnlocked 
+        ? `openGalleryLightbox('${item.imageUrl}', '${escapedTitle}')`
+        : `handleUnpaidChartClick()`;
+
       return `
         <div class="chart-card">
-          <div class="chart-thumbnail-wrap" onclick="openGalleryLightbox('${item.imageUrl}', '${escapedTitle}')" style="cursor: pointer;" title="Click to view full screen chart">
-            <img src="${item.imageUrl}" alt="${item.title}" loading="lazy" />
+          <div class="chart-thumbnail-wrap ${isUnlocked ? '' : 'locked'}" onclick="${clickAction}" style="cursor: pointer;" title="${isUnlocked ? 'Click to view full screen chart' : '🔒 Locked Chart - Click to Unlock'}">
+            <img src="${item.imageUrl}" alt="${item.title}" loading="lazy" style="${isUnlocked ? '' : 'filter: blur(10px) brightness(0.55); pointer-events: none;'}" />
+            ${!isUnlocked ? `
+              <div class="gallery-lock-overlay">
+                <div class="gallery-lock-badge">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <span>LOCKED SETUP</span>
+                </div>
+                <span style="font-size: 0.72rem; color: var(--accent-gold); font-weight: 700; margin-top: 4px;">Click to Unlock (₹399)</span>
+              </div>
+            ` : ''}
             <span class="chart-reel-badge" style="background: rgba(0, 242, 152, 0.2); color: var(--accent-green); border: 1px solid rgba(0, 242, 152, 0.4);">
               📊 ONLY CHART
             </span>
@@ -637,16 +670,21 @@ function renderCharts() {
             <h3 class="chart-card-title">${item.title}</h3>
             <p class="chart-card-desc">${item.summary || ''}</p>
             <div class="chart-card-footer" style="align-items: center; justify-content: space-between;">
-              <button class="btn btn-sm btn-secondary" onclick="openGalleryLightbox('${item.imageUrl}', '${escapedTitle}')">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                ${isUnlocked ? 'Inspect Chart' : '🔒 Locked Chart'}
+              <button class="btn btn-sm ${isUnlocked ? 'btn-secondary' : 'btn-gold'}" onclick="${clickAction}" style="padding: 5px 12px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 4px;">
+                ${isUnlocked ? `
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <span>Inspect Chart</span>
+                ` : `
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <span>🔒 Unlock (₹399)</span>
+                `}
               </button>
               ${(isAdmin && item.isGallery) ? `
                 <div style="display: flex; gap: 4px;">
-                  <button class="btn btn-sm btn-secondary" onclick="promptRenameGalleryImage('${item.id}', '${escapedTitle}')" title="Rename Title" style="padding: 4px 8px; font-size: 0.72rem;">
+                  <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); promptRenameGalleryImage('${item.id}', '${escapedTitle}')" title="Rename Title" style="padding: 4px 8px; font-size: 0.72rem;">
                     Rename
                   </button>
-                  <button class="btn btn-sm btn-danger" onclick="deleteGalleryImage('${item.id}')" title="Delete Chart" style="padding: 4px 8px; font-size: 0.72rem;">
+                  <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteGalleryImage('${item.id}')" title="Delete Chart" style="padding: 4px 8px; font-size: 0.72rem;">
                     Delete
                   </button>
                 </div>
@@ -678,7 +716,7 @@ function renderCharts() {
 
     if (moreBanner) {
       if (isHomePage) {
-        if (!state.showAllCharts && allChartSetups.length > 5) {
+        if (!state.showAllCharts && allChartSetups.length > 2) {
           moreBanner.innerHTML = `
             <button type="button" class="btn btn-secondary btn-lg" onclick="toggleShowAllCharts(true)" style="display: inline-flex; align-items: center; gap: 10px; border-color: var(--accent-green); background: rgba(0,242,152,0.08); font-weight: 700; color: #fff; cursor: pointer;">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
@@ -690,7 +728,7 @@ function renderCharts() {
             <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; align-items: center;">
               <button type="button" class="btn btn-secondary btn-lg" onclick="toggleShowAllCharts(false)" style="border-color: rgba(255,255,255,0.25); color: #fff; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
-                <span>▲ Show Less (Collapse to 5 Charts)</span>
+                <span>▲ Show Less (Collapse to 2 Charts)</span>
               </button>
               <a href="/all-charts" class="btn btn-primary btn-lg" style="display: inline-flex; align-items: center; gap: 8px;">
                 <span>Open Full Chart Vault &rarr;</span>
@@ -777,6 +815,16 @@ function renderCharts() {
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             </button>
           </div>
+          ${isAdmin ? `
+            <div style="display: flex; gap: 6px; padding: 8px 16px; border-top: 1px dashed rgba(255,255,255,0.12); background: rgba(0,0,0,0.25);">
+              <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); openRenameModal('${chart.id}')" title="Edit Lesson Details" style="padding: 4px 8px; font-size: 0.72rem; flex: 1; justify-content: center; display: inline-flex; align-items: center; gap: 4px;">
+                ✏️ Edit Lesson
+              </button>
+              <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteSingleChart('${chart.id}')" title="Delete Lesson" style="padding: 4px 8px; font-size: 0.72rem; flex: 1; justify-content: center; display: inline-flex; align-items: center; gap: 4px;">
+                🗑️ Delete
+              </button>
+            </div>
+          ` : ''}
         </div>
       </div>
     `;
@@ -2310,12 +2358,14 @@ async function loadChartGallery() {
 function renderChartGallery() {
   const container = document.getElementById('gallery-grid-container');
   const dropzone = document.getElementById('gallery-admin-dropzone');
+  const moreBanner = document.getElementById('gallery-more-banner');
   if (!container) return;
 
   const isDedicatedChartsPage = window.location.pathname.includes('all-charts') || window.location.pathname.includes('charts-vault');
   const isHomePage = !isDedicatedChartsPage;
 
   const isAdmin = state.currentUser?.role === 'admin';
+  const isUnlocked = Boolean(state.currentUser?.hasPaid || isAdmin);
 
   // Only Admin sees Drag-and-Drop zone
   if (dropzone) {
@@ -2328,59 +2378,119 @@ function renderChartGallery() {
         <p>No standalone chart images uploaded yet.</p>
       </div>
     `;
+    if (moreBanner) moreBanner.innerHTML = '';
     return;
   }
 
+  // Strictly limit to 2 charts on Home page until user clicks More
   let displayGallery = state.gallery;
   let hasMoreGallery = false;
-  if (isHomePage && state.gallery.length > 5) {
-    displayGallery = state.gallery.slice(0, 5);
+  if (isHomePage && !state.showAllGalleryCharts && state.gallery.length > 2) {
+    displayGallery = state.gallery.slice(0, 2);
     hasMoreGallery = true;
+    container.classList.remove('expanded');
+  } else if (isHomePage && state.showAllGalleryCharts) {
+    container.classList.add('expanded');
   }
 
-  let cardsHtml = displayGallery.map(item => `
-    <div class="gallery-card">
-      <div class="gallery-thumb-wrap" onclick="openGalleryLightbox('${item.imageUrl}', '${item.title.replace(/'/g, "\\'")}')" title="Click to view full screen">
-        <img src="${item.imageUrl}" alt="${item.title}" loading="lazy" />
-      </div>
-      <div class="gallery-card-body">
-        <h4 class="gallery-card-title">${item.title}</h4>
-        <div class="gallery-card-actions">
-          <button class="btn btn-sm btn-secondary" onclick="openGalleryLightbox('${item.imageUrl}', '${item.title.replace(/'/g, "\\'")}')" style="padding: 4px 8px; font-size: 0.75rem;">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            Inspect
-          </button>
-          ${isAdmin ? `
-            <div class="gallery-admin-controls">
-              <button class="btn btn-sm btn-secondary" onclick="promptRenameGalleryImage('${item.id}', '${item.title.replace(/'/g, "\\'")}')" title="Rename Title" style="padding: 4px 8px; font-size: 0.75rem;">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                Rename
-              </button>
-              <button class="btn btn-sm btn-danger" onclick="deleteGalleryImage('${item.id}')" title="Delete Chart" style="padding: 4px 8px; font-size: 0.75rem;">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-              </button>
+  let cardsHtml = displayGallery.map(item => {
+    const escapedTitle = (item.title || 'Chart Setup').replace(/'/g, "\\'");
+    const clickAction = isUnlocked
+      ? `openGalleryLightbox('${item.imageUrl}', '${escapedTitle}')`
+      : `handleUnpaidChartClick()`;
+
+    return `
+      <div class="gallery-card">
+        <div class="gallery-thumb-wrap ${isUnlocked ? '' : 'locked'}" onclick="${clickAction}" title="${isUnlocked ? 'Click to view full screen' : '🔒 Locked Chart - Click to Unlock'}" style="cursor: pointer;">
+          <img src="${item.imageUrl}" alt="${item.title}" loading="lazy" />
+          ${!isUnlocked ? `
+            <div class="gallery-lock-overlay">
+              <div class="gallery-lock-badge">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <span>LOCKED SETUP</span>
+              </div>
+              <span style="font-size: 0.72rem; color: var(--accent-gold); font-weight: 700; margin-top: 4px;">Click to Unlock (₹399)</span>
             </div>
           ` : ''}
         </div>
+        <div class="gallery-card-body">
+          <h4 class="gallery-card-title">${item.title}</h4>
+          <div class="gallery-card-actions">
+            <button class="btn btn-sm ${isUnlocked ? 'btn-secondary' : 'btn-gold'}" onclick="${clickAction}" style="padding: 4px 10px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 4px;">
+              ${isUnlocked ? `
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <span>Inspect</span>
+              ` : `
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <span>🔒 Unlock (₹399)</span>
+              `}
+            </button>
+            ${isAdmin ? `
+              <div class="gallery-admin-controls">
+                <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); promptRenameGalleryImage('${item.id}', '${escapedTitle}')" title="Rename Title" style="padding: 4px 8px; font-size: 0.75rem;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  Rename
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteGalleryImage('${item.id}')" title="Delete Chart" style="padding: 4px 8px; font-size: 0.75rem;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  Delete
+                </button>
+              </div>
+            ` : ''}
+          </div>
+        </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 
+  // 3rd card: interactive "+ MORE CHARTS" card if on home page and not expanded
   if (hasMoreGallery) {
     cardsHtml += `
-      <div class="gallery-card more-explore-card" onclick="window.location.href='/all-charts'">
+      <div class="gallery-card more-explore-card" onclick="toggleShowAllGallery(true)" style="cursor: pointer;" title="Click to reveal all charts">
         <div class="more-card-content">
-          <div class="more-card-icon" style="border-color: var(--accent-gold); color: var(--accent-gold); box-shadow: 0 0 20px rgba(255,215,0,0.3);">📊</div>
+          <div class="more-card-icon" style="border-color: var(--accent-gold); color: var(--accent-gold); box-shadow: 0 0 20px rgba(255,215,0,0.3); font-size: 2rem;">📊</div>
           <div class="more-card-badge" style="background: var(--accent-gold); color: #000;">+ MORE CHARTS</div>
-          <h3 class="more-card-title">Explore Full Chart Vault</h3>
-          <p class="more-card-desc">Access the entire archive of hand-drawn setups & templates.</p>
-          <span class="btn btn-sm btn-gold">View All Charts &rarr;</span>
+          <h3 class="more-card-title">+ More Charts</h3>
+          <p class="more-card-desc">Click here to reveal all institutional hand-drawn charts and templates.</p>
+          <button class="btn btn-sm btn-gold" onclick="event.stopPropagation(); toggleShowAllGallery(true);" style="margin-top: 8px;">
+            Show All Charts ▼
+          </button>
         </div>
       </div>
     `;
   }
 
   container.innerHTML = cardsHtml;
+
+  // Update gallery more banner
+  if (moreBanner) {
+    if (isHomePage) {
+      if (!state.showAllGalleryCharts && state.gallery.length > 2) {
+        moreBanner.innerHTML = `
+          <button type="button" class="btn btn-secondary btn-lg" onclick="toggleShowAllGallery(true)" style="display: inline-flex; align-items: center; gap: 10px; border-color: var(--accent-gold); background: rgba(255,215,0,0.08); font-weight: 700; color: #fff; cursor: pointer;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <span>+ More Charts (Click to Display All Vault Charts) ▼</span>
+          </button>
+        `;
+      } else if (state.showAllGalleryCharts) {
+        moreBanner.innerHTML = `
+          <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; align-items: center;">
+            <button type="button" class="btn btn-secondary btn-lg" onclick="toggleShowAllGallery(false)" style="border-color: rgba(255,255,255,0.25); color: #fff; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+              <span>▲ Show Less (Collapse to 2 Charts)</span>
+            </button>
+            <a href="/all-charts" class="btn btn-gold btn-lg" style="display: inline-flex; align-items: center; gap: 8px;">
+              <span>Explore Full Chart Vault Page &rarr;</span>
+            </a>
+          </div>
+        `;
+      } else {
+        moreBanner.innerHTML = '';
+      }
+    } else {
+      moreBanner.innerHTML = '';
+    }
+  }
 }
 
 // Admin Special Access Daily Chart Uploader (for Only Charts filter tab)
@@ -2518,8 +2628,7 @@ async function handleGalleryFileInput(files) {
 function openGalleryLightbox(imageUrl, title) {
   const isUnlocked = Boolean(state.currentUser?.hasPaid || state.currentUser?.role === 'admin');
   if (!isUnlocked) {
-    showToast('🔒 High-Resolution Institutional Chart Locked. Unlock with ₹399 Lifetime Access.', 'info');
-    openCheckoutAuthPromptModal();
+    handleUnpaidChartClick();
     return;
   }
   const modal = document.getElementById('gallery-lightbox-modal');
@@ -2794,5 +2903,9 @@ window.handleCommentSubmit = handleCommentSubmit;
 window.handleDeleteComment = handleDeleteComment;
 window.toggleShowAllVideos = toggleShowAllVideos;
 window.toggleShowAllCharts = toggleShowAllCharts;
+window.toggleShowAllGallery = toggleShowAllGallery;
+window.handleUnpaidChartClick = handleUnpaidChartClick;
 window.closeConcurrentSessionModal = closeConcurrentSessionModal;
+window.deleteSingleChart = deleteSingleChart;
+window.openRenameModal = openRenameModal;
 
