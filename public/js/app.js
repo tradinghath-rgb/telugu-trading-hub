@@ -60,14 +60,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 function saveToLocalAccountVault(account) {
   if (!account || !account.email) return;
   try {
+    const emailKey = account.email.toLowerCase().trim();
     let vault = JSON.parse(localStorage.getItem('tradinghub_account_vault') || '{}');
-    vault[account.email.toLowerCase().trim()] = {
-      email: account.email.toLowerCase().trim(),
-      password: account.password || vault[account.email.toLowerCase().trim()]?.password || '',
-      name: account.name || account.email.split('@')[0],
-      hasPaid: !!account.hasPaid,
-      paymentId: account.paymentId || null,
-      role: account.role || 'member',
+    const existing = vault[emailKey] || {};
+    vault[emailKey] = {
+      email: emailKey,
+      password: account.password || existing.password || '',
+      name: account.name || existing.name || emailKey.split('@')[0],
+      hasPaid: Boolean(account.hasPaid || existing.hasPaid),
+      paymentId: account.paymentId || existing.paymentId || null,
+      role: account.role || existing.role || 'member',
       savedAt: Date.now()
     };
     localStorage.setItem('tradinghub_account_vault', JSON.stringify(vault));
@@ -1177,7 +1179,14 @@ async function submitPaymentVerification() {
     const data = await res.json();
 
     if (data.success) {
-      saveAuthState(data.user);
+      const paidUser = {
+        ...data.user,
+        email: email.toLowerCase().trim(),
+        hasPaid: true,
+        paymentId: data.user?.paymentId || paymentId
+      };
+      saveAuthState(paidUser);
+      saveToLocalAccountVault(paidUser);
       closePaymentVerificationModal();
       showToast('🎉 Congratulations! Lifetime Access Unlocked!', 'success');
       // Scroll to member dashboard

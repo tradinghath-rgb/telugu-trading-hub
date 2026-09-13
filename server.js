@@ -131,19 +131,26 @@ function readJson(fileName, fallback = []) {
 // ==================== CROSS-DEPLOY PERMANENT CLOUD DATA VAULT ====================
 // Automatically preserves all registered user accounts, passwords, lifetime paid statuses,
 // comments, and uploaded charts across Render restarts, redeploys, and code updates.
+// ==================== CROSS-DEPLOY PERMANENT CLOUD DATA VAULT ====================
+// Automatically preserves all registered user accounts, passwords, lifetime paid statuses,
+// comments, and uploaded charts across Render restarts, redeploys, and code updates.
+// Powered by Dual Redundant Cloud Mirrors + Local Persistent Snapshots.
 const CLOUD_SYNC_MAP = {
   'users.json': {
-    id: 'ff808181a067127101a09c13b7dc0be0',
+    primaryId: 'ff808181a067127101a09c13b7dc0be0',
+    secondaryId: 'ff808181a067127101a09c30c3bc0c2d',
     key: 'users',
     name: 'tradinghub_users'
   },
   'chart_gallery.json': {
-    id: 'ff808181a067127101a09c1477550be3',
+    primaryId: 'ff808181a067127101a09c1477550be3',
+    secondaryId: 'ff808181a067127101a09c30eaf80c2f',
     key: 'gallery',
     name: 'tradinghub_gallery'
   },
   'comments.json': {
-    id: 'ff808181a067127101a09c14773f0be2',
+    primaryId: 'ff808181a067127101a09c14773f0be2',
+    secondaryId: 'ff808181a067127101a09c30eadb0c2e',
     key: 'comments',
     name: 'tradinghub_comments'
   }
@@ -152,73 +159,165 @@ const CLOUD_SYNC_MAP = {
 async function syncToCloud(fileName, data) {
   const cfg = CLOUD_SYNC_MAP[fileName];
   if (!cfg || !data) return;
+
+  // 1. Local permanent backup snapshot
   try {
-    await fetch(`https://api.restful-api.dev/objects/${cfg.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: cfg.name, data: { [cfg.key]: data } })
+    const backupName = `${path.parse(fileName).name}_permanent.json`;
+    const backupPath = path.join(DATA_DIR, backupName);
+    fs.writeFileSync(backupPath, JSON.stringify(data, null, 2), 'utf8');
+  } catch (_) {}
+
+  // 2. Sync to Primary and Secondary Cloud Stores in parallel
+  const targets = [
+    { id: cfg.primaryId, label: 'Primary Cloud' },
+    { id: cfg.secondaryId, label: 'Secondary Mirror' }
+  ];
+
+  await Promise.allSettled(targets.map(async t => {
+    if (!t.id) return;
+    try {
+      await fetch(`https://api.restful-api.dev/objects/${t.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: cfg.name, data: { [cfg.key]: data } }),
+        signal: AbortSignal.timeout(7000)
+      });
+      console.log(`[Cloud Vault] Persisted ${fileName} (${data.length} items) to ${t.label}.`);
+    } catch (err) {
+      console.warn(`[Cloud Vault] Notice syncing ${fileName} to ${t.label}:`, err.message);
+    }
+  }));
+
+  // 3. Sync to AWS S3 if configured
+  if (s3 && PutObjectCommand && AWS_S3_BUCKET) {
+    try {
+      await s3.send(new PutObjectCommand({
+        Bucket: AWS_S3_BUCKET,
+        Key: `vault/${fileName}`,
+        Body: JSON.stringify(data, null, 2),
+        ContentType: 'application/json'
+      }));
+      console.log(`[Cloud Vault] Persisted ${fileName} to AWS S3 bucket: ${AWS_S3_BUCKET}`);
+    } catch (err) {
+      console.warn(`[Cloud Vault] AWS S3 sync notice:`, err.message);
+    }
+  }
+}
+
+async function fetchRemoteVault(id, key) {
+  if (!id) return null;
+  try {
+    const res = await fetch(`https://api.restful-api.dev/objects/${id}`, {
+      signal: AbortSignal.timeout(6000)
     });
-    console.log(`[Cloud Vault] Persisted ${fileName} (${data.length} items) to permanent cloud store.`);
-  } catch (err) {
-    console.warn(`[Cloud Vault] Notice syncing ${fileName}:`, err.message);
+    if (!res.ok) return null;
+    const json = await res.json();
+    const items = json?.data?.[key];
+    return Array.isArray(items) ? items : null;
+  } catch (_) {
+    return null;
   }
 }
 
 async function syncFromCloud(fileName) {
   const cfg = CLOUD_SYNC_MAP[fileName];
   if (!cfg) return;
-  try {
-    const res = await fetch(`https://api.restful-api.dev/objects/${cfg.id}`);
-    if (!res.ok) return;
-    const json = await res.json();
-    const remoteData = json?.data?.[cfg.key];
-    if (!remoteData || !Array.isArray(remoteData) || remoteData.length === 0) return;
 
+  try {
+    // Read local files (current + permanent backup)
     const localData = readJson(fileName, []);
+    const backupName = `${path.parse(fileName).name}_permanent.json`;
+    const backupData = readJson(backupName, []);
+
+    // Fetch from Primary and Secondary in parallel
+    const [primaryData, secondaryData] = await Promise.all([
+      fetchRemoteVault(cfg.primaryId, cfg.key),
+      fetchRemoteVault(cfg.secondaryId, cfg.key)
+    ]);
+
+    // Gather candidate lists
+    const candidateSources = [localData, backupData];
+    if (primaryData && primaryData.length > 0) candidateSources.push(primaryData);
+    if (secondaryData && secondaryData.length > 0) candidateSources.push(secondaryData);
 
     let merged;
     if (fileName === 'users.json') {
       const userMap = new Map();
-      localData.forEach(u => {
-        if (u && u.email) userMap.set(u.email.toLowerCase(), u);
+      const OWNER_EMAIL = 'abhisheknaidus093@gmail.com';
+
+      candidateSources.forEach(sourceList => {
+        if (!Array.isArray(sourceList)) return;
+        sourceList.forEach(u => {
+          if (!u || !u.email) return;
+          const key = u.email.trim().toLowerCase();
+          const existing = userMap.get(key);
+          if (!existing) {
+            userMap.set(key, { ...u, email: key, hasPaid: Boolean(u.hasPaid) });
+          } else {
+            userMap.set(key, {
+              ...existing,
+              ...u,
+              email: key,
+              // ONCE PAID, NEVER UNPAID: hasPaid is permanently protected
+              hasPaid: Boolean(existing.hasPaid || u.hasPaid),
+              paidAt: existing.paidAt || u.paidAt,
+              paymentId: existing.paymentId || u.paymentId,
+              password: u.password || existing.password,
+              role: (existing.role === 'admin' || u.role === 'admin' || key === OWNER_EMAIL) ? 'admin' : (existing.role || u.role || 'member'),
+              name: u.name || existing.name
+            });
+          }
+        });
       });
-      remoteData.forEach(u => {
-        if (!u || !u.email) return;
-        const key = u.email.toLowerCase();
-        const existing = userMap.get(key);
-        if (!existing) {
-          userMap.set(key, u);
-        } else {
-          userMap.set(key, {
-            ...existing,
-            ...u,
-            hasPaid: existing.hasPaid || u.hasPaid,
-            password: u.password || existing.password
-          });
-        }
-      });
+
+      // Always guarantee Owner Admin is preserved
+      if (!userMap.has(OWNER_EMAIL)) {
+        userMap.set(OWNER_EMAIL, {
+          id: 'admin-1',
+          email: OWNER_EMAIL,
+          password: process.env.ADMIN_PASSWORD || '22NE1A04E1',
+          name: 'Abhishek Naidu (Owner)',
+          role: 'admin',
+          hasPaid: true,
+          paidAt: '2026-09-01T00:00:00.000Z',
+          paymentId: 'ADMIN_PROVISIONED'
+        });
+      } else {
+        const ownerUser = userMap.get(OWNER_EMAIL);
+        ownerUser.role = 'admin';
+        ownerUser.hasPaid = true;
+      }
+
       merged = Array.from(userMap.values());
     } else {
       const itemMap = new Map();
-      localData.forEach(item => { if (item?.id) itemMap.set(item.id, item); });
-      remoteData.forEach(item => { if (item?.id) itemMap.set(item.id, item); });
+      candidateSources.forEach(sourceList => {
+        if (!Array.isArray(sourceList)) return;
+        sourceList.forEach(item => {
+          if (item?.id) itemMap.set(item.id, { ...(itemMap.get(item.id) || {}), ...item });
+        });
+      });
       merged = Array.from(itemMap.values());
     }
 
+    // Write merged data to local files
     const filePath = path.join(DATA_DIR, fileName);
     fs.writeFileSync(filePath, JSON.stringify(merged, null, 2), 'utf8');
-    console.log(`[Cloud Vault] Restored ${fileName}: ${merged.length} items active.`);
 
-    if (merged.length > remoteData.length) {
-      syncToCloud(fileName, merged);
-    }
+    const backupPath = path.join(DATA_DIR, backupName);
+    fs.writeFileSync(backupPath, JSON.stringify(merged, null, 2), 'utf8');
+
+    console.log(`[Cloud Vault] Fully Restored & Unified ${fileName}: ${merged.length} items active.`);
+
+    // Push merged complete data back to both cloud vaults to ensure neither falls behind
+    syncToCloud(fileName, merged);
   } catch (err) {
     console.warn(`[Cloud Vault] Notice restoring ${fileName}:`, err.message);
   }
 }
 
 async function initCloudDataPersistence() {
-  console.log('[Cloud Vault] Checking and restoring registered users and data from cloud...');
+  console.log('[Cloud Vault] Checking and restoring registered users and data from dual cloud stores...');
   await syncFromCloud('users.json');
   await syncFromCloud('chart_gallery.json');
   await syncFromCloud('comments.json');
@@ -677,7 +776,7 @@ app.delete('/api/comments/:id', (req, res) => {
 // ==================== AUTH & PAYMENT UNLOCK API ====================
 
 // User Sign Up
-app.post('/api/auth/register', (req, res) => {
+app.post('/api/auth/register', async (req, res) => {
   try {
     const { email, password, name } = req.body;
     if (!email || !password) {
@@ -690,8 +789,15 @@ app.post('/api/auth/register', (req, res) => {
       return res.status(400).json({ error: 'This is the reserved owner account. Please sign in.' });
     }
 
-    const users = readJson('users.json', []);
-    const existing = users.find(u => u.email.toLowerCase() === cleanEmail);
+    let users = readJson('users.json', []);
+    let existing = users.find(u => u.email.toLowerCase() === cleanEmail);
+    if (!existing) {
+      // In case server just restarted, check cloud vaults before creating duplicate
+      await syncFromCloud('users.json');
+      users = readJson('users.json', []);
+      existing = users.find(u => u.email.toLowerCase() === cleanEmail);
+    }
+
     if (existing) {
       return res.status(400).json({ error: 'An account with this email already exists. Please log in.' });
     }
@@ -720,7 +826,7 @@ app.post('/api/auth/register', (req, res) => {
 });
 
 // User or Admin Login (Enforces Single Active Device Session)
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -729,14 +835,19 @@ app.post('/api/auth/login', (req, res) => {
 
     const cleanEmail = email.trim().toLowerCase();
     const OWNER_EMAIL = 'abhisheknaidus093@gmail.com';
-    const users = readJson('users.json', []);
+    let users = readJson('users.json', []);
 
     // Generate fresh session token for this device (supersedes any other device)
     const sessionToken = crypto.randomBytes(16).toString('hex');
 
     // Exclusive Owner / Admin Check
     if (cleanEmail === OWNER_EMAIL) {
-      const adminIndex = users.findIndex(u => u.email.toLowerCase() === OWNER_EMAIL && u.role === 'admin');
+      let adminIndex = users.findIndex(u => u.email.toLowerCase() === OWNER_EMAIL && u.role === 'admin');
+      if (adminIndex === -1) {
+        await syncFromCloud('users.json');
+        users = readJson('users.json', []);
+        adminIndex = users.findIndex(u => u.email.toLowerCase() === OWNER_EMAIL && u.role === 'admin');
+      }
       if (adminIndex !== -1 && users[adminIndex].password === password) {
         users[adminIndex].activeSessionToken = sessionToken;
         writeJson('users.json', users);
@@ -746,9 +857,22 @@ app.post('/api/auth/login', (req, res) => {
       return res.status(401).json({ error: 'Invalid owner credentials' });
     }
 
-    // Standard Member Login
-    const userIndex = users.findIndex(u => u.email.toLowerCase() === cleanEmail && u.password === password);
+    // Standard Member Login - Check local list first
+    let userIndex = users.findIndex(u => u.email.toLowerCase() === cleanEmail && u.password === password);
+
+    // Fail-Safe: If not found locally, do a live cloud pull before failing!
     if (userIndex === -1) {
+      console.log(`[AUTH] User ${cleanEmail} not found locally during login. Querying permanent cloud store...`);
+      await syncFromCloud('users.json');
+      users = readJson('users.json', []);
+      userIndex = users.findIndex(u => u.email.toLowerCase() === cleanEmail && u.password === password);
+    }
+
+    if (userIndex === -1) {
+      const emailExists = users.some(u => u.email.toLowerCase() === cleanEmail);
+      if (emailExists) {
+        return res.status(401).json({ error: 'Incorrect password. Use Forgot Password to reset it.' });
+      }
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
@@ -872,8 +996,16 @@ app.post('/api/auth/forgot-password', async (req, res) => {
     }
 
     const cleanEmail = email.trim().toLowerCase();
-    const users = readJson('users.json', []);
-    const userIndex = users.findIndex(u => u.email.toLowerCase() === cleanEmail);
+    let users = readJson('users.json', []);
+    let userIndex = users.findIndex(u => u.email.toLowerCase() === cleanEmail);
+
+    // Fail-Safe: If not found in local users.json, check permanent cloud store before failing!
+    if (userIndex === -1) {
+      console.log(`[AUTH] Forgot password email ${cleanEmail} not found locally. Querying permanent cloud store...`);
+      await syncFromCloud('users.json');
+      users = readJson('users.json', []);
+      userIndex = users.findIndex(u => u.email.toLowerCase() === cleanEmail);
+    }
 
     // Strictly for already registered users only
     if (userIndex === -1) {
