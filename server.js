@@ -66,6 +66,26 @@ app.use((req, res, next) => {
   next();
 });
 
+// ==================== SMART 8-HOUR KEEP-ALIVE SYSTEM ====================
+// Keeps the website active on Render for 8 hours after any visitor visits the website.
+// After 8 hours with no visitors, self-ping stops allowing Render to enter idle sleep to save quota.
+// Whenever anyone clicks the website link in your bio, Render wakes up and resets the 8-hour timer!
+const KEEP_ALIVE_DURATION_MS = 8 * 60 * 60 * 1000; // 8 hours in ms
+const SELF_PING_INTERVAL_MS = 10 * 60 * 1000;      // Ping every 10 minutes (Render sleeps at 15 mins)
+const APP_PUBLIC_URL = process.env.RENDER_EXTERNAL_URL || 'https://telugu-trading-hub.onrender.com';
+
+let lastVisitorTimestamp = Date.now(); // Initialized to start time
+
+// Visitor Activity Tracking Middleware
+app.use((req, res, next) => {
+  const isInternalPing = req.headers['x-keep-alive'] === 'internal-ping' || req.path === '/api/keepalive';
+  if (!isInternalPing) {
+    // Real visitor landed on website or made an API request!
+    lastVisitorTimestamp = Date.now();
+  }
+  next();
+});
+
 // Directories
 const DATA_DIR = path.join(__dirname, 'data');
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
@@ -217,6 +237,22 @@ app.get('/brand-logo', (req, res) => {
 });
 
 // ==================== AWS STATUS & CLOUD API ====================
+
+// Keep-Alive Health Endpoint
+app.get('/api/keepalive', (req, res) => {
+  const elapsed = Date.now() - lastVisitorTimestamp;
+  const remainingMs = Math.max(0, KEEP_ALIVE_DURATION_MS - elapsed);
+  const remainingHours = (remainingMs / (1000 * 60 * 60)).toFixed(2);
+  const isWithinActiveWindow = elapsed < KEEP_ALIVE_DURATION_MS;
+
+  res.json({
+    status: 'ACTIVE',
+    awake: isWithinActiveWindow,
+    remainingHoursInActiveWindow: remainingHours,
+    serverUptimeSeconds: Math.floor(process.uptime()),
+    publicUrl: APP_PUBLIC_URL
+  });
+});
 
 app.get('/api/aws/status', (req, res) => {
   const isConfigured = Boolean(s3 && AWS_S3_BUCKET);
@@ -835,5 +871,25 @@ app.listen(PORT, () => {
   console.log(`🚀 TRADING HUB AWS BACKEND RUNNING ON PORT ${PORT}`);
   console.log(`📡 URL: http://localhost:${PORT}`);
   console.log(`⚡ AWS Storage Mode: ${s3 ? 'S3 ACTIVE' : 'HYBRID LOCAL (AWS READY)'}`);
+  console.log(`⏱️ Smart Keep-Alive: ACTIVE (8 Hours active window per visitor)`);
   console.log(`====================================================`);
 });
+
+// Self-Ping Timer: Resets Render's 15-minute inactivity counter for 8 hours
+setInterval(async () => {
+  const elapsed = Date.now() - lastVisitorTimestamp;
+  if (elapsed < KEEP_ALIVE_DURATION_MS) {
+    try {
+      const pingEndpoint = `${APP_PUBLIC_URL}/api/keepalive`;
+      const response = await fetch(pingEndpoint, {
+        headers: { 'x-keep-alive': 'internal-ping' }
+      });
+      const remainingMinutes = Math.round((KEEP_ALIVE_DURATION_MS - elapsed) / (1000 * 60));
+      console.log(`[Keep-Alive] Self-ping successful (Status: ${response.status}). Server staying active for ~${remainingMinutes} more minutes.`);
+    } catch (err) {
+      console.log(`[Keep-Alive] Ping notice: ${err.message}`);
+    }
+  } else {
+    console.log('[Keep-Alive] 8 hours elapsed without new visitors. Server allowing idle sleep to conserve quota.');
+  }
+}, SELF_PING_INTERVAL_MS);
