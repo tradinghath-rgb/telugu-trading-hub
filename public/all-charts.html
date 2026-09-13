@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Institutional Chart Vault • All Hand-Drawn Setups • Trading Hub</title>
+  <meta name="description" content="Access all hand-drawn institutional trading chart setups, SMC liquidity sweeps, and price action templates." />
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet" />
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="/css/styles.css?v=20260913_v17" />
+  <link rel="icon" type="image/png" href="/brand-logo" />
+</head>
+<body>
+
+  <!-- ==================== NAVIGATION BAR ==================== -->
+  <nav class="main-nav">
+    <div class="nav-container">
+      <div class="brand-group" onclick="window.location.href='/'" style="cursor: pointer;">
+        <img src="/brand-logo" alt="Trading Hub Crest" class="brand-logo-img" />
+        <div class="brand-text-col">
+          <div class="brand-title">
+            <span data-bind="brandName">TRADING HUB</span>
+            <span class="brand-badge">TELUGU &amp; ENGLISH</span>
+          </div>
+          <span class="brand-subtitle" data-bind="tagline">Drawn Charts &amp; Video Analysis</span>
+        </div>
+      </div>
+
+      <div class="nav-actions">
+        <a href="/" class="btn-back-home">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
+          <span>Back to Home</span>
+        </a>
+
+        <a href="/#pricing-section" class="btn btn-sm btn-gold nav-pricing-btn">
+          <span class="nav-pricing-long">Get ₹399 Lifetime Access</span>
+          <span class="nav-pricing-short">⚡ ₹399</span>
+        </a>
+
+        <!-- Dynamic Auth / User / Admin Buttons -->
+        <div id="nav-auth-actions" class="nav-auth-group">
+          <!-- Populated by app.js -->
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ==================== SUBPAGE HERO ==================== -->
+  <header class="subpage-hero">
+    <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+        <a href="/" style="color: var(--text-muted); font-size: 0.85rem; text-decoration: none;">Home</a>
+        <span style="color: var(--text-muted); font-size: 0.85rem;">/</span>
+        <span style="color: var(--accent-gold); font-size: 0.85rem; font-weight: 700;">Institutional Chart Vault</span>
+      </div>
+
+      <div class="dashboard-header-bar">
+        <div>
+          <span class="section-tag" style="color: var(--accent-gold); border-color: rgba(255,215,0,0.3); background: rgba(255,215,0,0.08);">
+            IMAGE ONLY CHART VAULT
+          </span>
+          <h1 class="section-title" style="margin-bottom: 8px; font-size: 2.2rem;">
+            Institutional Chart Vault (All Charts)
+          </h1>
+          <p style="color: var(--text-secondary); font-size: 1.05rem; max-width: 780px;">
+            Full archive of hand-drawn institutional setups, supply &amp; demand zones, liquidity traps, and daily mentor uploads for visual inspection and study.
+          </p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== CHARTS CONTENT SECTION ==================== -->
+  <main class="section" style="padding-top: 0;">
+    <div class="container" style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
+      <!-- Admin Drag-and-Drop Upload Box (Visible Only to Admin) -->
+      <div id="gallery-admin-dropzone" class="gallery-upload-box" style="display: none; margin-bottom: 30px; border: 2px dashed var(--accent-green); background: rgba(0, 242, 152, 0.04);">
+        <div class="gallery-dropzone-inner" id="gallery-drop-area" onclick="document.getElementById('gallery-file-input').click()">
+          <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(0,242,152,0.15); color: var(--accent-green); padding: 4px 12px; border-radius: 999px; font-size: 0.78rem; font-weight: 700; margin-bottom: 8px;">
+            👑 OWNER / ADMIN SPECIAL ACCESS
+          </div>
+          <h4 style="color: #fff; margin: 4px 0 6px; font-size: 1.1rem; font-weight: 700;">+ Upload New Chart to Vault</h4>
+          <p style="color: var(--text-secondary); font-size: 0.86rem; margin: 0 0 12px;">Drag &amp; drop chart image here, or click to browse from device. Published instantly to the vault!</p>
+          <button type="button" class="btn btn-sm btn-primary" onclick="event.stopPropagation(); document.getElementById('gallery-file-input').click();">
+            Browse Chart Image
+          </button>
+          <input type="file" id="gallery-file-input" style="display: none;" accept="image/*" onchange="handleGalleryFileInput(this.files)" />
+        </div>
+      </div>
+
+      <!-- Gallery Grid: All Charts Rendered -->
+      <div id="gallery-grid-container" class="gallery-grid">
+        <!-- Dynamically rendered via app.js -->
+      </div>
+    </div>
+  </main>
+
+  <!-- ==================== MODALS ==================== -->
+
+  <!-- A. IMAGE LIGHTBOX MODAL -->
+  <div id="gallery-lightbox-modal" class="modal-overlay">
+    <div class="modal-card lightbox-card" style="max-width: 90vw; max-height: 90vh; background: rgba(10, 14, 23, 0.95); border: 1px solid var(--border-glow); padding: 20px; display: flex; flex-direction: column;">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border-subtle); padding-bottom: 12px; margin-bottom: 14px;">
+        <h3 id="lightbox-title" class="modal-title" style="font-size: 1.15rem; color: #fff;">Chart Setup Inspection</h3>
+        <button class="btn-close-modal" onclick="closeGalleryLightbox()">✕</button>
+      </div>
+      <div style="flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+        <img id="lightbox-image" src="" alt="Chart Setup" style="max-width: 100%; max-height: 75vh; object-fit: contain; border-radius: var(--radius-md); box-shadow: 0 10px 40px rgba(0,0,0,0.8);" />
+      </div>
+      <div style="margin-top: 14px; text-align: center; font-size: 0.85rem; color: var(--text-secondary);">
+        High-Probability Technical Markings • Entry, SL &amp; Targets
+      </div>
+    </div>
+  </div>
+
+  <!-- B. RENAME MODAL -->
+  <div id="rename-gallery-modal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 class="modal-title">Rename Chart Setup</h3>
+        <button class="btn-close-modal" onclick="closeRenameGalleryModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <form onsubmit="submitRenameGalleryImage(event)">
+          <input type="hidden" id="rename-gallery-id" />
+          <div class="form-group">
+            <label class="form-label" for="rename-gallery-input">New Chart Title</label>
+            <input type="text" id="rename-gallery-input" class="form-input" required />
+          </div>
+          <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px;">
+            <button type="button" class="btn btn-secondary" onclick="closeRenameGalleryModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Title</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- C0. SIGN IN OR LOGIN FOR ACCESS POPUP MODAL -->
+  <div id="checkout-auth-prompt-modal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 460px; text-align: center;">
+      <div class="modal-header" style="justify-content: flex-end; border-bottom: none; padding: 16px 20px 0;">
+        <button class="btn-close-modal" onclick="closeCheckoutAuthPromptModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 6px 26px 26px;">
+        <div style="width: 58px; height: 58px; border-radius: 50%; background: linear-gradient(135deg, rgba(0,242,152,0.2), rgba(0,210,255,0.15)); border: 2px solid var(--accent-green); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; box-shadow: 0 0 25px rgba(0,242,152,0.25);">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent-green)" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <h3 style="font-family: var(--font-display); font-size: 1.35rem; color: #fff; margin-bottom: 8px; font-weight: 800;">
+          Sign In or Login for Access
+        </h3>
+        <p style="color: var(--text-secondary); font-size: 0.92rem; line-height: 1.6; margin-bottom: 22px;">
+          Please sign in or create an account so your ₹399 Lifetime Access and all drawn video charts are permanently saved to your profile.
+        </p>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <button class="btn btn-primary btn-lg" onclick="relocateToAuthFromPrompt('login')" style="width: 100%; justify-content: center; gap: 8px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+            <span>Login to Existing Account</span>
+          </button>
+          <button class="btn btn-secondary btn-lg" onclick="relocateToAuthFromPrompt('register')" style="width: 100%; justify-content: center; gap: 8px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+            <span>Create New Account (Sign Up)</span>
+          </button>
+        </div>
+        <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between;">
+          <span style="font-size: 0.8rem; color: var(--text-muted);">Want to pay first?</span>
+          <button class="btn btn-sm btn-gold" onclick="proceedDirectlyToRazorpayFromPrompt()" style="font-size: 0.8rem; padding: 6px 12px;">
+            Direct Razorpay (₹399) &rarr;
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- C. AUTH MODAL (LOGIN / SIGN UP) -->
+  <div id="auth-modal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <h3 id="auth-modal-title" class="modal-title">Welcome Back! Login</h3>
+        <button class="btn-close-modal" onclick="closeAuthModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p id="auth-modal-desc" style="display: none; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.5;"></p>
+        <form id="auth-form" onsubmit="event.preventDefault(); handleAuthSubmit();">
+          <div id="auth-name-group" class="form-group" style="display: none;">
+            <label class="form-label" for="auth-name-input">Your Full Name</label>
+            <input type="text" id="auth-name-input" class="form-input" placeholder="e.g. Ramesh Varma" autocomplete="name" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="auth-email-input">Gmail / Email Address</label>
+            <input type="email" id="auth-email-input" class="form-input" placeholder="you@gmail.com" required autocomplete="email" />
+          </div>
+          <div id="auth-password-group" class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label class="form-label" for="auth-password-input" style="margin-bottom: 0;">Password</label>
+              <a href="javascript:void(0)" onclick="setAuthModalMode('forgot')" style="font-size: 0.78rem; color: var(--accent-green); text-decoration: underline; cursor: pointer;">
+                Forgot Password?
+              </a>
+            </div>
+            <input type="password" id="auth-password-input" class="form-input" placeholder="••••••••" required autocomplete="current-password" />
+          </div>
+          <button type="submit" id="auth-submit-btn" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 8px;">
+            Login
+          </button>
+        </form>
+        <div style="margin-top: 18px; text-align: center; font-size: 0.88rem; color: var(--text-secondary);">
+          <span id="auth-toggle-prompt">Need an account? <a href="javascript:void(0)" onclick="setAuthModalMode('register')" style="color: var(--accent-green); font-weight: bold;">Sign Up</a></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- D. USER PROFILE MODAL -->
+  <div id="user-profile-modal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="display: flex; align-items: center; gap: 8px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent-green)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Member Profile &amp; Access
+        </h3>
+        <button class="btn-close-modal" onclick="closeUserProfileModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding: 20px 24px;">
+        <div id="user-profile-modal-content">
+          <!-- Populated by app.js -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <!-- Scripts -->
+  <script src="/js/app.js?v=20260913_v17"></script>
+</body>
+</html>

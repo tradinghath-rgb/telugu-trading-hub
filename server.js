@@ -191,6 +191,21 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
 
+// Dedicated routes for All Videos and All Charts
+app.get(['/all-videos', '/all-videos.html', '/videos-library'], (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(PUBLIC_DIR, 'all-videos.html'));
+});
+
+app.get(['/all-charts', '/all-charts.html', '/charts-vault'], (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(PUBLIC_DIR, 'all-charts.html'));
+});
+
 // Static Web App with strict no-cache headers
 app.use(express.static(PUBLIC_DIR, {
   etag: false,

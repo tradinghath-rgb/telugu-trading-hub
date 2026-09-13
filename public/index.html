@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/css/styles.css?v=20260913_v16" />
+  <link rel="stylesheet" href="/css/styles.css?v=20260913_v17" />
   <link rel="icon" type="image/png" href="/brand-logo" />
 </head>
 <body>
@@ -251,6 +251,7 @@
 
       <div class="category-pills-list">
         <button class="category-pill active" onclick="setChartCategoryFilter('all', this)">All Setups</button>
+        <button class="category-pill" id="pill-only-charts" onclick="setChartCategoryFilter('only-charts', this)" style="border-color: rgba(0, 242, 152, 0.4);">📊 Only Charts</button>
         <button class="category-pill" onclick="setChartCategoryFilter('SMC & Liquidity', this)">SMC &amp; Liquidity</button>
         <button class="category-pill" onclick="setChartCategoryFilter('Traps & Fakeouts', this)">Traps &amp; Fakeouts</button>
         <button class="category-pill" onclick="setChartCategoryFilter('Price Action Core', this)">Price Action Core</button>
@@ -260,9 +261,32 @@
       </div>
     </div>
 
+    <!-- Admin Special Access Daily Chart Uploader (Visible ONLY to Admin when 'Only Charts' is selected) -->
+    <div id="admin-daily-charts-dropzone" class="gallery-upload-box" style="display: none; margin-bottom: 24px; border: 2px dashed var(--accent-green); background: rgba(0, 242, 152, 0.04);">
+      <div class="gallery-dropzone-inner" id="daily-chart-drop-area" onclick="document.getElementById('daily-chart-file-input').click()">
+        <div style="display: inline-flex; align-items: center; gap: 8px; background: rgba(0,242,152,0.15); color: var(--accent-green); padding: 4px 12px; border-radius: 999px; font-size: 0.78rem; font-weight: 700; margin-bottom: 8px;">
+          👑 OWNER / ADMIN SPECIAL ACCESS
+        </div>
+        <h4 style="color: #fff; margin: 4px 0 6px; font-size: 1.1rem; font-weight: 700;">+ Upload New Daily Chart Setup</h4>
+        <p style="color: var(--text-secondary); font-size: 0.86rem; margin: 0 0 12px;">Drag &amp; drop your daily drawn chart image here, or click to browse from device. Published instantly to the platform!</p>
+        <button type="button" class="btn btn-sm btn-primary" onclick="event.stopPropagation(); document.getElementById('daily-chart-file-input').click();">
+          Browse Chart Image
+        </button>
+        <input type="file" id="daily-chart-file-input" style="display: none;" accept="image/*" onchange="handleDailyChartUpload(this.files)" />
+      </div>
+    </div>
+
     <!-- Cards Grid -->
     <div id="charts-grid-container" class="charts-grid">
       <!-- Dynamically rendered via JavaScript -->
+    </div>
+
+    <!-- More Videos / More Charts Redirection Bar -->
+    <div id="charts-more-banner" class="more-redirect-banner">
+      <a href="/all-videos" id="charts-more-link" class="btn btn-secondary btn-lg" style="display: inline-flex; align-items: center; gap: 10px; border-color: var(--accent-green); background: rgba(0,242,152,0.06);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span id="charts-more-btn-text">View All 24+ Trading Videos &amp; Reels (Explore Next Page) &rarr;</span>
+      </a>
     </div>
   </section>
 
@@ -289,6 +313,14 @@
     <!-- Gallery Grid -->
     <div id="gallery-grid-container" class="gallery-grid">
       <!-- Injected via app.js -->
+    </div>
+
+    <!-- More Charts Vault Redirection Bar -->
+    <div id="gallery-more-banner" class="more-redirect-banner">
+      <a href="/all-charts" class="btn btn-secondary btn-lg" style="display: inline-flex; align-items: center; gap: 10px; border-color: var(--accent-gold); background: rgba(255,215,0,0.06);">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <span>View Full Institutional Chart Vault (All Images &amp; Setups) &rarr;</span>
+      </a>
     </div>
   </section>
 
@@ -1186,6 +1218,6 @@
   <div id="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="/js/app.js?v=20260913_v16"></script>
+  <script src="/js/app.js?v=20260913_v17"></script>
 </body>
 </html>

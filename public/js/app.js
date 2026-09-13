@@ -46,6 +46,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initIntroVideo();
   initMarketTicker();
   initGalleryDragDrop();
+  initDailyChartDragDrop();
   checkUrlPaymentCallback();
   checkAdminUrlParam();
   checkResetPasswordTokenInUrl();
@@ -408,8 +409,141 @@ function renderCharts() {
   const container = document.getElementById('charts-grid-container');
   if (!container) return;
 
-  const isUnlocked = state.currentUser?.hasPaid || state.currentUser?.role === 'admin';
+  const isDedicatedVideosPage = window.location.pathname.includes('all-videos') || window.location.pathname.includes('videos-library');
+  const isDedicatedChartsPage = window.location.pathname.includes('all-charts') || window.location.pathname.includes('charts-vault');
+  const isHomePage = !isDedicatedVideosPage && !isDedicatedChartsPage;
 
+  const isAdmin = state.currentUser?.role === 'admin';
+  const isUnlocked = state.currentUser?.hasPaid || isAdmin;
+
+  // Toggle Admin Daily Uploader Box inside the Charts section
+  const dailyDropzone = document.getElementById('admin-daily-charts-dropzone');
+  if (dailyDropzone) {
+    dailyDropzone.style.display = (isAdmin && state.activeFilter === 'only-charts') ? 'block' : 'none';
+  }
+
+  // Update More Redirection Banner
+  const moreBanner = document.getElementById('charts-more-banner');
+  const moreLink = document.getElementById('charts-more-link');
+  const moreText = document.getElementById('charts-more-btn-text');
+
+  if (state.activeFilter === 'only-charts') {
+    if (moreLink) moreLink.href = '/all-charts';
+    if (moreText) moreText.textContent = 'View All Institutional Charts Vault (Explore Next Page) →';
+  } else {
+    if (moreLink) moreLink.href = '/all-videos';
+    if (moreText) moreText.textContent = 'View All 24+ Trading Videos & Reels (Explore Next Page) →';
+  }
+
+  // ==================== MODE A: 'ONLY CHARTS' (Pure Chart Setups, No Videos) ====================
+  if (state.activeFilter === 'only-charts') {
+    // Combine standalone daily charts from gallery and drawn setups from charts.json
+    const galleryItems = (state.gallery || []).map(g => ({
+      id: g.id,
+      title: g.title,
+      imageUrl: g.imageUrl,
+      category: 'Daily Chart',
+      isGallery: true,
+      summary: 'High probability daily price action drawn setup.'
+    }));
+
+    const lessonChartItems = (state.charts || []).map(c => ({
+      id: c.id,
+      title: c.title,
+      imageUrl: c.chartImage || '/assets/charts/chart-1.svg',
+      category: c.category || 'Drawn Chart Setup',
+      isGallery: false,
+      summary: c.summary || 'Technical chart setup with drawn key levels.'
+    }));
+
+    let allChartSetups = [...galleryItems, ...lessonChartItems];
+
+    if (state.searchQuery.trim()) {
+      const q = state.searchQuery.toLowerCase();
+      allChartSetups = allChartSetups.filter(c => 
+        c.title?.toLowerCase().includes(q) || 
+        c.category?.toLowerCase().includes(q) || 
+        c.summary?.toLowerCase().includes(q)
+      );
+    }
+
+    const countEl = document.getElementById('charts-total-count');
+    if (countEl) countEl.textContent = `${allChartSetups.length} Hand-Drawn Daily Charts`;
+
+    if (allChartSetups.length === 0) {
+      container.innerHTML = `
+        <div style="grid-column: 1/-1; text-align: center; padding: 60px 20px; color: var(--text-muted);">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom: 12px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <p style="font-size: 1.1rem; color: #fff;">No charts found matching your search.</p>
+          <p style="font-size: 0.9rem;">Upload a new daily chart setup above or clear your search.</p>
+        </div>
+      `;
+      return;
+    }
+
+    // Limit to 5 on Home Page
+    let displayList = allChartSetups;
+    let hasMore = false;
+    if (isHomePage && allChartSetups.length > 5) {
+      displayList = allChartSetups.slice(0, 5);
+      hasMore = true;
+    }
+
+    let cardsHtml = displayList.map(item => {
+      const escapedTitle = (item.title || 'Chart Setup').replace(/'/g, "\\'");
+      return `
+        <div class="chart-card">
+          <div class="chart-thumbnail-wrap" onclick="openGalleryLightbox('${item.imageUrl}', '${escapedTitle}')" style="cursor: pointer;" title="Click to view full screen chart">
+            <img src="${item.imageUrl}" alt="${item.title}" loading="lazy" />
+            <span class="chart-reel-badge" style="background: rgba(0, 242, 152, 0.2); color: var(--accent-green); border: 1px solid rgba(0, 242, 152, 0.4);">
+              📊 ONLY CHART
+            </span>
+          </div>
+          <div class="chart-card-body">
+            <span class="chart-category-tag">${item.category || 'Daily Setup'}</span>
+            <h3 class="chart-card-title">${item.title}</h3>
+            <p class="chart-card-desc">${item.summary || ''}</p>
+            <div class="chart-card-footer" style="align-items: center; justify-content: space-between;">
+              <button class="btn btn-sm btn-secondary" onclick="openGalleryLightbox('${item.imageUrl}', '${escapedTitle}')">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                Inspect Chart
+              </button>
+              ${(isAdmin && item.isGallery) ? `
+                <div style="display: flex; gap: 4px;">
+                  <button class="btn btn-sm btn-secondary" onclick="promptRenameGalleryImage('${item.id}', '${escapedTitle}')" title="Rename Title" style="padding: 4px 8px; font-size: 0.72rem;">
+                    Rename
+                  </button>
+                  <button class="btn btn-sm btn-danger" onclick="deleteGalleryImage('${item.id}')" title="Delete Chart" style="padding: 4px 8px; font-size: 0.72rem;">
+                    Delete
+                  </button>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Append stylish "+ More Charts" card if on home page
+    if (hasMore) {
+      cardsHtml += `
+        <div class="chart-card more-explore-card" onclick="window.location.href='/all-charts'">
+          <div class="more-card-content">
+            <div class="more-card-icon">📊</div>
+            <div class="more-card-badge">+ MORE CHARTS</div>
+            <h3 class="more-card-title">Explore All Daily Charts</h3>
+            <p class="more-card-desc">Access the full archive of daily hand-drawn setups, SMC markings & templates.</p>
+            <span class="btn btn-sm btn-primary">Open Full Vault &rarr;</span>
+          </div>
+        </div>
+      `;
+    }
+
+    container.innerHTML = cardsHtml;
+    return;
+  }
+
+  // ==================== MODE B: VIDEO LESSONS CURRICULUM ====================
   let filtered = [...state.charts];
 
   // Category filter
@@ -442,7 +576,15 @@ function renderCharts() {
     return;
   }
 
-  container.innerHTML = filtered.map(chart => {
+  // Limit to 5 on Home Page
+  let displayList = filtered;
+  let hasMore = false;
+  if (isHomePage && filtered.length > 5) {
+    displayList = filtered.slice(0, 5);
+    hasMore = true;
+  }
+
+  let cardsHtml = displayList.map(chart => {
     return `
       <div class="chart-card" onclick="openChartModal('${chart.id}')">
         <div class="chart-thumbnail-wrap">
@@ -470,13 +612,35 @@ function renderCharts() {
       </div>
     `;
   }).join('');
+
+  // Append stylish "+ More Videos" card if on home page
+  if (hasMore) {
+    cardsHtml += `
+      <div class="chart-card more-explore-card" onclick="window.location.href='/all-videos'">
+        <div class="more-card-content">
+          <div class="more-card-icon">▶</div>
+          <div class="more-card-badge">+19 MORE LESSONS</div>
+          <h3 class="more-card-title">Explore All 24+ Videos</h3>
+          <p class="more-card-desc">Access all bilingual Telugu & English video breakdowns, SMC traps, and setups.</p>
+          <span class="btn btn-sm btn-primary">Open Video Library &rarr;</span>
+        </div>
+      </div>
+    `;
+  }
+
+  container.innerHTML = cardsHtml;
 }
 
 // Category selection
 function setChartCategoryFilter(cat, btn) {
   state.activeFilter = cat;
-  document.querySelectorAll('.category-pill').forEach(p => p.classList.remove('active'));
-  if (btn) btn.classList.add('active');
+  document.querySelectorAll('.category-pills-list .category-pill').forEach(p => p.classList.remove('active'));
+  if (btn) {
+    btn.classList.add('active');
+  } else {
+    const targetBtn = document.getElementById(cat === 'only-charts' ? 'pill-only-charts' : '');
+    if (targetBtn) targetBtn.classList.add('active');
+  }
   renderCharts();
 }
 
@@ -1869,6 +2033,9 @@ function renderChartGallery() {
   const dropzone = document.getElementById('gallery-admin-dropzone');
   if (!container) return;
 
+  const isDedicatedChartsPage = window.location.pathname.includes('all-charts') || window.location.pathname.includes('charts-vault');
+  const isHomePage = !isDedicatedChartsPage;
+
   const isAdmin = state.currentUser?.role === 'admin';
 
   // Only Admin sees Drag-and-Drop zone
@@ -1885,7 +2052,14 @@ function renderChartGallery() {
     return;
   }
 
-  container.innerHTML = state.gallery.map(item => `
+  let displayGallery = state.gallery;
+  let hasMoreGallery = false;
+  if (isHomePage && state.gallery.length > 5) {
+    displayGallery = state.gallery.slice(0, 5);
+    hasMoreGallery = true;
+  }
+
+  let cardsHtml = displayGallery.map(item => `
     <div class="gallery-card">
       <div class="gallery-thumb-wrap" onclick="openGalleryLightbox('${item.imageUrl}', '${item.title.replace(/'/g, "\\'")}')" title="Click to view full screen">
         <img src="${item.imageUrl}" alt="${item.title}" loading="lazy" />
@@ -1912,7 +2086,93 @@ function renderChartGallery() {
       </div>
     </div>
   `).join('');
+
+  if (hasMoreGallery) {
+    cardsHtml += `
+      <div class="gallery-card more-explore-card" onclick="window.location.href='/all-charts'">
+        <div class="more-card-content">
+          <div class="more-card-icon" style="border-color: var(--accent-gold); color: var(--accent-gold); box-shadow: 0 0 20px rgba(255,215,0,0.3);">📊</div>
+          <div class="more-card-badge" style="background: var(--accent-gold); color: #000;">+ MORE CHARTS</div>
+          <h3 class="more-card-title">Explore Full Chart Vault</h3>
+          <p class="more-card-desc">Access the entire archive of hand-drawn setups & templates.</p>
+          <span class="btn btn-sm btn-gold">View All Charts &rarr;</span>
+        </div>
+      </div>
+    `;
+  }
+
+  container.innerHTML = cardsHtml;
 }
+
+// Admin Special Access Daily Chart Uploader (for Only Charts filter tab)
+async function handleDailyChartUpload(files) {
+  if (!files || files.length === 0) return;
+  if (state.currentUser?.role !== 'admin') {
+    showToast('Only Admin / Owner can upload daily charts.', 'error');
+    return;
+  }
+  const file = files[0];
+  const defaultTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
+  const title = prompt('👑 Admin: Enter title for this new daily chart:', defaultTitle) || defaultTitle;
+
+  const formData = new FormData();
+  formData.append('chartImage', file);
+  formData.append('title', title);
+
+  showToast('Uploading new daily chart...', 'info');
+
+  try {
+    const res = await fetch('/api/chart-gallery', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('✅ Daily chart uploaded successfully!', 'success');
+      await loadChartGallery();
+      renderCharts();
+    } else {
+      showToast(data.error || 'Failed to upload daily chart', 'error');
+    }
+  } catch (err) {
+    showToast('Upload error: ' + err.message, 'error');
+  }
+
+  const fileInput = document.getElementById('daily-chart-file-input');
+  if (fileInput) fileInput.value = '';
+}
+
+function initDailyChartDragDrop() {
+  const dropArea = document.getElementById('daily-chart-drop-area');
+  if (!dropArea) return;
+
+  ['dragenter', 'dragover'].forEach(eventName => {
+    dropArea.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropArea.classList.add('dragover');
+    }, false);
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    dropArea.addEventListener(eventName, (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropArea.classList.remove('dragover');
+    }, false);
+  });
+
+  dropArea.addEventListener('drop', (e) => {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    if (files && files.length > 0) {
+      handleDailyChartUpload(files);
+    }
+  }, false);
+}
+
+window.handleDailyChartUpload = handleDailyChartUpload;
+window.initDailyChartDragDrop = initDailyChartDragDrop;
 
 function initGalleryDragDrop() {
   const dropArea = document.getElementById('gallery-drop-area');
