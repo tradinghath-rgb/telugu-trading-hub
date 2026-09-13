@@ -53,6 +53,50 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderApp();
 });
 
+// ==================== BROWSER ACCOUNT VAULT (CROSS-DEPLOY PERMANENCE) ====================
+function saveToLocalAccountVault(account) {
+  if (!account || !account.email) return;
+  try {
+    let vault = JSON.parse(localStorage.getItem('tradinghub_account_vault') || '{}');
+    vault[account.email.toLowerCase().trim()] = {
+      email: account.email.toLowerCase().trim(),
+      password: account.password || vault[account.email.toLowerCase().trim()]?.password || '',
+      name: account.name || account.email.split('@')[0],
+      hasPaid: !!account.hasPaid,
+      paymentId: account.paymentId || null,
+      role: account.role || 'member',
+      savedAt: Date.now()
+    };
+    localStorage.setItem('tradinghub_account_vault', JSON.stringify(vault));
+  } catch (_) {}
+}
+
+function getLocalAccountVault(email) {
+  if (!email) return null;
+  try {
+    const vault = JSON.parse(localStorage.getItem('tradinghub_account_vault') || '{}');
+    return vault[email.toLowerCase().trim()] || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function syncAllLocalAccountsToServer() {
+  try {
+    const vault = JSON.parse(localStorage.getItem('tradinghub_account_vault') || '{}');
+    const accounts = Object.values(vault);
+    for (const acc of accounts) {
+      if (acc && acc.email) {
+        fetch('/api/auth/sync-client-account', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(acc)
+        }).catch(() => {});
+      }
+    }
+  } catch (_) {}
+}
+
 // Load Authentication State from Storage
 function initAuthState() {
   try {
@@ -69,7 +113,14 @@ function initAuthState() {
         }
       }
       state.currentUser = parsed;
+      // Auto-heal account on server in case of new deployment
+      fetch('/api/auth/sync-client-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(parsed)
+      }).catch(() => {});
     }
+    syncAllLocalAccountsToServer();
   } catch (e) {
     localStorage.removeItem('tradinghub_user');
     sessionStorage.removeItem('tradinghub_user');
@@ -80,6 +131,7 @@ function initAuthState() {
 function saveAuthState(user) {
   state.currentUser = user;
   if (user) {
+    saveToLocalAccountVault(user);
     if (user.role === 'admin') {
       // Store admin session strictly in sessionStorage so closing browser requires re-entry of password
       sessionStorage.setItem('tradinghub_user', JSON.stringify(user));
@@ -1008,7 +1060,27 @@ async function handleAuthSubmit() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
-      const data = await res.json();
+      let data = await res.json();
+
+      // Self-Healing: If server lost registration due to redeploy, restore from local vault and retry
+      if (!data.success) {
+        const localAcc = getLocalAccountVault(email);
+        if (localAcc) {
+          try {
+            await fetch('/api/auth/sync-client-account', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(localAcc)
+            });
+            const retryRes = await fetch('/api/auth/forgot-password', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email })
+            });
+            data = await retryRes.json();
+          } catch (_) {}
+        }
+      }
 
       if (data.success) {
         closeAuthModal();
@@ -1047,10 +1119,36 @@ async function handleAuthSubmit() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    const data = await res.json();
+    let data = await res.json();
+
+    // Self-Healing Login: If server redeploy lost user record, restore from local vault and log in
+    if (!data.success && mode === 'login') {
+      const localAcc = getLocalAccountVault(email);
+      if (localAcc && localAcc.password === password) {
+        try {
+          const healRes = await fetch('/api/auth/sync-client-account', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(localAcc)
+          });
+          const healData = await healRes.json();
+          if (healData.success && healData.user) {
+            data = { success: true, user: healData.user };
+          }
+        } catch (_) {}
+      }
+    }
 
     if (data.success) {
       saveAuthState(data.user);
+      saveToLocalAccountVault({
+        email,
+        password,
+        name: data.user.name || name,
+        role: data.user.role,
+        hasPaid: data.user.hasPaid,
+        paymentId: data.user.paymentId
+      });
       closeAuthModal();
       localStorage.setItem('tradinghub_has_registered', 'true');
 
