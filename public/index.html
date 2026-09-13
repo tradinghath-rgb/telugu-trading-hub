@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/css/styles.css?v=20260913_v5" />
+  <link rel="stylesheet" href="/css/styles.css?v=20260913_v6" />
   <link rel="icon" type="image/png" href="/brand-logo" />
 </head>
 <body>
@@ -408,7 +408,7 @@
         <div>
           <div class="footer-col-title">Platform Access</div>
           <ul class="footer-links">
-            <li><a href="javascript:void(0)" onclick="openAuthModal('login')">Member Sign In</a></li>
+            <li><a href="javascript:void(0)" onclick="openAuthModal('login')">Member Login</a></li>
             <li><a href="javascript:void(0)" onclick="openAuthModal('register')">Create New Account</a></li>
             <li><a href="javascript:void(0)" onclick="openPaymentVerificationModal()">Verify Razorpay Payment</a></li>
             <li><a href="javascript:void(0)" onclick="openAdminSecurityModal()" style="opacity: 0.5; font-size: 0.75rem;">Owner Access</a></li>
@@ -466,11 +466,11 @@
     </div>
   </div>
 
-  <!-- B. AUTH MODAL (SIGN IN / SIGN UP) -->
+  <!-- B. AUTH MODAL (LOGIN / SIGN UP) -->
   <div id="auth-modal" class="modal-overlay">
     <div class="modal-card" style="max-width: 440px;">
       <div class="modal-header">
-        <h3 id="auth-modal-title">Sign In</h3>
+        <h3 id="auth-modal-title">Login</h3>
         <button class="btn-close-modal" onclick="closeAuthModal()">✕</button>
       </div>
       <div class="modal-body">
@@ -490,7 +490,7 @@
         </div>
 
         <button id="auth-submit-btn" class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="handleAuthSubmit()">
-          Sign In
+          Login
         </button>
 
         <div id="auth-toggle-prompt" style="text-align: center; font-size: 0.88rem; color: var(--text-secondary); margin-top: 16px;">
@@ -957,6 +957,6 @@
   <div id="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="/js/app.js?v=20260913_v5"></script>
+  <script src="/js/app.js?v=20260913_v6"></script>
 </body>
 </html>

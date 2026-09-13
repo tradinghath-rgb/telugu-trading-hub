@@ -282,11 +282,24 @@ function initMarketTicker() {
 
 // ==================== RENDERING & UI UPDATES ====================
 function renderApp() {
-  renderNavbar();
-  renderDynamicSiteTexts();
-  renderCharts();
-  renderTermsAndNoRefund();
-  renderAdminPanel();
+  try { renderNavbar(); } catch (e) { console.error('Error in renderNavbar:', e); }
+  try { renderDynamicSiteTexts(); } catch (e) { console.error('Error in renderDynamicSiteTexts:', e); }
+  try { renderCharts(); } catch (e) { console.error('Error in renderCharts:', e); }
+  try { renderTermsAndNoRefund(); } catch (e) { console.error('Error in renderTermsAndNoRefund:', e); }
+  try { renderAdminPanel(); } catch (e) { console.error('Error in renderAdminPanel:', e); }
+}
+
+// Render Admin Panel (safely checks role and renders admin charts table)
+function renderAdminPanel() {
+  try {
+    if (state.currentUser?.role === 'admin') {
+      if (typeof renderAdminChartsTable === 'function') {
+        renderAdminChartsTable();
+      }
+    }
+  } catch (e) {
+    console.warn('Admin panel render check:', e);
+  }
 }
 
 // Render Navigation Bar
@@ -323,12 +336,12 @@ function renderNavbar() {
       </div>
     `;
   } else {
-    // Guest view: Show prominent Sign In button with Profile Icon
+    // Guest view: Show prominent Login button with Profile Icon for visitors and registered members
     authNavGroup.innerHTML = `
       <div class="nav-guest-cluster">
-        <button class="btn btn-sm btn-primary nav-signin-btn" onclick="openAuthModal('login')" title="Member Sign In">
+        <button class="btn btn-sm btn-primary nav-signin-btn" onclick="openAuthModal('login')" title="Member Login">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          <span>Sign In</span>
+          <span>Login</span>
         </button>
       </div>
     `;
@@ -730,11 +743,11 @@ function setAuthModalMode(mode) {
     title.textContent = 'Create Member Account';
     submitBtn.textContent = 'Sign Up & Continue';
     nameGroup.style.display = 'block';
-    toggleText.innerHTML = `Already have an account? <a href="javascript:void(0)" onclick="setAuthModalMode('login')" style="color: var(--accent-green); font-weight: bold;">Sign In</a>`;
+    toggleText.innerHTML = `Already registered? <a href="javascript:void(0)" onclick="setAuthModalMode('login')" style="color: var(--accent-green); font-weight: bold;">Login</a>`;
     submitBtn.dataset.mode = 'register';
   } else {
-    title.textContent = 'Welcome Back! Sign In';
-    submitBtn.textContent = 'Sign In';
+    title.textContent = 'Welcome Back! Login';
+    submitBtn.textContent = 'Login';
     nameGroup.style.display = 'none';
     toggleText.innerHTML = `Need an account? <a href="javascript:void(0)" onclick="setAuthModalMode('register')" style="color: var(--accent-green); font-weight: bold;">Sign Up</a>`;
     submitBtn.dataset.mode = 'login';
@@ -742,7 +755,7 @@ function setAuthModalMode(mode) {
 }
 
 async function handleAuthSubmit() {
-  const mode = document.getElementById('auth-submit-btn').dataset.mode;
+  const mode = document.getElementById('auth-submit-btn').dataset.mode || 'login';
   const email = document.getElementById('auth-email-input').value.trim();
   const password = document.getElementById('auth-password-input').value;
   const name = document.getElementById('auth-name-input')?.value?.trim();
@@ -766,7 +779,15 @@ async function handleAuthSubmit() {
     if (data.success) {
       saveAuthState(data.user);
       closeAuthModal();
-      showToast(mode === 'register' ? 'Account created! Welcome to Trading Hub.' : 'Signed in successfully!', 'success');
+      localStorage.setItem('tradinghub_has_registered', 'true');
+
+      if (data.user.role === 'admin') {
+        showToast('👑 Admin Login Successful! Welcome Abhishek Naidu.', 'success');
+      } else if (mode === 'register') {
+        showToast('🎉 Sign Up Successful! Welcome to Trading Hub.', 'success');
+      } else {
+        showToast('✅ Login Successful! Welcome back.', 'success');
+      }
     } else {
       showToast(data.error || 'Authentication error', 'error');
     }
@@ -777,7 +798,7 @@ async function handleAuthSubmit() {
 
 function handleLogout() {
   saveAuthState(null);
-  showToast('Signed out.', 'success');
+  showToast('Logged out successfully.', 'info');
 }
 
 // ==================== SECURE OWNER / ADMIN AUTHENTICATION ====================
@@ -828,7 +849,7 @@ async function handleAdminSecurityLogin(event) {
     if (data.success && data.user.role === 'admin' && data.user.email.toLowerCase() === OWNER_EMAIL) {
       saveAuthState(data.user);
       closeAdminSecurityModal();
-      showToast('🔒 Owner Security Verified. Welcome Abhishek!', 'success');
+      showToast('👑 Admin Login Successful! Welcome Abhishek Naidu.', 'success');
       openAdminModal();
     } else {
       showToast('❌ Access Denied: Invalid Owner Password.', 'error');
