@@ -371,14 +371,15 @@ function renderDynamicSiteTexts() {
   if (heroCta) {
     heroCta.innerHTML = `
       <span>${cfg.hero?.ctaText || 'Unlock Lifetime Access - ₹399'}</span>
-      <span class="price-pill">₹${cfg.pricing?.price || 399}</span>
+      <span class="price-pill">₹${cfg.pricing?.price || 399} <s style="opacity: 0.65; font-size: 0.8em; margin-left: 4px; text-decoration: line-through;">₹${cfg.pricing?.originalPrice || 999}</s></span>
     `;
   }
 
   // Pricing Elements
   document.querySelectorAll('[data-bind="price"]').forEach(el => el.textContent = `₹${cfg.pricing?.price || 399}`);
-  document.querySelectorAll('[data-bind="originalPrice"]').forEach(el => el.textContent = `₹${cfg.pricing?.originalPrice || 1999}`);
-  document.querySelectorAll('[data-bind="discountBadge"]').forEach(el => el.textContent = cfg.pricing?.discountBadge || '80% OFF');
+  document.querySelectorAll('[data-bind="originalPrice"]').forEach(el => el.textContent = `₹${cfg.pricing?.originalPrice || 999}`);
+  document.querySelectorAll('[data-bind="discountUrgency"]').forEach(el => el.textContent = cfg.pricing?.discountUrgency || '⚡ Discount only for a few days!');
+  document.querySelectorAll('[data-bind="discountBadge"]').forEach(el => el.textContent = cfg.pricing?.discountBadge || '60% LIMITED LAUNCH OFFER');
   document.querySelectorAll('[data-bind="accessType"]').forEach(el => el.textContent = cfg.pricing?.accessType || 'LIFETIME ACCESS');
 
   // Razorpay Buttons Link Binding
@@ -1568,7 +1569,7 @@ function populateCmsForm() {
   document.getElementById('cms-hero-title').value = cfg.hero?.title || '';
   document.getElementById('cms-hero-subtitle').value = cfg.hero?.subtitle || '';
   document.getElementById('cms-price').value = cfg.pricing?.price || 399;
-  document.getElementById('cms-original-price').value = cfg.pricing?.originalPrice || 1999;
+  document.getElementById('cms-original-price').value = cfg.pricing?.originalPrice || 999;
   document.getElementById('cms-discount-badge').value = cfg.pricing?.discountBadge || '';
   document.getElementById('cms-razorpay-url').value = cfg.pricing?.razorpayUrl || '';
   document.getElementById('cms-no-refund-text').value = cfg.termsAndConditions?.noRefundPolicy || '';
@@ -1596,7 +1597,7 @@ async function handleSaveCmsChanges(event) {
     pricing: {
       ...current.pricing,
       price: parseInt(document.getElementById('cms-price').value, 10) || 399,
-      originalPrice: parseInt(document.getElementById('cms-original-price').value, 10) || 1999,
+      originalPrice: parseInt(document.getElementById('cms-original-price').value, 10) || 999,
       discountBadge: document.getElementById('cms-discount-badge').value.trim(),
       razorpayUrl: document.getElementById('cms-razorpay-url').value.trim()
     },

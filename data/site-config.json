@@ -6,8 +6,9 @@
   "pricing": {
     "price": 399,
     "currencySymbol": "₹",
-    "originalPrice": 1999,
-    "discountBadge": "80% LIMITED LAUNCH OFFER",
+    "originalPrice": 999,
+    "discountBadge": "60% LIMITED LAUNCH OFFER",
+    "discountUrgency": "⚡ Discount only for a few days!",
     "accessType": "LIFETIME UNLIMITED ACCESS",
     "razorpayUrl": "https://rzp.io/rzp/2a3h6cU"
   },
