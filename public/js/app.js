@@ -138,10 +138,10 @@ function checkAdminUrlParam() {
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('admin') === 'true' || window.location.hash === '#admin') {
     setTimeout(() => {
-      if (state.currentUser?.role === 'admin' && state.currentUser?.email?.toLowerCase() === 'abhisheknaidus093@gmail.com') {
+      if (state.currentUser?.role === 'admin') {
         openAdminModal();
       } else {
-        openAdminSecurityModal();
+        openAuthModal('login');
       }
     }, 600);
   }
@@ -783,6 +783,7 @@ async function handleAuthSubmit() {
 
       if (data.user.role === 'admin') {
         showToast('👑 Admin Login Successful! Welcome Abhishek Naidu.', 'success');
+        openAdminModal();
       } else if (mode === 'register') {
         showToast('🎉 Sign Up Successful! Welcome to Trading Hub.', 'success');
       } else {
@@ -801,79 +802,30 @@ function handleLogout() {
   showToast('Logged out successfully.', 'info');
 }
 
-// ==================== SECURE OWNER / ADMIN AUTHENTICATION ====================
+// Backward compatibility redirect to main login modal
 function openAdminSecurityModal() {
-  const modal = document.getElementById('admin-security-modal');
-  const emailInput = document.getElementById('admin-security-email');
-  const passInput = document.getElementById('admin-security-password');
-  if (emailInput) emailInput.value = 'abhisheknaidus093@gmail.com';
-  if (passInput) passInput.value = '';
-  if (modal) modal.classList.add('active');
+  openAuthModal('login');
 }
-
 function closeAdminSecurityModal() {
-  const modal = document.getElementById('admin-security-modal');
-  if (modal) modal.classList.remove('active');
-}
-
-async function handleAdminSecurityLogin(event) {
-  if (event) event.preventDefault();
-  const email = document.getElementById('admin-security-email').value.trim();
-  const password = document.getElementById('admin-security-password').value;
-
-  if (!email || !password) {
-    showToast('Please enter both Owner Email and Password', 'error');
-    return;
-  }
-
-  const OWNER_EMAIL = 'abhisheknaidus093@gmail.com';
-  if (email.toLowerCase() !== OWNER_EMAIL) {
-    showToast('❌ Access Denied: Only owner account abhisheknaidus093@gmail.com is authorized to enter Admin CMS.', 'error');
-    return;
-  }
-
-  const btn = document.getElementById('admin-security-btn');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = 'Verifying Security Credentials...';
-  }
-
-  try {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
-    });
-    const data = await res.json();
-
-    if (data.success && data.user.role === 'admin' && data.user.email.toLowerCase() === OWNER_EMAIL) {
-      saveAuthState(data.user);
-      closeAdminSecurityModal();
-      showToast('👑 Admin Login Successful! Welcome Abhishek Naidu.', 'success');
-      openAdminModal();
-    } else {
-      showToast('❌ Access Denied: Invalid Owner Password.', 'error');
-    }
-  } catch (e) {
-    showToast('Connection error: ' + e.message, 'error');
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = 'Authenticate & Open Admin CMS';
-    }
-  }
+  closeAuthModal();
 }
 
 // ==================== ADMIN PORTAL (UPLOAD, BULK DELETE, LIVE CMS) ====================
 function openAdminModal() {
   const OWNER_EMAIL = 'abhisheknaidus093@gmail.com';
   if (!state.currentUser || state.currentUser.role !== 'admin' || state.currentUser.email?.toLowerCase() !== OWNER_EMAIL) {
-    openAdminSecurityModal();
+    openAuthModal('login');
+    showToast('Please login with your Admin credentials to enter.', 'info');
     return;
   }
 
   const modal = document.getElementById('admin-modal');
   if (!modal) return;
+
+  const cmsEmail = document.getElementById('cms-admin-email');
+  if (cmsEmail && state.currentUser?.email) {
+    cmsEmail.value = state.currentUser.email;
+  }
 
   loadAdminMediaInventory();
   renderAdminChartsTable();
@@ -881,6 +833,7 @@ function openAdminModal() {
   loadAwsStatus();
 
   modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
 }
 
 function closeAdminModal() {
