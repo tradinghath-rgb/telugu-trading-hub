@@ -4,6 +4,15 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
+const crypto = require('crypto');
+
+// Optional free Gmail SMTP transporter via Nodemailer
+let nodemailer = null;
+try {
+  nodemailer = require('nodemailer');
+} catch (e) {
+  console.warn('Nodemailer not loaded, running in direct token reset mode.');
+}
 
 // AWS S3 SDK v3
 let S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand;
@@ -451,6 +460,155 @@ app.post('/api/auth/login', (req, res) => {
       paymentId: user.paymentId
     };
     res.json({ success: true, message: 'Logged in successfully!', user: userSafe });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Helper for sending 100% Free Password Reset Email via Gmail SMTP
+async function sendPasswordResetEmail(email, resetUrl, userName = 'Trader') {
+  const GMAIL_USER = process.env.GMAIL_USER || process.env.EMAIL_USER;
+  const GMAIL_PASS = process.env.GMAIL_APP_PASS || process.env.GMAIL_PASS || process.env.EMAIL_PASS;
+
+  if (nodemailer && GMAIL_USER && GMAIL_PASS) {
+    try {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: GMAIL_USER,
+          pass: GMAIL_PASS
+        }
+      });
+
+      const mailOptions = {
+        from: `"Trading Hub" <${GMAIL_USER}>`,
+        to: email,
+        subject: '🔒 Reset Your Trading Hub Password',
+        html: `
+          <div style="font-family: Arial, sans-serif; background-color: #080c14; color: #f0f4fc; padding: 30px 20px; border-radius: 12px; max-width: 540px; margin: 0 auto; border: 1px solid rgba(0, 242, 152, 0.2);">
+            <div style="text-align: center; margin-bottom: 24px;">
+              <h2 style="color: #00f298; margin: 0; font-size: 24px; letter-spacing: 1px;">TRADING HUB</h2>
+              <p style="color: #94a3b8; font-size: 13px; margin: 4px 0 0;">Telugu & English Educational Community</p>
+            </div>
+            <div style="background: rgba(14, 20, 34, 0.95); padding: 24px; border-radius: 8px; border: 1px solid #1e293b;">
+              <h3 style="color: #fff; margin-top: 0; font-size: 18px;">Password Reset Request</h3>
+              <p style="color: #cbd5e1; font-size: 15px; line-height: 1.6;">Hello <strong>${userName}</strong>,</p>
+              <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6;">
+                We received a request to reset the password for your Trading Hub account. Click the button below to choose a new password:
+              </p>
+              <div style="text-align: center; margin: 28px 0;">
+                <a href="${resetUrl}" style="background: linear-gradient(135deg, #00f298, #00d2ff); color: #050811; font-weight: 800; text-decoration: none; padding: 13px 30px; border-radius: 30px; display: inline-block; font-size: 15px; box-shadow: 0 4px 15px rgba(0,242,152,0.3);">
+                  Reset My Password
+                </a>
+              </div>
+              <p style="color: #64748b; font-size: 12px; line-height: 1.5;">
+                This link will expire in <strong>1 hour</strong>. If you did not request this password reset, please ignore this email and your password will remain completely safe.
+              </p>
+              <hr style="border: none; border-top: 1px solid #1e293b; margin: 20px 0;" />
+              <p style="color: #64748b; font-size: 11px; word-break: break-all;">
+                Button not working? Copy and paste this link into your browser:<br />
+                <a href="${resetUrl}" style="color: #00d2ff;">${resetUrl}</a>
+              </p>
+            </div>
+          </div>
+        `
+      };
+
+      await transporter.sendMail(mailOptions);
+      console.log(`[AUTH] Password reset email sent to ${email}`);
+      return true;
+    } catch (err) {
+      console.warn('[AUTH] Gmail SMTP delivery failed or not configured:', err.message);
+      return false;
+    }
+  }
+  return false;
+}
+
+// Request Password Reset Link (Registered Users Only)
+app.post('/api/auth/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Please enter your registered Gmail / Email address.' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const users = readJson('users.json', []);
+    const userIndex = users.findIndex(u => u.email.toLowerCase() === cleanEmail);
+
+    // Strictly for already registered users only
+    if (userIndex === -1) {
+      return res.status(404).json({
+        error: 'No registered account found with this email. Please sign up first.'
+      });
+    }
+
+    const user = users[userIndex];
+    // Generate secure 32-byte token and 1-hour expiration
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires = Date.now() + 3600000; // 1 hour
+
+    users[userIndex].resetToken = token;
+    users[userIndex].resetExpires = expires;
+    writeJson('users.json', users);
+
+    // Construct full reset URL dynamically from host
+    const host = req.get('host');
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+    const resetUrl = `${protocol}://${host}/?reset_token=${token}`;
+
+    // Attempt to send email for free via Gmail SMTP if credentials provided
+    const emailSent = await sendPasswordResetEmail(cleanEmail, resetUrl, user.name || 'Member');
+
+    res.json({
+      success: true,
+      emailSent,
+      resetUrl,
+      message: emailSent 
+        ? `A password reset link has been sent to ${cleanEmail}. Please check your inbox or spam folder.`
+        : `Reset link created for ${cleanEmail}! Click below to choose your new password.`
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Complete Password Reset
+app.post('/api/auth/reset-password', (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+    if (!token || !newPassword) {
+      return res.status(400).json({ error: 'Token and new password are required.' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
+    }
+
+    const users = readJson('users.json', []);
+    const userIndex = users.findIndex(u => u.resetToken === token);
+
+    if (userIndex === -1) {
+      return res.status(400).json({ error: 'Invalid or already used password reset link. Please request a new one.' });
+    }
+
+    const user = users[userIndex];
+    if (Date.now() > user.resetExpires) {
+      return res.status(400).json({ error: 'This password reset link has expired (valid for 1 hour). Please request a new one.' });
+    }
+
+    // Update password and clear reset token
+    users[userIndex].password = newPassword;
+    delete users[userIndex].resetToken;
+    delete users[userIndex].resetExpires;
+    writeJson('users.json', users);
+
+    console.log(`[AUTH] Password successfully reset for user: ${user.email}`);
+    res.json({
+      success: true,
+      message: 'Password reset successful! You can now login with your new password.'
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

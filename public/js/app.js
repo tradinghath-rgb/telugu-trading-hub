@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initMarketTicker();
   checkUrlPaymentCallback();
   checkAdminUrlParam();
+  checkResetPasswordTokenInUrl();
   renderApp();
 });
 
@@ -738,17 +739,34 @@ function setAuthModalMode(mode) {
   const submitBtn = document.getElementById('auth-submit-btn');
   const toggleText = document.getElementById('auth-toggle-prompt');
   const nameGroup = document.getElementById('auth-name-group');
+  const passwordGroup = document.getElementById('auth-password-group');
+  const descEl = document.getElementById('auth-modal-desc');
 
-  if (mode === 'register') {
+  if (mode === 'forgot') {
+    title.textContent = 'Reset Your Password';
+    if (descEl) {
+      descEl.textContent = 'Enter your registered Gmail / Email address. We will generate a secure password reset link for your account.';
+      descEl.style.display = 'block';
+    }
+    submitBtn.textContent = 'Send Reset Link';
+    if (nameGroup) nameGroup.style.display = 'none';
+    if (passwordGroup) passwordGroup.style.display = 'none';
+    toggleText.innerHTML = `Remembered your password? <a href="javascript:void(0)" onclick="setAuthModalMode('login')" style="color: var(--accent-green); font-weight: bold;">Login</a>`;
+    submitBtn.dataset.mode = 'forgot';
+  } else if (mode === 'register') {
     title.textContent = 'Create Member Account';
+    if (descEl) descEl.style.display = 'none';
     submitBtn.textContent = 'Sign Up & Continue';
-    nameGroup.style.display = 'block';
+    if (nameGroup) nameGroup.style.display = 'block';
+    if (passwordGroup) passwordGroup.style.display = 'block';
     toggleText.innerHTML = `Already registered? <a href="javascript:void(0)" onclick="setAuthModalMode('login')" style="color: var(--accent-green); font-weight: bold;">Login</a>`;
     submitBtn.dataset.mode = 'register';
   } else {
     title.textContent = 'Welcome Back! Login';
+    if (descEl) descEl.style.display = 'none';
     submitBtn.textContent = 'Login';
-    nameGroup.style.display = 'none';
+    if (nameGroup) nameGroup.style.display = 'none';
+    if (passwordGroup) passwordGroup.style.display = 'block';
     toggleText.innerHTML = `Need an account? <a href="javascript:void(0)" onclick="setAuthModalMode('register')" style="color: var(--accent-green); font-weight: bold;">Sign Up</a>`;
     submitBtn.dataset.mode = 'login';
   }
@@ -757,11 +775,55 @@ function setAuthModalMode(mode) {
 async function handleAuthSubmit() {
   const mode = document.getElementById('auth-submit-btn').dataset.mode || 'login';
   const email = document.getElementById('auth-email-input').value.trim();
-  const password = document.getElementById('auth-password-input').value;
+  const password = document.getElementById('auth-password-input')?.value;
   const name = document.getElementById('auth-name-input')?.value?.trim();
 
-  if (!email || !password) {
-    showToast('Please enter both email and password', 'error');
+  if (!email) {
+    showToast('Please enter your Gmail / Email address', 'error');
+    return;
+  }
+
+  // 100% Free Forgot Password Flow
+  if (mode === 'forgot') {
+    const btn = document.getElementById('auth-submit-btn');
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = 'Verifying Account & Generating Link...';
+    }
+
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        closeAuthModal();
+        if (data.emailSent) {
+          showToast('📩 Password reset link sent to your Gmail inbox!', 'success');
+        } else {
+          showToast('✅ Reset link generated for your registered account!', 'success');
+          showDirectResetPrompt(data.resetUrl);
+        }
+      } else {
+        showToast(data.error || 'No registered account found with this email.', 'error');
+      }
+    } catch (err) {
+      showToast('Network error: ' + err.message, 'error');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = 'Send Reset Link';
+      }
+    }
+    return;
+  }
+
+  // Standard Login or Register Flow
+  if (!password) {
+    showToast('Please enter your password', 'error');
     return;
   }
 
@@ -809,6 +871,111 @@ function openAdminSecurityModal() {
 function closeAdminSecurityModal() {
   closeAuthModal();
 }
+
+// ==================== PASSWORD RESET MODAL & URL HANDLERS ====================
+function showDirectResetPrompt(resetUrl) {
+  try {
+    const parsed = new URL(resetUrl);
+    const token = parsed.searchParams.get('reset_token');
+    if (token) {
+      setTimeout(() => {
+        openResetPasswordModal(token);
+      }, 500);
+      return;
+    }
+  } catch (_) {}
+  window.location.href = resetUrl;
+}
+
+function checkResetPasswordTokenInUrl() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get('reset_token');
+  if (token) {
+    setTimeout(() => {
+      openResetPasswordModal(token);
+    }, 600);
+  }
+}
+
+function openResetPasswordModal(token) {
+  state.activeResetToken = token;
+  const modal = document.getElementById('reset-password-modal');
+  if (modal) {
+    const pass1 = document.getElementById('reset-new-password');
+    const pass2 = document.getElementById('reset-confirm-password');
+    if (pass1) pass1.value = '';
+    if (pass2) pass2.value = '';
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closeResetPasswordModal() {
+  const modal = document.getElementById('reset-password-modal');
+  if (modal) modal.classList.remove('active');
+  const otherActive = document.querySelector('.modal-overlay.active');
+  if (!otherActive) {
+    document.body.style.overflow = '';
+  }
+}
+
+async function handleResetPasswordSubmit(event) {
+  if (event) event.preventDefault();
+  const token = state.activeResetToken;
+  const newPassword = document.getElementById('reset-new-password')?.value;
+  const confirmPassword = document.getElementById('reset-confirm-password')?.value;
+
+  if (!token) {
+    showToast('Missing reset token. Please request a new reset link.', 'error');
+    return;
+  }
+
+  if (!newPassword || newPassword.length < 6) {
+    showToast('Password must be at least 6 characters long.', 'error');
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+    showToast('Passwords do not match. Please enter identical passwords.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('reset-submit-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Saving New Password...';
+  }
+
+  try {
+    const res = await fetch('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, newPassword })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      closeResetPasswordModal();
+      showToast('✅ Password updated successfully! Please login with your new password.', 'success');
+      // Clean up URL parameter from address bar
+      window.history.replaceState({}, document.title, window.location.pathname);
+      openAuthModal('login');
+    } else {
+      showToast(data.error || 'Failed to update password.', 'error');
+    }
+  } catch (err) {
+    showToast('Network error: ' + err.message, 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = 'Save New Password & Login';
+    }
+  }
+}
+
+window.openResetPasswordModal = openResetPasswordModal;
+window.closeResetPasswordModal = closeResetPasswordModal;
+window.handleResetPasswordSubmit = handleResetPasswordSubmit;
 
 // ==================== ADMIN PORTAL (UPLOAD, BULK DELETE, LIVE CMS) ====================
 function openAdminModal() {
