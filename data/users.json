@@ -27,9 +27,7 @@
     "name": "Abhi",
     "role": "member",
     "hasPaid": false,
-    "paymentId": null,
     "createdAt": "2026-09-13T19:38:34.651Z",
-    "paidAt": null,
     "activeSessionToken": "635ed09e8565ba8565ea0f6c85eec246"
   },
   {

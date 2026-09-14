@@ -184,7 +184,7 @@ window.quickLoginAsAdmin = function() {
 };
 
 // Global Application State
-const ADMIN_PIN = '200514';
+const ADMIN_PIN = '3578';
 const state = {
   siteConfig: null,
   charts: [],
@@ -218,6 +218,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initMarketTicker();
   initGalleryDragDrop();
   initDailyChartDragDrop();
+  try { setupAdminDropzones(); } catch (_) {}
   checkUrlPaymentCallback();
   initPaymentScreenshotDropzone();
   checkAdminUrlParam();
@@ -2576,7 +2577,10 @@ function renderAdminChartsTable() {
           <input type="checkbox" onchange="toggleAdminChartSelect('${chart.id}', this.checked)" ${isSelected ? 'checked' : ''} />
         </td>
         <td>
-          <img src="${chart.chartImage || '/assets/charts/chart-1.svg'}" class="admin-thumb-mini" style="cursor: pointer; transition: transform 0.2s ease;" onclick="openChartModal('${chart.id}')" title="Watch Video Breakdown" alt="" />
+          <div class="admin-thumb-box-wrap">
+            <img src="${chart.chartImage || '/assets/charts/chart-1.svg'}" class="admin-thumb-mini" style="cursor: pointer;" onclick="openRenameModal('${chart.id}')" title="Click to preview &amp; choose/swap chart image" alt="" />
+            <button type="button" class="thumb-corner-dl" onclick="event.stopPropagation(); downloadMediaFile('${chart.chartImage}', '${escapeHtml(chart.title)} - Chart')" title="Direct Download Chart Image">📥</button>
+          </div>
         </td>
         <td>
           <strong style="cursor: pointer; color: #fff;" onclick="openChartModal('${chart.id}')" title="Watch Video Breakdown">${chart.title}</strong>
@@ -2586,23 +2590,32 @@ function renderAdminChartsTable() {
           <span class="category-pill" style="padding: 2px 8px; font-size: 0.75rem;">${chart.category}</span>
         </td>
         <td>
-          <div style="display: flex; gap: 4px; font-size: 0.72rem;">
-            <span style="color: var(--accent-green); background: rgba(0,242,152,0.1); padding: 2px 6px; border-radius: 4px;">TEL</span>
-            <span style="color: var(--accent-cyan); background: rgba(0,210,255,0.1); padding: 2px 6px; border-radius: 4px;">ENG</span>
+          <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+            <div class="admin-video-cell-group" title="Telugu Video">
+              <span style="color: var(--accent-green); cursor: pointer; font-size: 0.74rem; font-weight: 700;" onclick="openRenameModal('${chart.id}')">TEL</span>
+              <button type="button" class="btn-table-dl" onclick="event.stopPropagation(); downloadMediaFile('${chart.teluguVideo}', '${escapeHtml(chart.title)} - Telugu Video')" title="Download Telugu Video">📥</button>
+            </div>
+            <div class="admin-video-cell-group" title="English Video">
+              <span style="color: var(--accent-cyan); cursor: pointer; font-size: 0.74rem; font-weight: 700;" onclick="openRenameModal('${chart.id}')">ENG</span>
+              <button type="button" class="btn-table-dl" onclick="event.stopPropagation(); downloadMediaFile('${chart.englishVideo}', '${escapeHtml(chart.title)} - English Video')" title="Download English Video">📥</button>
+            </div>
           </div>
         </td>
         <td>
           <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-            <button class="btn btn-sm btn-primary" onclick="openChartModal('${chart.id}')" title="Watch Video Breakdown" style="padding: 4px 10px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 4px;">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <button class="btn btn-sm btn-primary" onclick="openChartModal('${chart.id}')" title="Watch Video Breakdown" style="padding: 4px 8px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 3px;">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
               Watch
             </button>
             <button class="btn btn-sm btn-secondary" onclick="openRenameModal('${chart.id}')" title="Rename or Edit Chart" style="padding: 4px 8px; font-size: 0.75rem;">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               Edit
             </button>
+            <button class="btn btn-sm btn-secondary" onclick="downloadMediaFile('${chart.chartImage}', '${escapeHtml(chart.title)} - Chart Image')" title="Download Chart Image (HD)" style="padding: 4px 7px; font-size: 0.75rem; color: #00f298; border-color: rgba(0,242,152,0.35);">
+              📥
+            </button>
             <button class="btn btn-sm btn-danger" onclick="deleteSingleChart('${chart.id}')" title="Delete Chart" style="padding: 4px 8px; font-size: 0.75rem;">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             </button>
           </div>
         </td>
@@ -2698,12 +2711,19 @@ async function deleteSingleChart(id) {
   }
 }
 
-// ==================== PLUS (+) ICON: UPLOAD NEW CHART & VIDEOS ====================
+// ==================== PLUS (+) ICON: UPLOAD & ASSET MANAGEMENT ====================
+let currentAddChartSubTab = 'charts';
+
 function openAddChartModal() {
   const modal = document.getElementById('add-chart-modal');
   if (modal) {
-    document.getElementById('add-chart-form').reset();
+    document.getElementById('add-chart-form')?.reset();
     populateVideoDropdowns();
+    populateAddChartExistingImages();
+    loadChartGallerySubpanel();
+    loadVideoRepositorySubpanel();
+    setupAdminDropzones();
+    switchAddChartSubTab(currentAddChartSubTab || 'charts');
     modal.classList.add('active');
   }
 }
@@ -2713,6 +2733,418 @@ function closeAddChartModal() {
   if (modal) modal.classList.remove('active');
 }
 
+function switchAddChartSubTab(tabName) {
+  currentAddChartSubTab = tabName;
+  ['charts', 'videos', 'full'].forEach(t => {
+    const btn = document.getElementById(`subnav-btn-${t}`);
+    const panel = document.getElementById(`subpanel-${t}`);
+    if (btn) btn.classList.toggle('active', t === tabName);
+    if (panel) {
+      panel.style.display = (t === tabName) ? 'block' : 'none';
+      panel.classList.toggle('active', t === tabName);
+    }
+  });
+
+  const titleEl = document.getElementById('add-modal-title');
+  if (titleEl) {
+    if (tabName === 'charts') titleEl.textContent = 'Upload & Manage Charts (Drag & Drop)';
+    else if (tabName === 'videos') titleEl.textContent = 'Upload & Manage Video Breakdowns';
+    else titleEl.textContent = 'Create Complete Chart Setup Pack';
+  }
+
+  if (tabName === 'charts') loadChartGallerySubpanel();
+  if (tabName === 'videos') loadVideoRepositorySubpanel();
+  if (tabName === 'full') {
+    populateVideoDropdowns();
+    populateAddChartExistingImages();
+  }
+}
+
+function setupAdminDropzones() {
+  const setupDropzone = (elId, onFileDrop) => {
+    const el = document.getElementById(elId);
+    if (!el || el.__dropzoneInitialized) return;
+    el.__dropzoneInitialized = true;
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+      el.addEventListener(eventName, e => {
+        e.preventDefault();
+        e.stopPropagation();
+        el.classList.add('drag-over');
+      }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+      el.addEventListener(eventName, e => {
+        e.preventDefault();
+        e.stopPropagation();
+        el.classList.remove('drag-over');
+      }, false);
+    });
+
+    el.addEventListener('drop', e => {
+      const dt = e.dataTransfer;
+      const files = dt.files;
+      if (files && files.length > 0) {
+        onFileDrop(files[0]);
+      }
+    }, false);
+  };
+
+  setupDropzone('chart-dropzone', file => {
+    const input = document.getElementById('chart-only-file-input');
+    if (input) {
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      handleChartOnlyFileInput({ target: input });
+    }
+  });
+
+  setupDropzone('video-dropzone', file => {
+    const input = document.getElementById('video-only-file-input');
+    if (input) {
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      handleVideoOnlyFileInput({ target: input });
+    }
+  });
+}
+
+// ---------------- CHARTS ASSET MANAGEMENT (ONLY CHARTS) ----------------
+async function loadChartGallerySubpanel() {
+  const grid = document.getElementById('admin-charts-asset-grid');
+  const countBadge = document.getElementById('subnav-charts-count');
+  if (!grid) return;
+
+  try {
+    const res = await fetch('/api/chart-gallery');
+    const gallery = await res.json();
+    state.chartGallery = Array.isArray(gallery) ? gallery : [];
+
+    if (countBadge) countBadge.textContent = state.chartGallery.length;
+
+    if (state.chartGallery.length === 0) {
+      grid.innerHTML = `
+        <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 30px;">
+          No standalone charts uploaded yet. Drag &amp; drop an image above or choose from your phone!
+        </div>
+      `;
+      return;
+    }
+
+    grid.innerHTML = state.chartGallery.map(item => `
+      <div class="admin-asset-card" id="gallery-card-${item.id}">
+        <div class="asset-thumb-wrap" onclick="viewFullChartImage('${item.imageUrl}', '${escapeHtml(item.title)}')" title="Click to view full image">
+          <img src="${item.imageUrl}" alt="${escapeHtml(item.title)}" class="asset-thumb-img" loading="lazy" />
+          <button type="button" class="asset-card-dl-badge" onclick="event.stopPropagation(); downloadMediaFile('${item.imageUrl}', '${escapeHtml(item.title)}')" title="Download Chart Image">
+            📥
+          </button>
+        </div>
+        <div class="asset-body">
+          <div class="asset-title" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</div>
+          <div class="asset-meta">${item.dateAdded || 'Added'}</div>
+          <div class="asset-actions">
+            <button type="button" class="btn-asset-action" onclick="renameChartOnly('${item.id}', '${escapeHtml(item.title)}')" title="Rename Chart">
+              ✏️ Rename
+            </button>
+            <button type="button" class="btn-asset-action btn-dl-action" onclick="downloadMediaFile('${item.imageUrl}', '${escapeHtml(item.title)}')" title="Download Chart Image">
+              📥 DL
+            </button>
+            <button type="button" class="btn-asset-action btn-danger-action" onclick="deleteChartOnly('${item.id}')" title="Delete Chart">
+              🗑️
+            </button>
+            <button type="button" class="btn-asset-action" onclick="useChartInFullSetup('${item.imageUrl}', '${escapeHtml(item.title)}')" title="Use in complete setup" style="margin-left: auto; color: var(--accent-green);">
+              ⚡ Use
+            </button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  } catch (err) {
+    grid.innerHTML = `<div style="grid-column: 1/-1; color: #ff5252; padding: 20px;">Failed to load charts: ${err.message}</div>`;
+  }
+}
+
+async function handleChartOnlyFileInput(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  const defaultTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+  const title = prompt('Enter a title for this chart setup (or keep default):', defaultTitle);
+  if (title === null) return; // user cancelled
+
+  const formData = new FormData();
+  formData.append('chartImage', file);
+  formData.append('title', title.trim() || defaultTitle);
+
+  showToast('Uploading chart image...', 'info');
+  try {
+    const res = await fetch('/api/chart-gallery', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('🖼️ Chart image uploaded to library!', 'success');
+      event.target.value = '';
+      await loadChartGallerySubpanel();
+      populateAddChartExistingImages();
+      await loadCharts();
+    } else {
+      showToast(data.error || 'Upload failed', 'error');
+    }
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+
+async function renameChartOnly(id, currentTitle) {
+  const newTitle = prompt('Enter new chart title:', currentTitle);
+  if (!newTitle || newTitle.trim() === currentTitle) return;
+
+  try {
+    const res = await fetch(`/api/chart-gallery/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: newTitle.trim() })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Chart renamed successfully!', 'success');
+      loadChartGallerySubpanel();
+      populateAddChartExistingImages();
+    } else {
+      showToast(data.error || 'Rename failed', 'error');
+    }
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+
+async function deleteChartOnly(id) {
+  if (!confirm('Are you sure you want to delete this chart from the gallery?')) return;
+
+  try {
+    const res = await fetch(`/api/chart-gallery/${id}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Chart deleted from library.', 'info');
+      loadChartGallerySubpanel();
+      populateAddChartExistingImages();
+    } else {
+      showToast(data.error || 'Delete failed', 'error');
+    }
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+
+function useChartInFullSetup(imageUrl, title) {
+  switchAddChartSubTab('full');
+  const sel = document.getElementById('new-chart-existing-image-select');
+  if (sel) {
+    sel.value = imageUrl;
+    previewNewChartImageChoice(imageUrl);
+  }
+  const titleInput = document.getElementById('new-chart-title');
+  if (titleInput && !titleInput.value) {
+    titleInput.value = title;
+  }
+  showToast(`Selected "${title}" for complete setup!`, 'success');
+}
+
+// ---------------- VIDEOS ASSET MANAGEMENT (ONLY VIDEOS) ----------------
+async function loadVideoRepositorySubpanel() {
+  const grid = document.getElementById('admin-videos-asset-grid');
+  const countBadge = document.getElementById('subnav-videos-count');
+  if (!grid) return;
+
+  try {
+    const res = await fetch('/api/media-inventory');
+    const data = await res.json();
+    state.adminMediaInventory = data || { teluguVideos: [], englishVideos: [], uploadedMedia: [] };
+
+    const totalVideos = (data.teluguVideos?.length || 0) + (data.englishVideos?.length || 0) + (data.uploadedMedia?.length || 0);
+    if (countBadge) countBadge.textContent = totalVideos;
+
+    let itemsHtml = '';
+
+    // Uploaded videos first
+    (data.uploadedMedia || []).forEach(v => {
+      itemsHtml += renderVideoCardHtml(v.name, v.url, 'UPLOADED', true);
+    });
+
+    // Telugu reels
+    (data.teluguVideos || []).forEach(v => {
+      itemsHtml += renderVideoCardHtml(v.name, v.url, 'TELUGU', false);
+    });
+
+    // English reels
+    (data.englishVideos || []).forEach(v => {
+      itemsHtml += renderVideoCardHtml(v.name, v.url, 'ENGLISH', false);
+    });
+
+    grid.innerHTML = itemsHtml || `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 30px;">No videos found in repository.</div>`;
+  } catch (err) {
+    grid.innerHTML = `<div style="grid-column: 1/-1; color: #ff5252; padding: 20px;">Failed to load videos: ${err.message}</div>`;
+  }
+}
+
+function renderVideoCardHtml(name, url, tag, isDeletable) {
+  const cleanName = decodeURIComponent(name);
+  const tagColor = tag === 'TELUGU' ? 'var(--accent-green)' : (tag === 'ENGLISH' ? 'var(--accent-cyan)' : 'var(--accent-gold)');
+  return `
+    <div class="admin-asset-card">
+      <div class="asset-thumb-wrap" style="background: #090e1a; cursor: pointer;" onclick="openAdminVideoPlayer('${url}', '${escapeHtml(cleanName)}')" title="Click to test play">
+        <div style="font-size: 2.2rem; opacity: 0.85;">🎬</div>
+        <button type="button" class="asset-card-dl-badge" onclick="event.stopPropagation(); downloadMediaFile('${url}', '${escapeHtml(cleanName)}')" title="Download Video Breakdown">
+          📥
+        </button>
+        <div style="position: absolute; bottom: 6px; right: 6px; background: rgba(0,0,0,0.7); padding: 2px 6px; border-radius: 4px; font-size: 0.70rem; color: #fff; display: flex; align-items: center; gap: 4px;">
+          <span>▶</span> Play
+        </div>
+      </div>
+      <div class="asset-body">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+          <span style="font-size: 0.68rem; font-weight: 800; color: ${tagColor}; background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 4px;">${tag}</span>
+        </div>
+        <div class="asset-title" title="${escapeHtml(cleanName)}">${escapeHtml(cleanName)}</div>
+        <div class="asset-actions">
+          <button type="button" class="btn-asset-action" onclick="openAdminVideoPlayer('${url}', '${escapeHtml(cleanName)}')">
+            ▶ Play
+          </button>
+          <button type="button" class="btn-asset-action btn-dl-action" onclick="downloadMediaFile('${url}', '${escapeHtml(cleanName)}')" title="Download Video Breakdown">
+            📥 DL
+          </button>
+          ${isDeletable ? `
+            <button type="button" class="btn-asset-action btn-danger-action" onclick="deleteVideoOnly('${url}')" title="Delete uploaded video">
+              🗑️ Delete
+            </button>
+          ` : ''}
+          <button type="button" class="btn-asset-action" onclick="useVideoInFullSetup('${url}', '${tag}')" title="Use in complete setup" style="margin-left: auto; color: var(--accent-green);">
+            ⚡ Use
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function handleVideoOnlyFileInput(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  const lang = document.getElementById('video-only-lang')?.value || 'telugu';
+  const customTitle = document.getElementById('video-only-title')?.value.trim();
+
+  const formData = new FormData();
+  formData.append('videoFile', file);
+  formData.append('language', lang);
+  if (customTitle) formData.append('title', customTitle);
+
+  showToast('Uploading video file to server/AWS...', 'info');
+  try {
+    const res = await fetch('/api/videos/upload', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('🎬 Video uploaded successfully!', 'success');
+      event.target.value = '';
+      if (document.getElementById('video-only-title')) document.getElementById('video-only-title').value = '';
+      await loadVideoRepositorySubpanel();
+      populateVideoDropdowns();
+    } else {
+      showToast(data.error || 'Video upload failed', 'error');
+    }
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+
+async function deleteVideoOnly(url) {
+  if (!confirm('Are you sure you want to delete this uploaded video?')) return;
+
+  try {
+    const res = await fetch('/api/videos', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('Video removed successfully.', 'info');
+      loadVideoRepositorySubpanel();
+      populateVideoDropdowns();
+    } else {
+      showToast(data.error || 'Failed to remove video', 'error');
+    }
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+
+function useVideoInFullSetup(url, tag) {
+  switchAddChartSubTab('full');
+  if (tag === 'TELUGU' || tag === 'UPLOADED') {
+    const sel = document.getElementById('new-chart-telugu-select');
+    if (sel) sel.value = url;
+  }
+  if (tag === 'ENGLISH') {
+    const sel = document.getElementById('new-chart-english-select');
+    if (sel) sel.value = url;
+  }
+  showToast(`Video paired for setup!`, 'success');
+}
+
+// ---------------- FULL SETUP HELPERS ----------------
+async function populateAddChartExistingImages() {
+  const sel = document.getElementById('new-chart-existing-image-select');
+  if (!sel) return;
+
+  try {
+    const res = await fetch('/api/charts/available-images');
+    const images = await res.json();
+    if (Array.isArray(images)) {
+      sel.innerHTML = `
+        <option value="">-- Select from Existing Uploaded Charts (${images.length} available) --</option>
+        ${images.map(img => `<option value="${img.url}">${img.title} (${img.source})</option>`).join('')}
+      `;
+    }
+  } catch (e) {
+    console.warn('Error loading available images:', e);
+  }
+}
+
+function previewNewChartImageChoice(url) {
+  const box = document.getElementById('new-chart-image-preview-box');
+  const img = document.getElementById('new-chart-img-preview');
+  const name = document.getElementById('new-chart-img-name');
+  if (url) {
+    if (img) img.src = url;
+    if (name) name.textContent = url.split('/').pop();
+    if (box) box.style.display = 'flex';
+  } else {
+    if (box) box.style.display = 'none';
+  }
+}
+
+function previewNewChartUploadedFile(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    previewNewChartImageChoice(e.target.result);
+    const sel = document.getElementById('new-chart-existing-image-select');
+    if (sel) sel.value = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+// ---------------- COMPLETE SETUP SUBMIT ----------------
 async function submitNewChart(event) {
   event.preventDefault();
 
@@ -2721,12 +3153,14 @@ async function submitNewChart(event) {
   const summary = document.getElementById('new-chart-summary').value.trim();
   const keyTakeaway = document.getElementById('new-chart-takeaway').value.trim();
 
-  const chartImageFile = document.getElementById('new-chart-image-file').files[0];
-  const teluguVideoFile = document.getElementById('new-chart-telugu-file').files[0];
-  const englishVideoFile = document.getElementById('new-chart-english-file').files[0];
+  const existingImageChoice = document.getElementById('new-chart-existing-image-select')?.value;
+  const chartImageFile = document.getElementById('new-chart-image-file')?.files[0];
 
-  const selectedTeluguUrl = document.getElementById('new-chart-telugu-select').value;
-  const selectedEnglishUrl = document.getElementById('new-chart-english-select').value;
+  const teluguVideoFile = document.getElementById('new-chart-telugu-file')?.files[0];
+  const englishVideoFile = document.getElementById('new-chart-english-file')?.files[0];
+
+  const selectedTeluguUrl = document.getElementById('new-chart-telugu-select')?.value;
+  const selectedEnglishUrl = document.getElementById('new-chart-english-select')?.value;
 
   const formData = new FormData();
   formData.append('title', title);
@@ -2734,7 +3168,12 @@ async function submitNewChart(event) {
   formData.append('summary', summary);
   formData.append('keyTakeaway', keyTakeaway);
 
-  if (chartImageFile) formData.append('chartImage', chartImageFile);
+  if (chartImageFile) {
+    formData.append('chartImage', chartImageFile);
+  } else if (existingImageChoice) {
+    formData.append('customChartUrl', existingImageChoice);
+  }
+
   if (teluguVideoFile) {
     formData.append('teluguVideo', teluguVideoFile);
   } else if (selectedTeluguUrl) {
@@ -2749,7 +3188,7 @@ async function submitNewChart(event) {
 
   const submitBtn = document.getElementById('new-chart-submit-btn');
   submitBtn.disabled = true;
-  submitBtn.textContent = 'Uploading to Server/AWS...';
+  submitBtn.textContent = 'Publishing Chart Setup...';
 
   try {
     const res = await fetch('/api/charts', {
@@ -2775,8 +3214,8 @@ async function submitNewChart(event) {
   }
 }
 
-// ==================== EDIT / RENAME CHART MODAL ====================
-function openRenameModal(chartId) {
+// ==================== EDIT / RENAME CHART MODAL (WITH INTERACTIVE PREVIEW BOX) ====================
+async function openRenameModal(chartId) {
   const chart = state.charts.find(c => c.id === chartId);
   if (!chart) return;
 
@@ -2791,7 +3230,212 @@ function openRenameModal(chartId) {
   document.getElementById('edit-chart-telugu-url').value = chart.teluguVideo || '';
   document.getElementById('edit-chart-english-url').value = chart.englishVideo || '';
 
+  // Interactive Preview Box Population
+  const currentImg = chart.chartImage || '/assets/charts/chart-1.svg';
+  document.getElementById('edit-modal-chart-preview-img').src = currentImg;
+  document.getElementById('edit-chart-current-image-url').value = currentImg;
+
+  // Clear replacement file input
+  const fileInput = document.getElementById('edit-chart-replacement-file');
+  if (fileInput) fileInput.value = '';
+
+  // Populate existing chart images selector
+  try {
+    const res = await fetch('/api/charts/available-images');
+    const availableImages = await res.json();
+    const sel = document.getElementById('edit-chart-select-existing');
+    if (sel && Array.isArray(availableImages)) {
+      sel.innerHTML = `
+        <option value="">-- Choose from Available Charts (${availableImages.length}) --</option>
+        ${availableImages.map(img => `<option value="${img.url}" ${img.url === currentImg ? 'selected' : ''}>${img.title} (${img.source})</option>`).join('')}
+      `;
+    }
+  } catch (e) {
+    console.warn('Error loading chart options in edit modal:', e);
+  }
+
+  // Populate video selectors
+  populateEditVideoDropdowns(chart.teluguVideo, chart.englishVideo);
+
   modal.classList.add('active');
+}
+
+function populateEditVideoDropdowns(currentTelugu, currentEnglish) {
+  const telSel = document.getElementById('edit-chart-telugu-select');
+  const engSel = document.getElementById('edit-chart-english-select');
+
+  const inv = state.adminMediaInventory || { teluguVideos: [], englishVideos: [], uploadedMedia: [] };
+
+  if (telSel) {
+    const options = [
+      ...(inv.teluguVideos || []).map(v => `<option value="${v.url}" ${v.url === currentTelugu ? 'selected' : ''}>${v.name}</option>`),
+      ...(inv.uploadedMedia || []).map(v => `<option value="${v.url}" ${v.url === currentTelugu ? 'selected' : ''}>${v.name} (Uploaded)</option>`)
+    ];
+    telSel.innerHTML = `
+      <option value="">-- Choose Telugu Video from Repository --</option>
+      ${options.join('')}
+    `;
+  }
+
+  if (engSel) {
+    const options = [
+      ...(inv.englishVideos || []).map(v => `<option value="${v.url}" ${v.url === currentEnglish ? 'selected' : ''}>${v.name}</option>`),
+      ...(inv.uploadedMedia || []).map(v => `<option value="${v.url}" ${v.url === currentEnglish ? 'selected' : ''}>${v.name} (Uploaded)</option>`)
+    ];
+    engSel.innerHTML = `
+      <option value="">-- Choose English Video from Repository --</option>
+      ${options.join('')}
+    `;
+  }
+}
+
+function handleEditSelectExistingChart(url) {
+  if (!url) return;
+  document.getElementById('edit-modal-chart-preview-img').src = url;
+  document.getElementById('edit-chart-current-image-url').value = url;
+  // Clear any uploaded file
+  const fileInput = document.getElementById('edit-chart-replacement-file');
+  if (fileInput) fileInput.value = '';
+}
+
+function handleEditReplacementFileSelected(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('edit-modal-chart-preview-img').src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+
+  // Clear existing dropdown selection
+  const sel = document.getElementById('edit-chart-select-existing');
+  if (sel) sel.value = '';
+}
+
+function handleEditTeluguSelectChange(url) {
+  if (url) document.getElementById('edit-chart-telugu-url').value = url;
+}
+
+function handleEditEnglishSelectChange(url) {
+  if (url) document.getElementById('edit-chart-english-url').value = url;
+}
+
+function zoomCurrentEditChart() {
+  const src = document.getElementById('edit-modal-chart-preview-img')?.src;
+  const title = document.getElementById('edit-chart-title')?.value || 'Chart Preview';
+  if (src) viewFullChartImage(src, title);
+}
+
+function viewFullChartImage(src, title) {
+  const modal = document.getElementById('admin-media-preview-modal');
+  const titleEl = document.getElementById('admin-media-preview-title');
+  const bodyEl = document.getElementById('admin-media-preview-body');
+  if (!modal || !bodyEl) return;
+
+  if (titleEl) titleEl.textContent = title || 'Chart Full Preview';
+  bodyEl.innerHTML = `
+    <img src="${src}" alt="" style="width: 100%; max-height: 70vh; object-fit: contain; border-radius: 8px; border: 1.5px solid rgba(0,242,152,0.3);" />
+    <div style="margin-top: 14px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+      <button type="button" class="btn btn-sm btn-primary" onclick="downloadMediaFile('${src}', '${escapeHtml(title)}')">
+        📥 Download HD Chart
+      </button>
+      <button type="button" class="btn btn-sm btn-secondary" onclick="closeAdminMediaPreviewModal()">Close</button>
+    </div>
+  `;
+  modal.classList.add('active');
+}
+
+function openAdminVideoPlayer(url, title) {
+  const modal = document.getElementById('admin-media-preview-modal');
+  const titleEl = document.getElementById('admin-media-preview-title');
+  const bodyEl = document.getElementById('admin-media-preview-body');
+  if (!modal || !bodyEl) return;
+
+  if (titleEl) titleEl.textContent = `🎬 ${title || 'Video Playback'}`;
+  bodyEl.innerHTML = `
+    <video controls autoplay style="width: 100%; max-height: 65vh; border-radius: 8px; background: #000; outline: none;">
+      <source src="${url}" type="video/mp4" />
+      Your browser does not support the video tag.
+    </video>
+    <div style="margin-top: 14px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+      <button type="button" class="btn btn-sm btn-primary" onclick="downloadMediaFile('${url}', '${escapeHtml(title)}')">
+        📥 Download Video
+      </button>
+      <button type="button" class="btn btn-sm btn-secondary" onclick="closeAdminMediaPreviewModal()">Close Video</button>
+    </div>
+  `;
+  modal.classList.add('active');
+}
+
+function testPlayModalVideo(lang) {
+  const urlInput = lang === 'telugu' ? document.getElementById('edit-chart-telugu-url') : document.getElementById('edit-chart-english-url');
+  const url = urlInput?.value?.trim();
+  if (!url) {
+    showToast(`No ${lang} video assigned yet. Select or upload one first.`, 'warning');
+    return;
+  }
+  openAdminVideoPlayer(url, `${lang.toUpperCase()} Video Preview`);
+}
+
+// ==================== UNIVERSAL ADMIN DOWNLOAD CONTROLS (CHARTS & VIDEOS) ====================
+function downloadMediaFile(url, title) {
+  if (!url) {
+    showToast('No media file available to download', 'warning');
+    return;
+  }
+
+  // If it's an image, use high quality chart image converter / download
+  const isImage = /\.(png|jpg|jpeg|svg|webp)($|\?)/i.test(url);
+  if (isImage) {
+    downloadChartImage(url, title);
+    return;
+  }
+
+  // For video files or binary assets:
+  const safeTitle = (title || 'TradingHub_Media').replace(/[^a-zA-Z0-9_\-\s]/g, '').trim();
+  const dlUrl = `/api/media/download?url=${encodeURIComponent(url)}&title=${encodeURIComponent(safeTitle)}`;
+
+  const a = document.createElement('a');
+  a.href = dlUrl;
+  a.setAttribute('download', '');
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  showToast(`📥 Downloading "${safeTitle}"... Check your device downloads.`, 'info');
+}
+
+function downloadCurrentEditChart() {
+  const imgEl = document.getElementById('edit-modal-chart-preview-img');
+  const titleEl = document.getElementById('edit-chart-title');
+  const src = imgEl?.src;
+  const title = titleEl?.value?.trim() || 'Chart_Setup';
+  if (src) {
+    downloadMediaFile(src, `${title} - Chart Image`);
+  } else {
+    showToast('No chart image loaded to download', 'warning');
+  }
+}
+
+function downloadModalVideo(lang) {
+  const input = lang === 'telugu' ? document.getElementById('edit-chart-telugu-url') : document.getElementById('edit-chart-english-url');
+  const titleEl = document.getElementById('edit-chart-title');
+  const url = input?.value?.trim();
+  const baseTitle = titleEl?.value?.trim() || 'Trading_Setup';
+  if (!url) {
+    showToast(`No ${lang} video assigned to download. Select or upload one first.`, 'warning');
+    return;
+  }
+  downloadMediaFile(url, `${baseTitle} - ${lang.toUpperCase()} Video`);
+}
+
+function closeAdminMediaPreviewModal() {
+  const modal = document.getElementById('admin-media-preview-modal');
+  if (modal) {
+    const video = modal.querySelector('video');
+    if (video) video.pause();
+    modal.classList.remove('active');
+  }
 }
 
 function closeRenameModal() {
@@ -2809,17 +3453,57 @@ async function submitEditChart(event) {
   const keyTakeaway = document.getElementById('edit-chart-takeaway').value.trim();
   const teluguVideo = document.getElementById('edit-chart-telugu-url').value.trim();
   const englishVideo = document.getElementById('edit-chart-english-url').value.trim();
+  const customChartUrl = document.getElementById('edit-chart-current-image-url').value.trim();
+
+  const replacementImageFile = document.getElementById('edit-chart-replacement-file')?.files[0];
+  const replacementTeluguFile = document.getElementById('edit-chart-telugu-file')?.files[0];
+  const replacementEnglishFile = document.getElementById('edit-chart-english-file')?.files[0];
+
+  const submitBtn = document.getElementById('edit-chart-submit-btn');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Saving Changes...';
 
   try {
-    const res = await fetch(`/api/charts/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, category, summary, keyTakeaway, teluguVideo, englishVideo })
-    });
-    const data = await res.json();
+    let res;
+    // If files are attached, use multipart FormData
+    if (replacementImageFile || replacementTeluguFile || replacementEnglishFile) {
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('category', category);
+      formData.append('summary', summary);
+      formData.append('keyTakeaway', keyTakeaway);
+      formData.append('teluguVideo', teluguVideo);
+      formData.append('englishVideo', englishVideo);
+      if (customChartUrl) formData.append('customChartUrl', customChartUrl);
 
+      if (replacementImageFile) formData.append('chartImage', replacementImageFile);
+      if (replacementTeluguFile) formData.append('teluguVideo', replacementTeluguFile);
+      if (replacementEnglishFile) formData.append('englishVideo', replacementEnglishFile);
+
+      res = await fetch(`/api/charts/${id}`, {
+        method: 'PUT',
+        body: formData
+      });
+    } else {
+      // Standard JSON update
+      res = await fetch(`/api/charts/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          category,
+          summary,
+          keyTakeaway,
+          teluguVideo,
+          englishVideo,
+          customChartUrl
+        })
+      });
+    }
+
+    const data = await res.json();
     if (data.success) {
-      showToast('Chart details updated successfully!', 'success');
+      showToast('✅ Chart setup and media updated successfully!', 'success');
       closeRenameModal();
       await loadCharts();
       renderApp();
@@ -2829,6 +3513,9 @@ async function submitEditChart(event) {
     }
   } catch (err) {
     showToast('Error: ' + err.message, 'error');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Save All Changes';
   }
 }
 
@@ -3074,7 +3761,7 @@ async function handleDedicatedAdminLoginSubmit(event) {
   }
 
   if (!pincode) {
-    showToast('🔒 Please enter your 6-digit Admin Security PIN (Ultra Privacy).', 'error');
+    showToast('🔒 Please enter your Admin Security PIN (Ultra Privacy).', 'error');
     pinInput?.focus();
     return;
   }
@@ -3721,6 +4408,33 @@ window.handleUnpaidChartClick = handleUnpaidChartClick;
 window.closeConcurrentSessionModal = closeConcurrentSessionModal;
 window.deleteSingleChart = deleteSingleChart;
 window.openRenameModal = openRenameModal;
+window.closeRenameModal = closeRenameModal;
+window.openAddChartModal = openAddChartModal;
+window.closeAddChartModal = closeAddChartModal;
+window.switchAddChartSubTab = switchAddChartSubTab;
+window.handleChartOnlyFileInput = handleChartOnlyFileInput;
+window.handleVideoOnlyFileInput = handleVideoOnlyFileInput;
+window.renameChartOnly = renameChartOnly;
+window.deleteChartOnly = deleteChartOnly;
+window.useChartInFullSetup = useChartInFullSetup;
+window.openAdminVideoPlayer = openAdminVideoPlayer;
+window.deleteVideoOnly = deleteVideoOnly;
+window.useVideoInFullSetup = useVideoInFullSetup;
+window.previewNewChartImageChoice = previewNewChartImageChoice;
+window.previewNewChartUploadedFile = previewNewChartUploadedFile;
+window.submitNewChart = submitNewChart;
+window.handleEditSelectExistingChart = handleEditSelectExistingChart;
+window.handleEditReplacementFileSelected = handleEditReplacementFileSelected;
+window.handleEditTeluguSelectChange = handleEditTeluguSelectChange;
+window.handleEditEnglishSelectChange = handleEditEnglishSelectChange;
+window.zoomCurrentEditChart = zoomCurrentEditChart;
+window.viewFullChartImage = viewFullChartImage;
+window.testPlayModalVideo = testPlayModalVideo;
+window.closeAdminMediaPreviewModal = closeAdminMediaPreviewModal;
+window.submitEditChart = submitEditChart;
+window.downloadMediaFile = downloadMediaFile;
+window.downloadCurrentEditChart = downloadCurrentEditChart;
+window.downloadModalVideo = downloadModalVideo;
 
 
 // ==================== ADMIN PAYMENTS & UTR PROOFS VIEWER ====================

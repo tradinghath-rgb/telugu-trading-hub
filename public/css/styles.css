@@ -305,6 +305,10 @@ button, input, select, textarea {
   touch-action: manipulation;
 }
 
+.btn:active {
+  transform: scale(0.97) !important;
+}
+
 .btn-primary {
   background: linear-gradient(135deg, var(--accent-green), #00c978);
   color: #06110a;
@@ -1096,6 +1100,8 @@ button, input, select, textarea {
   display: flex;
   flex-direction: column;
   position: relative;
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 .chart-card:hover {
@@ -1119,6 +1125,8 @@ button, input, select, textarea {
   height: 100%;
   object-fit: cover;
   transition: transform 0.4s ease;
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 .chart-card:hover .chart-thumbnail-wrap img,
@@ -1245,6 +1253,13 @@ button, input, select, textarea {
   display: flex;
   flex-direction: column;
   -webkit-tap-highlight-color: transparent;
+  transform: scale(0.97) translateY(8px);
+  transition: transform 0.26s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+.modal-overlay.active .modal-card {
+  transform: scale(1) translateY(0);
 }
 
 .modal-header {
@@ -4686,22 +4701,58 @@ body.batch-mode-active .floating-share-trigger {
   .nav-actions {
     display: flex !important;
     align-items: center !important;
-    gap: 5px !important;
-    flex-shrink: 0 !important;
+    gap: 4px !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    max-width: calc(100vw - 110px) !important;
+    justify-content: flex-end !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    white-space: nowrap !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-x !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    padding: 2px 2px 2px 0 !important;
+    scroll-behavior: smooth !important;
   }
 
-  .nav-share-btn {
-    padding: 4px 8px !important;
-    font-size: 0.74rem !important;
-    height: 30px !important;
+  .nav-actions::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  .nav-actions > *,
+  .nav-auth-group,
+  .nav-guest-cluster,
+  .nav-user-cluster {
+    display: inline-flex !important;
+    align-items: center !important;
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  .nav-guest-cluster {
     gap: 4px !important;
   }
 
+  .nav-share-btn {
+    padding: 4px 7px !important;
+    font-size: 0.72rem !important;
+    height: 30px !important;
+    gap: 4px !important;
+    border-radius: var(--radius-full) !important;
+    flex-shrink: 0 !important;
+  }
+
   .nav-pricing-btn {
-    padding: 4px 8px !important;
+    padding: 4px 7px !important;
     font-size: 0.72rem !important;
     height: 30px !important;
     border-radius: var(--radius-full) !important;
+    flex-shrink: 0 !important;
   }
 
   .nav-pricing-btn .nav-pricing-long {
@@ -4714,10 +4765,30 @@ body.batch-mode-active .floating-share-trigger {
   }
 
   .nav-signin-btn {
-    padding: 5px 10px !important;
-    font-size: 0.78rem !important;
+    padding: 4px 8px !important;
+    font-size: 0.74rem !important;
     height: 30px !important;
     gap: 4px !important;
+    border-radius: var(--radius-full) !important;
+    flex-shrink: 0 !important;
+  }
+
+  .nav-signup-btn {
+    padding: 4px 9px !important;
+    font-size: 0.74rem !important;
+    height: 30px !important;
+    gap: 4px !important;
+    border-radius: var(--radius-full) !important;
+    flex-shrink: 0 !important;
+    font-weight: 800 !important;
+    white-space: nowrap !important;
+  }
+
+  .nav-signin-btn svg,
+  .nav-signup-btn svg {
+    width: 12px !important;
+    height: 12px !important;
+    flex-shrink: 0 !important;
   }
 
   .btn-back-home {
@@ -5281,22 +5352,57 @@ body.batch-mode-active .floating-share-trigger {
     text-align: center !important;
   }
 
-  /* Floating Share & Batch Toolbar for 9:16 Phones */
+  /* Floating Share Pill for 9:16 Phones - Crisp Text & Fully Visible Symbol */
   .floating-share-trigger {
     bottom: max(16px, env(safe-area-inset-bottom) + 10px) !important;
     right: 14px !important;
-    width: 44px !important;
-    height: 44px !important;
+    width: auto !important;
+    height: auto !important;
+    min-height: 38px !important;
+    padding: 8px 14px !important;
+    border-radius: 50px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 7px !important;
+    white-space: nowrap !important;
+    background: linear-gradient(135deg, rgba(14, 23, 42, 0.96), rgba(10, 30, 48, 0.96)) !important;
+    border: 1.5px solid rgba(0, 242, 152, 0.5) !important;
+    box-shadow: 0 6px 22px rgba(0, 0, 0, 0.65), 0 0 16px rgba(0, 242, 152, 0.28) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    z-index: 999 !important;
+    cursor: pointer !important;
+    text-decoration: none !important;
+  }
+
+  .floating-share-trigger .share-pulse-dot {
+    display: inline-block !important;
+    width: 7px !important;
+    height: 7px !important;
+    border-radius: 50% !important;
+    background: #00f298 !important;
+    box-shadow: 0 0 6px #00f298 !important;
+    flex-shrink: 0 !important;
   }
 
   .floating-share-trigger svg {
-    width: 18px !important;
-    height: 18px !important;
+    display: inline-block !important;
+    width: 15px !important;
+    height: 15px !important;
+    stroke: #00f298 !important;
+    flex-shrink: 0 !important;
+    margin: 0 !important;
   }
 
-  .floating-share-pulse {
-    width: 44px !important;
-    height: 44px !important;
+  .floating-share-trigger span:last-child {
+    display: inline !important;
+    font-size: 0.80rem !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+    white-space: nowrap !important;
+    line-height: 1 !important;
+    letter-spacing: 0.2px !important;
   }
 
   .batch-download-toolbar {
@@ -5562,11 +5668,53 @@ body.is-pro-member .nav-pricing-btn,
 }
 
 @media (max-width: 480px) {
+  .brand-title {
+    font-size: 0.78rem !important;
+    letter-spacing: -0.3px !important;
+  }
+
+  .brand-logo-img {
+    width: 25px !important;
+    height: 25px !important;
+  }
+
+  .nav-actions,
   html.is-admin .nav-actions,
   body.is-admin .nav-actions,
   .nav-actions.is-admin-nav {
-    max-width: calc(100vw - 95px) !important;
-    flex-shrink: 1 !important;
+    max-width: calc(100vw - 92px) !important;
+    gap: 3px !important;
+  }
+
+  .nav-guest-cluster {
+    gap: 3px !important;
+  }
+
+  .nav-pricing-btn {
+    padding: 3px 5px !important;
+    font-size: 0.69rem !important;
+    height: 28px !important;
+  }
+
+  .nav-share-btn {
+    padding: 3px 6px !important;
+    font-size: 0.69rem !important;
+    height: 28px !important;
+    gap: 3px !important;
+  }
+
+  .nav-signin-btn {
+    padding: 3px 6px !important;
+    font-size: 0.70rem !important;
+    height: 28px !important;
+    gap: 3px !important;
+  }
+
+  .nav-signup-btn {
+    padding: 3px 7px !important;
+    font-size: 0.70rem !important;
+    height: 28px !important;
+    gap: 3px !important;
   }
 }
 
@@ -5628,3 +5776,438 @@ body {
     height: 100% !important;
   }
 }
+
+/* ==================== V38: ADMIN ASSET MANAGEMENT & INTERACTIVE PREVIEW BOX ==================== */
+
+/* 1. Modal Subnav Segmented Bar */
+.admin-subnav-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(8, 14, 26, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 5px;
+  border-radius: var(--radius-full);
+  margin-bottom: 16px;
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.admin-subnav-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-subnav-pill {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.admin-subnav-pill:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.admin-subnav-pill.active {
+  background: linear-gradient(135deg, rgba(0, 242, 152, 0.15), rgba(0, 210, 255, 0.12));
+  color: #00f298;
+  border-color: rgba(0, 242, 152, 0.45);
+  box-shadow: 0 2px 10px rgba(0, 242, 152, 0.18);
+}
+
+.subnav-pill-icon {
+  font-size: 1rem;
+}
+
+.subnav-badge {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 0.68rem;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-weight: 800;
+}
+.admin-subnav-pill.active .subnav-badge {
+  background: #00f298;
+  color: #000;
+}
+
+/* 2. Drag & Drop Upload Dropzone */
+.admin-dropzone {
+  border: 2px dashed rgba(0, 242, 152, 0.4);
+  background: linear-gradient(135deg, rgba(0, 242, 152, 0.03), rgba(0, 210, 255, 0.02));
+  border-radius: 12px;
+  padding: 24px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.admin-dropzone:hover,
+.admin-dropzone.drag-over {
+  border-color: #00f298;
+  background: rgba(0, 242, 152, 0.08);
+  transform: scale(1.01);
+  box-shadow: 0 0 20px rgba(0, 242, 152, 0.2);
+}
+.dropzone-icon {
+  font-size: 2rem;
+  line-height: 1;
+  margin-bottom: 2px;
+}
+.dropzone-text strong {
+  display: block;
+  font-size: 0.94rem;
+  color: #fff;
+  margin-bottom: 2px;
+}
+.dropzone-text span {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* 3. Asset Grid (Charts & Videos in Plus modal) */
+.admin-asset-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 242, 152, 0.3) rgba(0, 0, 0, 0.2);
+}
+.admin-asset-card {
+  background: rgba(14, 22, 38, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.2s ease;
+}
+.admin-asset-card:hover {
+  border-color: rgba(0, 242, 152, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+.asset-thumb-wrap {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  background: #060910;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.asset-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+.admin-asset-card:hover .asset-thumb-img {
+  transform: scale(1.05);
+}
+.asset-body {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+.asset-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.asset-meta {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+.asset-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: auto;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.btn-asset-action {
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.btn-asset-action:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+.btn-asset-action.btn-danger-action {
+  color: #ff5252;
+  border-color: rgba(255, 82, 82, 0.3);
+}
+.btn-asset-action.btn-danger-action:hover {
+  background: rgba(255, 82, 82, 0.2);
+}
+
+/* 4. Edit Modal Preview Box */
+.edit-chart-preview-box {
+  background: linear-gradient(135deg, rgba(14, 23, 42, 0.95), rgba(8, 16, 32, 0.95));
+  border: 1.5px solid rgba(0, 242, 152, 0.35);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+.edit-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.preview-badge-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: #00f298;
+  letter-spacing: 0.5px;
+}
+.btn-preview-zoom {
+  padding: 3px 8px;
+  font-size: 0.72rem;
+  border-radius: var(--radius-full);
+  background: rgba(0, 242, 152, 0.1);
+  border: 1px solid rgba(0, 242, 152, 0.3);
+  color: #00f298;
+  cursor: pointer;
+  font-weight: 700;
+}
+.btn-preview-zoom:hover {
+  background: #00f298;
+  color: #000;
+}
+.edit-preview-display {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.edit-preview-thumb-wrap {
+  width: 140px;
+  height: 90px;
+  background: #050811;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  cursor: pointer;
+  position: relative;
+}
+.edit-preview-thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.2s ease;
+}
+.edit-preview-thumb-wrap:hover .edit-preview-thumbnail {
+  transform: scale(1.08);
+}
+.edit-preview-swap-controls {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.btn-file-upload-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 6px;
+  background: rgba(0, 242, 152, 0.12);
+  border: 1px solid rgba(0, 242, 152, 0.35);
+  color: #00f298;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+.btn-file-upload-label:hover {
+  background: #00f298;
+  color: #000;
+}
+.btn-test-play {
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  border-radius: 4px;
+  background: rgba(0, 210, 255, 0.12);
+  border: 1px solid rgba(0, 210, 255, 0.3);
+  color: #00d2ff;
+  cursor: pointer;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+.btn-test-play:hover {
+  background: #00d2ff;
+  color: #000;
+}
+.btn-test-dl {
+  background: rgba(0, 242, 152, 0.12) !important;
+  border: 1px solid rgba(0, 242, 152, 0.35) !important;
+  color: #00f298 !important;
+}
+.btn-test-dl:hover {
+  background: #00f298 !important;
+  color: #000 !important;
+}
+
+/* Admin Asset Card & Grid Download Badges */
+.asset-card-dl-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(6, 11, 20, 0.85);
+  border: 1px solid rgba(0, 242, 152, 0.4);
+  color: #00f298;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  z-index: 5;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+}
+.asset-card-dl-badge:hover {
+  background: #00f298;
+  color: #000;
+  transform: scale(1.12);
+  box-shadow: 0 0 10px rgba(0, 242, 152, 0.6);
+}
+.btn-asset-action.btn-dl-action {
+  color: #00f298;
+  border-color: rgba(0, 242, 152, 0.3);
+  background: rgba(0, 242, 152, 0.08);
+}
+.btn-asset-action.btn-dl-action:hover {
+  background: rgba(0, 242, 152, 0.25);
+  color: #fff;
+}
+
+/* Admin Charts Table Download Elements */
+.admin-thumb-box-wrap {
+  position: relative;
+  width: 66px;
+  height: 44px;
+  border-radius: 6px;
+  overflow: hidden;
+  display: inline-block;
+  background: #050811;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+}
+.admin-thumb-box-wrap .admin-thumb-mini {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.2s ease;
+}
+.admin-thumb-box-wrap:hover .admin-thumb-mini {
+  transform: scale(1.08);
+}
+.thumb-corner-dl {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  background: rgba(0, 0, 0, 0.82);
+  border: 1px solid rgba(0, 242, 152, 0.45);
+  color: #00f298;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  padding: 1px 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1;
+  z-index: 2;
+}
+.thumb-corner-dl:hover {
+  background: #00f298;
+  color: #000;
+  border-color: #00f298;
+}
+.admin-video-cell-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 2px 4px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.btn-table-dl {
+  padding: 1px 4px;
+  font-size: 0.68rem;
+  border-radius: 3px;
+  background: rgba(0, 242, 152, 0.1);
+  border: 1px solid rgba(0, 242, 152, 0.3);
+  color: #00f298;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.btn-table-dl:hover {
+  background: #00f298;
+  color: #000;
+}
+
+@media (max-width: 560px) {
+  .edit-preview-display {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .edit-preview-thumb-wrap {
+    width: 100%;
+    height: 130px;
+  }
+  .admin-asset-grid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  }
+}
+
+

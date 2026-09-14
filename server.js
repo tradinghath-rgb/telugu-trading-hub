@@ -834,6 +834,125 @@ app.get('/api/charts/download-attachment', (req, res) => {
   }
 });
 
+// ==================== UNIVERSAL MEDIA DOWNLOAD ENDPOINT (CHARTS & VIDEOS) ====================
+app.get('/api/media/download', (req, res) => {
+  try {
+    const { url, title } = req.query;
+    if (!url) return res.status(400).send('Missing media URL');
+
+    const decodedUrl = decodeURIComponent(url);
+    const cleanTitle = (title || 'TeluguTradingHub_Media')
+      .replace(/[^a-zA-Z0-9_-]/g, '_')
+      .replace(/_+/g, '_');
+
+    // Determine file extension
+    let ext = 'mp4';
+    const extMatch = decodedUrl.match(/\.(mp4|webm|mov|mkv|png|jpg|jpeg|svg|webp)$/i);
+    if (extMatch) {
+      ext = extMatch[1].toLowerCase();
+    }
+
+    const filename = `TeluguTradingHub_${cleanTitle}.${ext}`;
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    const mimeTypes = {
+      mp4: 'video/mp4',
+      webm: 'video/webm',
+      mov: 'video/quicktime',
+      mkv: 'video/x-matroska',
+      png: 'image/png',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      svg: 'image/svg+xml',
+      webp: 'image/webp'
+    };
+    if (mimeTypes[ext]) {
+      res.setHeader('Content-Type', mimeTypes[ext]);
+    }
+
+    // Resolve local path
+    let localPath = null;
+    if (decodedUrl.startsWith('/videos/telugu/')) {
+      const fName = decodedUrl.replace('/videos/telugu/', '');
+      localPath = path.join(TELUGU_VIDEO_DIR, decodeURIComponent(fName));
+    } else if (decodedUrl.startsWith('/videos/english/')) {
+      const fName = decodedUrl.replace('/videos/english/', '');
+      localPath = path.join(ENGLISH_VIDEO_DIR, decodeURIComponent(fName));
+    } else if (decodedUrl.startsWith('/uploads/')) {
+      const fName = decodedUrl.replace('/uploads/', '');
+      localPath = path.join(UPLOADS_DIR, decodeURIComponent(fName));
+    } else if (decodedUrl.startsWith('/assets/')) {
+      localPath = path.join(PUBLIC_DIR, decodedUrl);
+    }
+
+    if (localPath && fs.existsSync(localPath)) {
+      return fs.createReadStream(localPath).pipe(res);
+    }
+
+    if (decodedUrl.startsWith('http://') || decodedUrl.startsWith('https://')) {
+      return res.redirect(decodedUrl);
+    }
+
+    res.status(404).send('Media file not found');
+  } catch (err) {
+    res.status(500).send('Download error: ' + err.message);
+  }
+});
+
+
+// Get all available chart images across the entire system (gallery, setups, assets)
+app.get('/api/charts/available-images', (req, res) => {
+  try {
+    const assetDir = path.join(__dirname, 'public', 'assets', 'charts');
+    const assetFiles = fs.existsSync(assetDir) ? fs.readdirSync(assetDir) : [];
+    const gallery = readJson('chart_gallery.json', []);
+    const charts = readJson('charts.json', []);
+
+    const imageMap = new Map();
+
+    // 1. Add from chart_gallery
+    gallery.forEach(g => {
+      if (g.imageUrl) {
+        imageMap.set(g.imageUrl, {
+          url: g.imageUrl,
+          title: g.title || 'Gallery Chart',
+          source: 'gallery',
+          id: g.id,
+          dateAdded: g.dateAdded || ''
+        });
+      }
+    });
+
+    // 2. Add from charts.json
+    charts.forEach(c => {
+      if (c.chartImage && !imageMap.has(c.chartImage)) {
+        imageMap.set(c.chartImage, {
+          url: c.chartImage,
+          title: c.title,
+          source: 'chart',
+          id: c.id
+        });
+      }
+    });
+
+    // 3. Add from static assets
+    assetFiles.forEach(f => {
+      const u = `/assets/charts/${f}`;
+      if (!imageMap.has(u)) {
+        imageMap.set(u, {
+          url: u,
+          title: f.replace('.svg', '').replace('-', ' ').toUpperCase(),
+          source: 'asset'
+        });
+      }
+    });
+
+    res.json(Array.from(imageMap.values()));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/charts/:id', (req, res) => {
   const charts = readJson('charts.json', []);
   const chart = charts.find(c => c.id === req.params.id);
@@ -891,16 +1010,39 @@ app.post('/api/charts', upload.fields([
   }
 });
 
-// Edit / Rename a chart
-app.put('/api/charts/:id', (req, res) => {
+// Edit / Rename / Swap Chart & Media
+app.put('/api/charts/:id', upload.fields([
+  { name: 'chartImage', maxCount: 1 },
+  { name: 'teluguVideo', maxCount: 1 },
+  { name: 'englishVideo', maxCount: 1 }
+]), (req, res) => {
   try {
     const charts = readJson('charts.json', []);
     const index = charts.findIndex(c => c.id === req.params.id);
     if (index === -1) return res.status(404).json({ error: 'Chart not found' });
 
+    let updatedFields = { ...req.body };
+
+    // Handle uploaded files if provided
+    if (req.files) {
+      if (req.files['chartImage'] && req.files['chartImage'][0]) {
+        updatedFields.chartImage = `/uploads/${req.files['chartImage'][0].filename}`;
+      }
+      if (req.files['teluguVideo'] && req.files['teluguVideo'][0]) {
+        updatedFields.teluguVideo = `/uploads/${req.files['teluguVideo'][0].filename}`;
+      }
+      if (req.files['englishVideo'] && req.files['englishVideo'][0]) {
+        updatedFields.englishVideo = `/uploads/${req.files['englishVideo'][0].filename}`;
+      }
+    }
+
+    if (req.body.customChartUrl) updatedFields.chartImage = req.body.customChartUrl;
+    if (req.body.customTeluguUrl) updatedFields.teluguVideo = req.body.customTeluguUrl;
+    if (req.body.customEnglishUrl) updatedFields.englishVideo = req.body.customEnglishUrl;
+
     charts[index] = {
       ...charts[index],
-      ...req.body,
+      ...updatedFields,
       id: req.params.id // Prevent overriding ID
     };
 
@@ -946,6 +1088,7 @@ app.post('/api/charts/bulk-delete', (req, res) => {
   }
 });
 
+
 // List available video assets from the local repository for easy linking in Admin
 app.get('/api/media-inventory', (req, res) => {
   try {
@@ -953,13 +1096,60 @@ app.get('/api/media-inventory', (req, res) => {
     const englishFiles = fs.existsSync(ENGLISH_VIDEO_DIR) ? fs.readdirSync(ENGLISH_VIDEO_DIR) : [];
     const uploadedFiles = fs.existsSync(UPLOADS_DIR) ? fs.readdirSync(UPLOADS_DIR) : [];
 
+    const uploadedVideos = uploadedFiles.filter(f => /\.(mp4|webm|mov|mkv)$/i.test(f));
+
     res.json({
       teluguVideos: teluguFiles.map(f => ({ name: f, url: `/videos/telugu/${encodeURIComponent(f)}` })),
       englishVideos: englishFiles.map(f => ({ name: f, url: `/videos/english/${encodeURIComponent(f)}` })),
-      uploadedMedia: uploadedFiles.map(f => ({ name: f, url: `/uploads/${encodeURIComponent(f)}` }))
+      uploadedMedia: uploadedVideos.map(f => ({ name: f, url: `/uploads/${encodeURIComponent(f)}` }))
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Standalone Video Upload (Telugu or English)
+app.post('/api/videos/upload', upload.single('videoFile'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No video file provided' });
+    }
+    const lang = (req.body.language || 'telugu').toLowerCase();
+    const title = req.body.title?.trim() || req.file.originalname;
+    const fileUrl = `/uploads/${req.file.filename}`;
+
+    res.json({
+      success: true,
+      message: 'Video uploaded successfully!',
+      video: {
+        name: title,
+        url: fileUrl,
+        language: lang,
+        filename: req.file.filename,
+        size: req.file.size
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Standalone Video Delete
+app.delete('/api/videos', (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ error: 'Video url is required' });
+
+    if (url.startsWith('/uploads/')) {
+      const fileName = url.replace('/uploads/', '');
+      const filePath = path.join(UPLOADS_DIR, decodeURIComponent(fileName));
+      if (fs.existsSync(filePath)) {
+        try { fs.unlinkSync(filePath); } catch (_) {}
+      }
+    }
+    res.json({ success: true, message: 'Video removed successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -1172,7 +1362,7 @@ app.post('/api/auth/login', async (req, res) => {
     const sessionToken = crypto.randomBytes(16).toString('hex');
 
     // Exclusive Owner / Admin Check (Ultra Privacy: 2-Step verification - Email & Password first, then PIN on blurred screen)
-    const ADMIN_PIN = process.env.ADMIN_PIN || '200514';
+    const ADMIN_PIN = process.env.ADMIN_PIN || '3578';
     if (cleanEmail === OWNER_EMAIL) {
       let adminIndex = users.findIndex(u => u.email.toLowerCase() === OWNER_EMAIL && u.role === 'admin');
       if (adminIndex === -1) {
@@ -1184,7 +1374,7 @@ app.post('/api/auth/login', async (req, res) => {
         const { pincode } = req.body;
         if (pincode && String(pincode).trim() !== ADMIN_PIN) {
           return res.status(401).json({
-            error: '🔒 Ultra Privacy: 6-Digit Admin Security PIN (200514) required. Access Denied.',
+            error: '🔒 Ultra Privacy: Admin Security PIN (3578) required. Access Denied.',
             requirePin: true
           });
         }
@@ -1227,7 +1417,7 @@ app.post('/api/auth/login', async (req, res) => {
       const { pincode } = req.body;
       if (!pincode || String(pincode).trim() !== ADMIN_PIN) {
         return res.status(401).json({
-          error: '🔒 Ultra Privacy: 6-Digit Admin Security PIN (200514) required. Access Denied.',
+          error: '🔒 Ultra Privacy: Admin Security PIN (3578) required. Access Denied.',
           requirePin: true
         });
       }
@@ -1276,11 +1466,11 @@ app.post('/api/auth/validate-session', (req, res) => {
 // Dedicated Admin Security PIN Verification endpoint
 app.post('/api/auth/verify-admin-pin', (req, res) => {
   const { pincode } = req.body;
-  const ADMIN_PIN = process.env.ADMIN_PIN || '200514';
+  const ADMIN_PIN = process.env.ADMIN_PIN || '3578';
   if (pincode && String(pincode).trim() === ADMIN_PIN) {
     return res.json({ success: true, message: 'Admin PIN verified successfully. Full controls unlocked.' });
   }
-  return res.status(401).json({ error: '❌ Invalid 6-digit Admin Security PIN Code. Ultra Privacy Access Denied.' });
+  return res.status(401).json({ error: '❌ Invalid Admin Security PIN Code. Ultra Privacy Access Denied.' });
 });
 
 // Helper for sending 100% Free Password Reset Email via Gmail SMTP (from tradinghath@gmail.com)
@@ -1442,11 +1632,11 @@ app.post('/api/auth/reset-password', async (req, res) => {
   }
 });
 
-// Verify Admin Ultra Privacy PIN (200514)
+// Verify Admin Ultra Privacy PIN (3578)
 app.post('/api/admin/verify-pin', (req, res) => {
   try {
     const { pincode } = req.body;
-    const ADMIN_PIN = process.env.ADMIN_PIN || '200514';
+    const ADMIN_PIN = process.env.ADMIN_PIN || '3578';
     if (!pincode || String(pincode).trim() !== ADMIN_PIN) {
       return res.status(401).json({ success: false, error: '🔒 Invalid Admin Security PIN Code. Ultra Privacy enforced.' });
     }

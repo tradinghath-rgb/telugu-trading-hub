@@ -23,7 +23,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/css/styles.css?v=20260914_v36" />
+  <link rel="stylesheet" href="/css/styles.css?v=20260915_v39" />
   <link rel="icon" type="image/png" href="/brand-logo" />
   <!-- Zero-Latency Auth Pre-check for Mobile Top Bar -->
   <script>
@@ -93,11 +93,15 @@
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
             <span>Share</span>
           </button>
-<div id="nav-auth-actions" class="nav-auth-group">
+        <div id="nav-auth-actions" class="nav-auth-group">
           <div class="nav-guest-cluster">
-            <button class="btn btn-sm btn-primary nav-signin-btn" onclick="openAuthModal('login')" title="Member Login / Sign Up">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <button class="btn btn-sm btn-secondary nav-signin-btn" onclick="openAuthModal('login')" title="Member Login">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
               <span>Login</span>
+            </button>
+            <button class="btn btn-sm btn-primary nav-signup-btn" onclick="openAuthModal('register')" title="Create Account (Sign Up)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+              <span>Sign Up</span>
             </button>
           </div>
         </div>
@@ -1052,10 +1056,10 @@
               <label class="form-label" for="dedicated-admin-pin" style="color: var(--accent-gold); margin-bottom: 0;">
                 🔐 Admin Security PIN (Ultra Privacy)
               </label>
-              <span style="font-size: 0.72rem; color: var(--accent-gold); opacity: 0.9;">6-Digit PIN</span>
+              <span style="font-size: 0.72rem; color: var(--accent-gold); opacity: 0.9;">Security PIN</span>
             </div>
             <div class="password-input-wrapper">
-              <input type="password" id="dedicated-admin-pin" class="form-input" placeholder="Enter 6-digit PIN" maxlength="6" inputmode="numeric" required autocomplete="off" style="border-color: rgba(255, 215, 0, 0.4);" />
+              <input type="password" id="dedicated-admin-pin" class="form-input" placeholder="Enter Security PIN" maxlength="6" inputmode="numeric" required autocomplete="off" style="border-color: rgba(255, 215, 0, 0.4);" />
               <button type="button" class="btn-toggle-password" onclick="togglePasswordVisibility('dedicated-admin-pin', this)" title="Show PIN" tabindex="-1">
                 <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
@@ -1089,13 +1093,13 @@
       </div>
       <div class="modal-body">
         <p style="color: var(--text-secondary); font-size: 0.86rem; margin-bottom: 16px; line-height: 1.5;">
-          Home screen access is locked. Please enter your <strong>6-digit Secret Admin Security PIN</strong> (200514) to authenticate as Owner and unlock full controls.
+          Home screen access is locked. Please enter your <strong>Secret Admin Security PIN</strong> (3578) to authenticate as Owner and unlock full controls.
         </p>
         <form id="admin-pin-form" onsubmit="handleAdminPinSubmit(event)">
           <div class="form-group">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
               <label class="form-label" for="cms-security-pin-input" style="color: var(--accent-gold); margin-bottom: 0;">
-                6-Digit Security PIN
+                Security PIN
               </label>
               <span style="font-size: 0.72rem; color: var(--accent-gold); opacity: 0.9;">Ultra Privacy</span>
             </div>
@@ -1743,92 +1747,242 @@
     </div>
   </div>
 
-  <!-- F. ADD NEW CHART MODAL (TRIGGERED BY PLUS ICON) -->
+  <!-- F. ADD NEW CHART / ASSETS MODAL (TRIGGERED BY PLUS ICON) -->
   <div id="add-chart-modal" class="modal-overlay">
-    <div class="modal-card" style="max-width: 650px;">
+    <div class="modal-card" style="max-width: 720px;">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 8px;">
           <span style="background: var(--accent-green); color: #000; font-weight: 900; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">+</span>
-          <h3>Upload New Chart &amp; Bilingual Videos</h3>
+          <h3 id="add-modal-title">Upload &amp; Manage Charts and Videos</h3>
         </div>
         <button class="btn-close-modal" onclick="closeAddChartModal()">✕</button>
       </div>
-      <div class="modal-body">
-        <form id="add-chart-form" onsubmit="submitNewChart(event)">
-          <div class="form-group">
-            <label class="form-label">Setup Title</label>
-            <input type="text" id="new-chart-title" class="form-input" placeholder="e.g. Reel 25: Fair Value Gap Sniper Retest" required />
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Category</label>
-            <select id="new-chart-category" class="form-select">
-              <option value="SMC & Liquidity">SMC &amp; Liquidity</option>
-              <option value="Traps & Fakeouts">Traps &amp; Fakeouts</option>
-              <option value="Price Action Core">Price Action Core</option>
-              <option value="Candlestick Patterns">Candlestick Patterns</option>
-              <option value="Advanced Strategies">Advanced Strategies</option>
-              <option value="Index Strategies">Index Strategies</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Setup Summary &amp; Strategy Description</label>
-            <textarea id="new-chart-summary" class="form-textarea" placeholder="Explain the context of this drawn chart..." required></textarea>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">Key Institutional Takeaway</label>
-            <input type="text" id="new-chart-takeaway" class="form-input" placeholder="e.g. Wait for 5-minute liquidity sweep before entering" required />
-          </div>
-
-          <!-- Chart Image File -->
-          <div class="form-group">
-            <label class="form-label">Upload Chart Image (PNG, JPG, or SVG)</label>
-            <input type="file" id="new-chart-image-file" class="form-input" accept="image/*" />
-            <span class="form-help-text">Leave blank to use dynamic institutional SVG template.</span>
-          </div>
-
-          <!-- Telugu Video -->
-          <div class="form-group">
-            <label class="form-label">Telugu (తెలుగు) Explanation Video</label>
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-              <input type="file" id="new-chart-telugu-file" class="form-input" accept="video/mp4,video/*" />
-              <div style="text-align: center; font-size: 0.8rem; color: var(--text-muted);">- OR select existing from repository -</div>
-              <select id="new-chart-telugu-select" class="form-select"></select>
-            </div>
-          </div>
-
-          <!-- English Video -->
-          <div class="form-group">
-            <label class="form-label">English Explanation Video</label>
-            <div style="display: flex; flex-direction: column; gap: 8px;">
-              <input type="file" id="new-chart-english-file" class="form-input" accept="video/mp4,video/*" />
-              <div style="text-align: center; font-size: 0.8rem; color: var(--text-muted);">- OR select existing from repository -</div>
-              <select id="new-chart-english-select" class="form-select"></select>
-            </div>
-          </div>
-
-          <button type="submit" id="new-chart-submit-btn" class="btn btn-primary" style="width: 100%; margin-top: 14px;">
-            Publish Chart Setup
+      
+      <div class="modal-body" style="padding-top: 14px;">
+        <!-- Asset Management Sub-Bar (Small Bar Requested by User) -->
+        <div class="admin-subnav-bar">
+          <button type="button" class="admin-subnav-pill active" id="subnav-btn-charts" onclick="switchAddChartSubTab('charts')">
+            <span class="subnav-pill-icon">📊</span>
+            <span>Only Charts</span>
+            <span class="subnav-badge" id="subnav-charts-count">0</span>
           </button>
-        </form>
+          <button type="button" class="admin-subnav-pill" id="subnav-btn-videos" onclick="switchAddChartSubTab('videos')">
+            <span class="subnav-pill-icon">🎬</span>
+            <span>Only Videos</span>
+            <span class="subnav-badge" id="subnav-videos-count">0</span>
+          </button>
+          <button type="button" class="admin-subnav-pill" id="subnav-btn-full" onclick="switchAddChartSubTab('full')">
+            <span class="subnav-pill-icon">⚡</span>
+            <span>Complete Setup</span>
+          </button>
+        </div>
+
+        <!-- ==================== SUBPANEL 1: ONLY CHARTS ==================== -->
+        <div id="subpanel-charts" class="admin-subpanel active">
+          <div class="admin-dropzone" id="chart-dropzone" onclick="document.getElementById('chart-only-file-input').click()">
+            <input type="file" id="chart-only-file-input" accept="image/*" style="display: none;" onchange="handleChartOnlyFileInput(event)" />
+            <div class="dropzone-icon">📥</div>
+            <div class="dropzone-text">
+              <strong>Tap or Drag &amp; Drop Chart Image Here</strong>
+              <span>Upload PNG, JPG, or SVG directly from your mobile device or PC</span>
+            </div>
+            <button type="button" class="btn btn-sm btn-primary" style="margin-top: 8px; pointer-events: none;">
+              Choose Image File
+            </button>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; margin: 18px 0 10px; flex-wrap: wrap; gap: 8px;">
+            <h4 style="margin: 0; font-size: 0.94rem; color: #fff; display: flex; align-items: center; gap: 6px;">
+              <span>🖼️</span> Uploaded Charts Library
+            </h4>
+            <span style="font-size: 0.76rem; color: var(--text-muted);">Individually rename, delete, or link to setup</span>
+          </div>
+
+          <div class="admin-asset-grid" id="admin-charts-asset-grid">
+            <div style="text-align: center; color: var(--text-muted); padding: 24px; width: 100%;">
+              <span class="spinner-small"></span> Loading charts...
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== SUBPANEL 2: ONLY VIDEOS ==================== -->
+        <div id="subpanel-videos" class="admin-subpanel" style="display: none;">
+          <div style="background: rgba(14, 23, 42, 0.65); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 14px; margin-bottom: 14px;">
+            <div class="form-grid-2">
+              <div class="form-group" style="margin-bottom: 8px;">
+                <label class="form-label">Video Language</label>
+                <select id="video-only-lang" class="form-select">
+                  <option value="telugu">Telugu (తెలుగు) Reel</option>
+                  <option value="english">English Explanation Reel</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin-bottom: 8px;">
+                <label class="form-label">Custom Video Title (Optional)</label>
+                <input type="text" id="video-only-title" class="form-input" placeholder="e.g. Volume Secret Retest" />
+              </div>
+            </div>
+
+            <div class="admin-dropzone" id="video-dropzone" onclick="document.getElementById('video-only-file-input').click()" style="margin-top: 8px;">
+              <input type="file" id="video-only-file-input" accept="video/mp4,video/*" style="display: none;" onchange="handleVideoOnlyFileInput(event)" />
+              <div class="dropzone-icon">🎬</div>
+              <div class="dropzone-text">
+                <strong>Tap or Drag &amp; Drop Video Here</strong>
+                <span>Upload MP4 breakdown from mobile phone or computer</span>
+              </div>
+              <button type="button" class="btn btn-sm btn-secondary" style="margin-top: 8px; pointer-events: none;">
+                Select Video File
+              </button>
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; justify-content: space-between; margin: 16px 0 10px; flex-wrap: wrap; gap: 8px;">
+            <h4 style="margin: 0; font-size: 0.94rem; color: #fff; display: flex; align-items: center; gap: 6px;">
+              <span>🎥</span> Video Breakdown Repository
+            </h4>
+            <span style="font-size: 0.76rem; color: var(--text-muted);">Preview, link, or delete</span>
+          </div>
+
+          <div class="admin-asset-grid" id="admin-videos-asset-grid">
+            <div style="text-align: center; color: var(--text-muted); padding: 24px; width: 100%;">
+              <span class="spinner-small"></span> Loading video repository...
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== SUBPANEL 3: COMPLETE SETUP PACK ==================== -->
+        <div id="subpanel-full" class="admin-subpanel" style="display: none;">
+          <form id="add-chart-form" onsubmit="submitNewChart(event)">
+            <div class="form-group">
+              <label class="form-label">Setup Title</label>
+              <input type="text" id="new-chart-title" class="form-input" placeholder="e.g. Reel 25: Fair Value Gap Sniper Retest" required />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Category</label>
+              <select id="new-chart-category" class="form-select">
+                <option value="SMC & Liquidity">SMC &amp; Liquidity</option>
+                <option value="Traps & Fakeouts">Traps &amp; Fakeouts</option>
+                <option value="Price Action Core">Price Action Core</option>
+                <option value="Candlestick Patterns">Candlestick Patterns</option>
+                <option value="Advanced Strategies">Advanced Strategies</option>
+                <option value="Index Strategies">Index Strategies</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Setup Summary &amp; Strategy Description</label>
+              <textarea id="new-chart-summary" class="form-textarea" placeholder="Explain the context of this drawn chart..." required></textarea>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Key Institutional Takeaway</label>
+              <input type="text" id="new-chart-takeaway" class="form-input" placeholder="e.g. Wait for 5-minute liquidity sweep before entering" required />
+            </div>
+
+            <!-- Chart Image Picker -->
+            <div class="form-group">
+              <label class="form-label">Chart Image</label>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <select id="new-chart-existing-image-select" class="form-select" onchange="previewNewChartImageChoice(this.value)">
+                  <option value="">-- Select from Existing Uploaded Charts --</option>
+                </select>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 0.78rem; color: var(--text-muted);">- OR upload new image: -</span>
+                  <input type="file" id="new-chart-image-file" class="form-input form-input-sm" accept="image/*" onchange="previewNewChartUploadedFile(this)" />
+                </div>
+                <div id="new-chart-image-preview-box" style="display: none; align-items: center; gap: 10px; padding: 8px; background: rgba(0,0,0,0.3); border-radius: 8px;">
+                  <img id="new-chart-img-preview" src="" alt="" style="width: 54px; height: 38px; object-fit: cover; border-radius: 6px; border: 1px solid var(--accent-green);" />
+                  <span id="new-chart-img-name" style="font-size: 0.8rem; color: #fff;"></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Telugu Video -->
+            <div class="form-group">
+              <label class="form-label">Telugu (తెలుగు) Explanation Video</label>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <select id="new-chart-telugu-select" class="form-select"></select>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 0.78rem; color: var(--text-muted);">- OR upload new: -</span>
+                  <input type="file" id="new-chart-telugu-file" class="form-input form-input-sm" accept="video/mp4,video/*" />
+                </div>
+              </div>
+            </div>
+
+            <!-- English Video -->
+            <div class="form-group">
+              <label class="form-label">English Explanation Video</label>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <select id="new-chart-english-select" class="form-select"></select>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <span style="font-size: 0.78rem; color: var(--text-muted);">- OR upload new: -</span>
+                  <input type="file" id="new-chart-english-file" class="form-input form-input-sm" accept="video/mp4,video/*" />
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" id="new-chart-submit-btn" class="btn btn-primary" style="width: 100%; margin-top: 14px;">
+              Publish Chart Setup
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- G. EDIT / RENAME CHART MODAL -->
+  <!-- G. EDIT / RENAME CHART MODAL (WITH INTERACTIVE PREVIEW BOX & VIDEO SWAPPER) -->
   <div id="rename-chart-modal" class="modal-overlay">
-    <div class="modal-card" style="max-width: 580px;">
+    <div class="modal-card" style="max-width: 620px;">
       <div class="modal-header">
-        <h3>Edit / Rename Chart Setup</h3>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 1.1rem;">✏️</span>
+          <h3>Edit Chart Setup &amp; Media Pairings</h3>
+        </div>
         <button class="btn-close-modal" onclick="closeRenameModal()">✕</button>
       </div>
       <div class="modal-body">
         <form id="edit-chart-form" onsubmit="submitEditChart(event)">
           <input type="hidden" id="edit-chart-id" />
 
-          <div class="form-group">
+          <!-- Interactive Preview Box (Requested Feature: Preview Box with Option to Choose Charts) -->
+          <div class="edit-chart-preview-box">
+            <div class="edit-preview-header">
+              <span class="preview-badge-label">📊 CURRENT CHART PREVIEW</span>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <button type="button" class="btn-preview-zoom" onclick="zoomCurrentEditChart()" title="View full image">🔍 Zoom</button>
+                <button type="button" class="btn-preview-zoom btn-test-dl" onclick="downloadCurrentEditChart()" title="Download current chart image">📥 Download</button>
+              </div>
+            </div>
+            
+            <div class="edit-preview-display">
+              <div class="edit-preview-thumb-wrap">
+                <img id="edit-modal-chart-preview-img" src="/assets/charts/chart-1.svg" alt="Chart Preview" class="edit-preview-thumbnail" onclick="zoomCurrentEditChart()" title="Click to view full image" />
+              </div>
+              
+              <div class="edit-preview-swap-controls">
+                <label class="form-label" style="font-size: 0.78rem; margin-bottom: 4px; color: var(--accent-green);">
+                  Choose / Swap Chart Image
+                </label>
+                
+                <!-- Option 1: Choose from existing chart images -->
+                <select id="edit-chart-select-existing" class="form-select form-select-sm" onchange="handleEditSelectExistingChart(this.value)">
+                  <option value="">-- Choose from Available Charts --</option>
+                </select>
+                
+                <div style="text-align: center; font-size: 0.72rem; color: var(--text-muted); margin: 4px 0;">- OR drag/upload new from device -</div>
+                
+                <!-- Option 2: Upload new replacement file -->
+                <label class="btn-file-upload-label" for="edit-chart-replacement-file">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <span>Upload Replacement Image</span>
+                </label>
+                <input type="file" id="edit-chart-replacement-file" accept="image/*" style="display: none;" onchange="handleEditReplacementFileSelected(event)" />
+                <input type="hidden" id="edit-chart-current-image-url" />
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-top: 14px;">
             <label class="form-label">Chart Title</label>
             <input type="text" id="edit-chart-title" class="form-input" required />
           </div>
@@ -1855,20 +2009,54 @@
             <input type="text" id="edit-chart-takeaway" class="form-input" />
           </div>
 
+          <!-- Video Pairings with Test Play & Download Buttons -->
           <div class="form-group">
-            <label class="form-label">Telugu Video URL / Path</label>
-            <input type="text" id="edit-chart-telugu-url" class="form-input" />
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+              <label class="form-label" style="margin-bottom: 0;">Telugu (తెలుగు) Video Pairing</label>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <button type="button" class="btn-test-play" onclick="testPlayModalVideo('telugu')" title="Test play this video">▶ Test Play</button>
+                <button type="button" class="btn-test-play btn-test-dl" onclick="downloadModalVideo('telugu')" title="Download Telugu Video">📥 Download</button>
+              </div>
+            </div>
+            <select id="edit-chart-telugu-select" class="form-select" onchange="handleEditTeluguSelectChange(this.value)">
+              <option value="">-- Select from Existing Telugu Videos --</option>
+            </select>
+            <input type="text" id="edit-chart-telugu-url" class="form-input form-input-sm" placeholder="Custom URL or path" style="margin-top: 5px;" />
+            <input type="file" id="edit-chart-telugu-file" class="form-input form-input-sm" accept="video/mp4,video/*" style="margin-top: 5px;" />
           </div>
 
           <div class="form-group">
-            <label class="form-label">English Video URL / Path</label>
-            <input type="text" id="edit-chart-english-url" class="form-input" />
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+              <label class="form-label" style="margin-bottom: 0;">English Video Pairing</label>
+              <div style="display: flex; gap: 6px; align-items: center;">
+                <button type="button" class="btn-test-play" onclick="testPlayModalVideo('english')" title="Test play this video">▶ Test Play</button>
+                <button type="button" class="btn-test-play btn-test-dl" onclick="downloadModalVideo('english')" title="Download English Video">📥 Download</button>
+              </div>
+            </div>
+            <select id="edit-chart-english-select" class="form-select" onchange="handleEditEnglishSelectChange(this.value)">
+              <option value="">-- Select from Existing English Videos --</option>
+            </select>
+            <input type="text" id="edit-chart-english-url" class="form-input form-input-sm" placeholder="Custom URL or path" style="margin-top: 5px;" />
+            <input type="file" id="edit-chart-english-file" class="form-input form-input-sm" accept="video/mp4,video/*" style="margin-top: 5px;" />
           </div>
 
-          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
-            Save Changes
+          <button type="submit" id="edit-chart-submit-btn" class="btn btn-primary" style="width: 100%; margin-top: 14px;">
+            Save All Changes
           </button>
         </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- H. QUICK ASSET PREVIEW MODAL (IMAGE ZOOM & VIDEO TEST PLAY) -->
+  <div id="admin-media-preview-modal" class="modal-overlay" onclick="closeAdminMediaPreviewModal()">
+    <div class="modal-card" style="max-width: 680px; text-align: center;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="admin-media-preview-title" style="font-size: 1.05rem;">Media Preview</h3>
+        <button class="btn-close-modal" onclick="closeAdminMediaPreviewModal()">✕</button>
+      </div>
+      <div class="modal-body" id="admin-media-preview-body" style="padding: 16px;">
+        <!-- Injected dynamically: image or video player -->
       </div>
     </div>
   </div>
@@ -1877,7 +2065,7 @@
   <div id="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="/js/app.js?v=20260914_v36"></script>
+  <script src="/js/app.js?v=20260915_v39"></script>
 
   <!-- V22: SHARE WEBSITE SOCIAL MEDIA POPUP MODAL -->
   <div id="share-website-modal" class="modal-overlay" onclick="if (event.target === this) closeWebsiteShareModal();">
