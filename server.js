@@ -110,8 +110,8 @@ app.use((req, res, next) => {
 // Keeps the website active on Render for 8 hours after any visitor visits the website.
 // After 8 hours with no visitors, self-ping stops allowing Render to enter idle sleep to save quota.
 // Whenever anyone clicks the website link in your bio, Render wakes up and resets the 8-hour timer!
-const KEEP_ALIVE_DURATION_MS = 8 * 60 * 60 * 1000; // 8 hours in ms
-const SELF_PING_INTERVAL_MS = 10 * 60 * 1000;      // Ping every 10 minutes (Render sleeps at 15 mins)
+const KEEP_ALIVE_DURATION_MS = 365 * 24 * 60 * 60 * 1000; // 24/7/365 permanent active window
+const SELF_PING_INTERVAL_MS = 7 * 60 * 1000;             // Ping every 7 minutes (prevents Render from sleeping)
 const APP_PUBLIC_URL = process.env.RENDER_EXTERNAL_URL || 'https://telugu-trading-hub.onrender.com';
 
 let lastVisitorTimestamp = Date.now(); // Initialized to start time
@@ -1952,21 +1952,16 @@ app.listen(PORT, async () => {
   }
 });
 
-// Self-Ping Timer: Resets Render's 15-minute inactivity counter for 8 hours
+// Self-Ping Timer: 24/7 Persistent Keep-Alive keeps Render awake even when laptop is turned off
 setInterval(async () => {
-  const elapsed = Date.now() - lastVisitorTimestamp;
-  if (elapsed < KEEP_ALIVE_DURATION_MS) {
-    try {
-      const pingEndpoint = `${APP_PUBLIC_URL}/api/keepalive`;
-      const response = await fetch(pingEndpoint, {
-        headers: { 'x-keep-alive': 'internal-ping' }
-      });
-      const remainingMinutes = Math.round((KEEP_ALIVE_DURATION_MS - elapsed) / (1000 * 60));
-      console.log(`[Keep-Alive] Self-ping successful (Status: ${response.status}). Server staying active for ~${remainingMinutes} more minutes.`);
-    } catch (err) {
-      console.log(`[Keep-Alive] Ping notice: ${err.message}`);
-    }
-  } else {
-    console.log('[Keep-Alive] 8 hours elapsed without new visitors. Server allowing idle sleep to conserve quota.');
+  try {
+    const pingEndpoint = `${APP_PUBLIC_URL}/api/keepalive`;
+    const response = await fetch(pingEndpoint, {
+      headers: { 'x-keep-alive': 'internal-ping' }
+    });
+    lastVisitorTimestamp = Date.now();
+    console.log(`[Keep-Alive] 24/7 cloud self-ping successful (Status: ${response.status}). Render container hot & awake.`);
+  } catch (err) {
+    console.log(`[Keep-Alive] Ping notice: ${err.message}`);
   }
 }, SELF_PING_INTERVAL_MS);
