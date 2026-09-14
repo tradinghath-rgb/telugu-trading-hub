@@ -4817,19 +4817,26 @@ function initMobileQuickStripSpy() {
     { id: 'support-section', pill: strip.querySelector('a[href="#support-section"]') }
   ];
 
+  let isScrollTicking = false;
   window.addEventListener('scroll', () => {
-    const scrollPos = window.scrollY + 140;
-    trackedSections.forEach(s => {
-      const el = document.getElementById(s.id);
-      if (el && s.pill) {
-        const top = el.offsetTop;
-        const height = el.offsetHeight;
-        if (scrollPos >= top && scrollPos < top + height) {
-          s.pill.classList.add('active-nav-pill');
-        } else {
-          s.pill.classList.remove('active-nav-pill');
-        }
-      }
-    });
+    if (!isScrollTicking) {
+      window.requestAnimationFrame(() => {
+        const scrollPos = window.scrollY + 140;
+        trackedSections.forEach(s => {
+          const el = document.getElementById(s.id);
+          if (el && s.pill) {
+            const top = el.offsetTop;
+            const height = el.offsetHeight;
+            if (scrollPos >= top && scrollPos < top + height) {
+              s.pill.classList.add('active-nav-pill');
+            } else {
+              s.pill.classList.remove('active-nav-pill');
+            }
+          }
+        });
+        isScrollTicking = false;
+      });
+      isScrollTicking = true;
+    }
   }, { passive: true });
 }
