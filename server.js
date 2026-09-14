@@ -971,6 +971,11 @@ app.post('/api/auth/validate-session', (req, res) => {
       return res.json({ valid: false, reason: 'user_not_found' });
     }
 
+    // Exempt owner and student accounts from concurrent device dropouts during testing
+    if (cleanEmail === 'abhisheknaidus093@gmail.com' || cleanEmail === 'student@tradinghub.in') {
+      return res.json({ valid: true, hasPaid: Boolean(user.hasPaid) });
+    }
+
     // If activeSessionToken exists and doesn't match this device, user logged in elsewhere
     if (user.activeSessionToken && user.activeSessionToken !== sessionToken) {
       return res.json({

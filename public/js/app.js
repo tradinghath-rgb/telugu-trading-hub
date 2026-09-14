@@ -218,11 +218,11 @@ function saveAuthState(user) {
       }
     }
     if (user.role === 'admin') {
-      // Store admin session strictly in sessionStorage so closing browser requires re-entry of password
       sessionStorage.setItem('tradinghub_user', JSON.stringify(user));
-      localStorage.removeItem('tradinghub_user');
+      localStorage.setItem('tradinghub_user', JSON.stringify(user));
     } else {
       localStorage.setItem('tradinghub_user', JSON.stringify(user));
+      sessionStorage.setItem('tradinghub_user', JSON.stringify(user));
     }
   } else {
     localStorage.removeItem('tradinghub_user');
@@ -271,6 +271,12 @@ function toggleShowAllGallery(show) {
 
 // Redirect Unpaid Visitor Directly to Payment Section
 function handleUnpaidChartClick() {
+  if (state.currentUser) {
+    // User is ALREADY logged in: Never show login prompt!
+    showToast('🔒 High-Resolution Chart Setup Locked. Unlock Full Member Access below for ₹399.', 'info');
+    relocateToPricingSection();
+    return;
+  }
   showToast('🔒 High-Resolution Chart Setup Locked. Unlock Full Member Access to View.', 'info');
   relocateToPricingSection();
   openCheckoutAuthPromptModal();
@@ -1135,17 +1141,21 @@ function handleCheckoutRedirect(url) {
   const checkoutUrl = url || state.siteConfig?.pricing?.razorpayUrl || 'https://rzp.io/rzp/2a3h6cU';
   pendingCheckoutUrl = checkoutUrl;
 
-  // If user is not logged in, display the sleek central "Sign In or Login for Access" popup modal
-  if (!state.currentUser) {
-    openCheckoutAuthPromptModal();
+  // If user is already logged in: Proceed directly to payment - NEVER prompt for login!
+  if (state.currentUser) {
+    proceedDirectlyToPayment(checkoutUrl);
     return;
   }
 
-  // Already logged in: Proceed directly to Razorpay
-  proceedDirectlyToPayment(checkoutUrl);
+  // Guest / Unregistered visitor: show sign in / registration prompt
+  openCheckoutAuthPromptModal();
 }
 
 function openCheckoutAuthPromptModal() {
+  // If user is already logged in, NEVER show login prompt modal!
+  if (state.currentUser) {
+    return;
+  }
   const modal = document.getElementById('checkout-auth-prompt-modal');
   if (modal) {
     modal.classList.add('active');
@@ -1629,6 +1639,7 @@ async function handleAuthSubmit() {
       });
       closeAuthModal();
       localStorage.setItem('tradinghub_has_registered', 'true');
+      renderApp(); // Immediately update all UI, navbar, and card bindings for active session
 
       if (data.user.role === 'admin') {
         showToast('👑 Admin Login Successful! Welcome Owner.', 'success');
