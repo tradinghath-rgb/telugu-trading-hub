@@ -1881,6 +1881,14 @@ app.get('/api/admin/stats', (req, res) => {
     const freeCount = users.length - proCount;
     const verifiedPayments = payments.filter(p => p.verified).length;
 
+    const attempts = readJson('payment_attempts.json', []);
+    const dropoffsCount = attempts.filter(a => {
+      const cleanEmail = (a.email || '').toLowerCase().trim();
+      const hasPaid = users.some(u => u.email.toLowerCase() === cleanEmail && u.hasPaid) ||
+                      payments.some(p => p.email.toLowerCase() === cleanEmail && p.verified);
+      return !hasPaid;
+    }).length;
+
     res.json({
       totalUsers: users.length,
       proUsers: proCount,
@@ -1888,6 +1896,7 @@ app.get('/api/admin/stats', (req, res) => {
       totalCharts: charts.length,
       totalComments: comments.length,
       verifiedPayments: verifiedPayments,
+      paymentDropoffs: dropoffsCount,
       estimatedRevenue: proCount * 399
     });
   } catch (e) {
@@ -1949,6 +1958,102 @@ app.get('*', (req, res) => {
 });
 
 // Start Server & Initialize Cloud Data Persistence
+
+// ==================== ABANDONED PAYMENT & DROPOFF TRACKER (v21) ====================
+app.post('/api/payments/track-attempt', (req, res) => {
+  try {
+    const { email, name, source } = req.body;
+    let attempts = readJson('payment_attempts.json', []);
+    const cleanEmail = email ? email.trim().toLowerCase() : '';
+
+    const newAttempt = {
+      id: `att-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
+      email: cleanEmail || 'Guest Visitor (Not Logged In)',
+      name: name ? name.trim() : (cleanEmail ? cleanEmail.split('@')[0] : 'Interested Trader'),
+      wentAt: new Date().toISOString(),
+      returnedAt: null,
+      status: 'in_payment_app',
+      device: /mobile/i.test(req.headers['user-agent'] || '') ? '📱 Mobile Phone' : '💻 Desktop / PC',
+      source: source || 'Checkout Button'
+    };
+
+    attempts.unshift(newAttempt);
+    if (attempts.length > 250) attempts = attempts.slice(0, 250);
+    writeJson('payment_attempts.json', attempts);
+    syncToCloud('payment_attempts.json', attempts);
+
+    res.json({ success: true, attemptId: newAttempt.id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/payments/track-return', (req, res) => {
+  try {
+    const { attemptId, email } = req.body;
+    let attempts = readJson('payment_attempts.json', []);
+    const users = readJson('users.json', []);
+    const payments = readJson('payments.json', []);
+
+    let attempt = attempts.find(a => a.id === attemptId);
+    if (!attempt && email) {
+      attempt = attempts.find(a => a.email.toLowerCase() === email.trim().toLowerCase());
+    }
+
+    if (attempt) {
+      const cleanEmail = attempt.email.toLowerCase();
+      const isPaid = users.some(u => u.email.toLowerCase() === cleanEmail && u.hasPaid) ||
+                     payments.some(p => p.email.toLowerCase() === cleanEmail && p.verified);
+
+      if (!isPaid) {
+        attempt.status = 'returned_unpaid';
+        attempt.returnedAt = new Date().toISOString();
+        writeJson('payment_attempts.json', attempts);
+        syncToCloud('payment_attempts.json', attempts);
+      }
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/payment-attempts', (req, res) => {
+  try {
+    const attempts = readJson('payment_attempts.json', []);
+    const users = readJson('users.json', []);
+    const payments = readJson('payments.json', []);
+
+    const enriched = attempts.map(a => {
+      const cleanEmail = (a.email || '').toLowerCase().trim();
+      const hasPaid = users.some(u => u.email.toLowerCase() === cleanEmail && u.hasPaid) ||
+                      payments.some(p => p.email.toLowerCase() === cleanEmail && p.verified);
+      return {
+        ...a,
+        hasPaidLater: Boolean(hasPaid)
+      };
+    });
+
+    res.json({ success: true, attempts: enriched });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/admin/payment-attempts/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    let attempts = readJson('payment_attempts.json', []);
+    attempts = attempts.filter(a => a.id !== id);
+    writeJson('payment_attempts.json', attempts);
+    syncToCloud('payment_attempts.json', attempts);
+    res.json({ success: true, message: 'Record removed successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(PORT, async () => {
   console.log(`====================================================`);
   console.log(`🚀 TRADING HUB AWS BACKEND RUNNING ON PORT ${PORT}`);

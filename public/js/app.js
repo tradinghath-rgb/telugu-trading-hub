@@ -47,6 +47,7 @@ const state = {
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', async () => {
   initAuthState();
+  try { renderNavbar(); } catch (_) {} // Synchronous immediate render: Login button visible immediately on all phones!
   await loadSiteConfig();
   await loadCharts();
   await loadChartGallery();
@@ -1044,6 +1045,7 @@ let pendingCheckoutUrl = null;
 function handleCheckoutRedirect(url) {
   const checkoutUrl = url || state.siteConfig?.pricing?.razorpayUrl || 'https://rzp.io/rzp/2a3h6cU';
   pendingCheckoutUrl = checkoutUrl;
+  try { trackPaymentAttempt('Checkout Redirect Button'); } catch (_) {}
 
   // If user is already logged in: Proceed directly to payment - NEVER prompt for login!
   if (state.currentUser) {
@@ -1077,6 +1079,32 @@ function closeCheckoutAuthPromptModal() {
 function relocateToAuthFromPrompt(mode = 'login') {
   closeCheckoutAuthPromptModal();
   openAuthModal(mode);
+}
+
+function proceedDirectlyToPaymentWithDetails() {
+  const nameInput = document.getElementById('prompt-guest-name');
+  const emailInput = document.getElementById('prompt-guest-email');
+
+  const name = nameInput ? nameInput.value.trim() : '';
+  const email = emailInput ? emailInput.value.trim().toLowerCase() : '';
+
+  if (!email || !email.includes('@') || !email.includes('.')) {
+    showToast('Please enter a valid Gmail / Email address so your account and access are credited!', 'error');
+    if (emailInput) emailInput.focus();
+    return;
+  }
+
+  // Persist for seamless recognition
+  localStorage.setItem('tradinghub_last_email', email);
+  localStorage.setItem('tradinghub_pending_email', email);
+  if (name) localStorage.setItem('tradinghub_last_name', name);
+
+  // Track the attempt with captured name and email
+  trackPaymentAttempt('Direct Checkout with Details', { email, name });
+
+  const url = pendingCheckoutUrl || state.siteConfig?.pricing?.razorpayUrl || 'https://rzp.io/rzp/2a3h6cU';
+  closeCheckoutAuthPromptModal();
+  proceedDirectlyToPayment(url);
 }
 
 function proceedDirectlyToPaymentFromPrompt() {
@@ -2158,6 +2186,8 @@ function switchAdminTab(tabName, btn) {
     populateCmsForm();
   } else if (tabName === 'aws') {
     loadAwsStatus();
+  } else if (tabName === 'dropoffs') {
+    loadAdminPaymentAttempts();
   }
 }
 
@@ -3514,6 +3544,10 @@ async function loadAdminStats() {
     if (elFree) elFree.textContent = stats.freeUsers || 0;
     if (elCharts) elCharts.textContent = stats.totalCharts || 0;
     if (elComments) elComments.textContent = stats.totalComments || 0;
+    const elDropoffs = document.getElementById('admin-stat-dropoffs');
+    if (elDropoffs) elDropoffs.textContent = stats.paymentDropoffs || 0;
+    const elTabCount = document.getElementById('count-payment-dropoffs');
+    if (elTabCount && stats.paymentDropoffs !== undefined) elTabCount.textContent = stats.paymentDropoffs;
   } catch (e) {
     console.error('Error fetching admin stats:', e);
   }
@@ -3959,6 +3993,9 @@ function adminNavigateKpi(target) {
   } else if (target === 'comments') {
     const tabBtn = document.querySelector('.admin-tabs-nav .admin-tab-btn:nth-child(4)');
     switchAdminTab('comments', tabBtn);
+  } else if (target === 'dropoffs') {
+    const tabBtn = document.querySelector('.admin-tabs-nav .admin-tab-btn[onclick*="dropoffs"]');
+    switchAdminTab('dropoffs', tabBtn);
   }
 }
 
@@ -4154,3 +4191,145 @@ window.handleAuthEmailInput = handleAuthEmailInput;
 window.handleAuthEmailFocus = handleAuthEmailFocus;
 window.hideAuthSuggestionDropdown = hideAuthSuggestionDropdown;
 window.fillSuggestedAccount = fillSuggestedAccount;
+
+// ==================== ABANDONED PAYMENT & DROPOFF TRACKER (CLIENT) ====================
+state.adminDropoffsList = [];
+
+async function trackPaymentAttempt(source = 'Checkout Button', customDetails = null) {
+  const user = state.currentUser;
+  const email = (customDetails && customDetails.email) || user?.email || localStorage.getItem('tradinghub_last_email') || '';
+  const name = (customDetails && customDetails.name) || user?.name || (email ? email.split('@')[0] : 'Interested Trader');
+
+  try {
+    const res = await fetch('/api/payments/track-attempt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, name, source })
+    });
+    const data = await res.json();
+    if (data.attemptId) {
+      sessionStorage.setItem('tradinghub_pending_attempt_id', data.attemptId);
+      sessionStorage.setItem('tradinghub_pending_attempt_email', email);
+    }
+  } catch (_) {}
+}
+
+function checkUserReturnFromPayment() {
+  const pendingAttemptId = sessionStorage.getItem('tradinghub_pending_attempt_id');
+  if (!pendingAttemptId) return;
+
+  const email = sessionStorage.getItem('tradinghub_pending_attempt_email') || state.currentUser?.email || '';
+
+  if (!state.currentUser?.hasPaid) {
+    fetch('/api/payments/track-return', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ attemptId: pendingAttemptId, email })
+    }).catch(() => {});
+  }
+  sessionStorage.removeItem('tradinghub_pending_attempt_id');
+}
+
+window.addEventListener('focus', checkUserReturnFromPayment);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    checkUserReturnFromPayment();
+  }
+});
+
+async function loadAdminPaymentAttempts() {
+  const tbody = document.getElementById('admin-dropoffs-table-body');
+  if (!tbody) return;
+
+  try {
+    const res = await fetch('/api/admin/payment-attempts');
+    const data = await res.json();
+    state.adminDropoffsList = data.attempts || [];
+
+    const unpaidCount = state.adminDropoffsList.filter(a => a.status === 'returned_unpaid').length;
+    const badgeCount = document.getElementById('count-payment-dropoffs');
+    const kpiCount = document.getElementById('kpi-dropoffs-count');
+    if (badgeCount) badgeCount.textContent = unpaidCount;
+    if (kpiCount) kpiCount.textContent = unpaidCount;
+
+    renderAdminPaymentAttemptsTable();
+  } catch (err) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--accent-red); padding: 20px;">Failed to load dropoffs: ' + escapeHtml(err.message) + '</td></tr>';
+  }
+}
+
+function renderAdminPaymentAttemptsTable(filteredList) {
+  const tbody = document.getElementById('admin-dropoffs-table-body');
+  if (!tbody) return;
+
+  const list = filteredList || state.adminDropoffsList || [];
+  if (list.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--text-muted); padding: 30px;">No payment dropoffs recorded yet. Real-time leads will appear here when traders click payment.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = list.map(a => {
+    let statusBadge = '';
+    if (a.hasPaidLater) {
+      statusBadge = '<span style="background: rgba(0, 242, 152, 0.15); color: var(--accent-green); border: 1px solid var(--accent-green); padding: 3px 8px; border-radius: 4px; font-size: 0.76rem; font-weight: 700;">✅ Later Paid</span>';
+    } else if (a.status === 'returned_unpaid') {
+      statusBadge = '<span style="background: rgba(255, 140, 0, 0.15); color: #ff9900; border: 1px solid #ff9900; padding: 3px 8px; border-radius: 4px; font-size: 0.76rem; font-weight: 700;">⚠️ Returned Without Payment</span>';
+    } else {
+      statusBadge = '<span style="background: rgba(255, 215, 0, 0.12); color: var(--accent-gold); border: 1px solid var(--accent-gold); padding: 3px 8px; border-radius: 4px; font-size: 0.76rem; font-weight: 700;">🕒 In Payment App</span>';
+    }
+
+    const timeStr = a.wentAt ? new Date(a.wentAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'short', timeStyle: 'short' }) : 'Recently';
+
+    return `
+      <tr>
+        <td><strong>${escapeHtml(a.name || 'Interested Trader')}</strong></td>
+        <td><a href="mailto:${encodeURIComponent(a.email)}" style="color: var(--accent-green); text-decoration: underline;">${escapeHtml(a.email || 'N/A')}</a></td>
+        <td style="font-size: 0.82rem; color: var(--text-secondary);">${escapeHtml(a.device || 'Mobile')}</td>
+        <td style="font-size: 0.82rem; color: var(--text-secondary);">${timeStr}</td>
+        <td>${statusBadge}</td>
+        <td>
+          <div style="display: flex; gap: 6px;">
+            <a href="mailto:${encodeURIComponent(a.email)}?subject=Assistance with your ₹399 Telugu Trading Hub Access&body=Hello ${encodeURIComponent(a.name || 'Trader')},%0D%0A%0D%0AWe noticed you were trying to access the Trading Hub Price Action course. If you experienced any issue in UPI or payment app, please let us know so we can assist you.%0D%0A%0D%0ABest regards,%0D%0ATrading Hub Team" class="btn btn-sm btn-primary" style="padding: 4px 8px; font-size: 0.74rem;">
+              ✉️ Email Lead
+            </a>
+            <button class="btn btn-sm btn-secondary" onclick="navigator.clipboard.writeText('${a.email}'); showToast('Copied email: ${a.email}', 'info');" style="padding: 4px 8px; font-size: 0.74rem;">
+              📋 Copy
+            </button>
+            <button class="btn btn-sm btn-secondary" onclick="adminDeleteDropoff('${a.id}')" style="padding: 4px 8px; font-size: 0.74rem; color: var(--accent-red);">
+              🗑️
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function filterAdminDropoffs(query) {
+  const q = (query || '').toLowerCase().trim();
+  if (!q) {
+    renderAdminPaymentAttemptsTable();
+    return;
+  }
+  const filtered = (state.adminDropoffsList || []).filter(a => 
+    (a.name && a.name.toLowerCase().includes(q)) ||
+    (a.email && a.email.toLowerCase().includes(q))
+  );
+  renderAdminPaymentAttemptsTable(filtered);
+}
+
+async function adminDeleteDropoff(id) {
+  if (!confirm('Remove this dropoff record from the admin dashboard?')) return;
+  try {
+    await fetch(`/api/admin/payment-attempts/${id}`, { method: 'DELETE' });
+    showToast('Record removed', 'info');
+    loadAdminPaymentAttempts();
+  } catch (e) {
+    showToast('Failed to delete: ' + e.message, 'error');
+  }
+}
+
+window.loadAdminPaymentAttempts = loadAdminPaymentAttempts;
+window.filterAdminDropoffs = filterAdminDropoffs;
+window.adminDeleteDropoff = adminDeleteDropoff;
+window.trackPaymentAttempt = trackPaymentAttempt;

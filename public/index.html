@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/css/styles.css?v=20260914_v20" />
+  <link rel="stylesheet" href="/css/styles.css?v=20260914_v21" />
   <link rel="icon" type="image/png" href="/brand-logo" />
 </head>
 <body>
@@ -55,9 +55,14 @@
           </span>
         </a>
 
-        <!-- Dynamic Auth / User / Admin Buttons (Profile Icon always visible) -->
+        <!-- Dynamic Auth / User / Admin Buttons (Pre-rendered for zero-latency on new phones) -->
         <div id="nav-auth-actions" class="nav-auth-group">
-          <!-- Populated by app.js -->
+          <div class="nav-guest-cluster">
+            <button class="btn btn-sm btn-primary nav-signin-btn" onclick="openAuthModal('login')" title="Member Login / Sign Up">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <span>Login</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -84,6 +89,13 @@
         <a href="#charts-section" class="btn btn-secondary btn-lg">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
           <span>Explore 24+ Chart Setups</span>
+        </a>
+      </div>
+
+      <div class="hero-member-login-bar" style="margin-top: 14px; font-size: 0.9rem; color: var(--text-secondary); display: flex; align-items: center; gap: 8px;">
+        <span>Already enrolled or registered?</span>
+        <a href="javascript:void(0)" onclick="openAuthModal('login')" style="color: var(--accent-green); font-weight: 700; text-decoration: underline; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+          <span>Login here &rarr;</span>
         </a>
       </div>
 
@@ -666,22 +678,36 @@
           Please sign in or create an account so your ₹399 Lifetime Access and all drawn video charts are permanently saved to your profile.
         </p>
 
-        <div style="display: flex; flex-direction: column; gap: 10px;">
-          <button class="btn btn-primary btn-lg" onclick="relocateToAuthFromPrompt('login')" style="width: 100%; justify-content: center; gap: 8px;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-            <span>Login to Existing Account</span>
-          </button>
-
-          <button class="btn btn-secondary btn-lg" onclick="relocateToAuthFromPrompt('register')" style="width: 100%; justify-content: center; gap: 8px;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-            <span>Create New Account (Sign Up)</span>
+        <div id="prompt-guest-details" style="text-align: left; background: rgba(255,255,255,0.03); padding: 14px; border-radius: var(--radius-md); border: 1px solid rgba(0, 242, 152, 0.25); margin-bottom: 16px;">
+          <div style="font-size: 0.84rem; font-weight: 700; color: var(--accent-green); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
+            <span>⚡ Instant Checkout (Pay ₹399 via UPI / GPay / Paytm)</span>
+          </div>
+          <p style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 10px;">
+            Enter your Name &amp; Gmail so your Lifetime PRO access and invoice are credited immediately:
+          </p>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <input type="text" id="prompt-guest-name" class="form-input" placeholder="Your Full Name (e.g. Ramesh Kumar)" style="font-size: 0.86rem; padding: 9px 12px;" />
+            <input type="email" id="prompt-guest-email" class="form-input" placeholder="Your Gmail Address (e.g. ramesh@gmail.com)" style="font-size: 0.86rem; padding: 9px 12px;" />
+          </div>
+          <button class="btn btn-primary btn-lg" onclick="proceedDirectlyToPaymentWithDetails()" style="width: 100%; justify-content: center; margin-top: 10px; background: linear-gradient(135deg, #00f298, #00d2ff); color: #060b14; font-weight: 800; font-size: 0.95rem;">
+            🚀 Proceed to Payment Apps (₹399) &rarr;
           </button>
         </div>
 
-        <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between;">
-          <span style="font-size: 0.8rem; color: var(--text-muted);">Want to pay first?</span>
-          <button class="btn btn-sm btn-gold" onclick="proceedDirectlyToPaymentFromPrompt()" style="font-size: 0.8rem; padding: 6px 12px;">
-            Proceed to Payment (₹399) &rarr;
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+          <div style="flex: 1; height: 1px; background: var(--border-subtle);"></div>
+          <span style="font-size: 0.76rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Or with account</span>
+          <div style="flex: 1; height: 1px; background: var(--border-subtle);"></div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <button class="btn btn-secondary btn-md" onclick="relocateToAuthFromPrompt('login')" style="width: 100%; justify-content: center; gap: 8px; font-size: 0.88rem;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+            <span>Login to Existing Account</span>
+          </button>
+
+          <button class="btn btn-ghost btn-sm" onclick="relocateToAuthFromPrompt('register')" style="width: 100%; justify-content: center; gap: 6px; font-size: 0.82rem; color: var(--text-secondary);">
+            <span>Create Account with Password &rarr;</span>
           </button>
         </div>
       </div>
@@ -1270,6 +1296,13 @@
               <strong class="kpi-val" id="admin-stat-comments">--</strong>
             </div>
           </div>
+          <div class="admin-kpi-card" onclick="adminNavigateKpi('dropoffs')" title="Click to view members who went to payment and returned unpaid" style="border-color: rgba(255, 170, 0, 0.45); cursor: pointer;">
+            <div class="kpi-icon">🛒</div>
+            <div class="kpi-info">
+              <span class="kpi-label" style="color: #ffaa00;">Payment Dropoffs</span>
+              <strong class="kpi-val" id="admin-stat-dropoffs" style="color: #ffaa00;">0</strong>
+            </div>
+          </div>
         </div>
 
         <!-- Admin Navigation Tabs -->
@@ -1291,6 +1324,9 @@
           </button>
           <button class="admin-tab-btn" onclick="switchAdminTab('aws', this)">
             ☁️ AWS Cloud Status
+          </button>
+          <button class="admin-tab-btn" onclick="switchAdminTab('dropoffs', this)" style="border-color: rgba(255, 170, 0, 0.4); color: #ffaa00;">
+            🛒 Payment Dropoffs (<span id="count-payment-dropoffs">0</span>)
           </button>
         </div>
 
@@ -1529,6 +1565,52 @@
             </div>
           </div>
         </div>
+
+        <!-- Tab 6: Payment Dropoffs & Abandoned Checkout Inquiries (Exclusive Admin Feature) -->
+        <div id="admin-tab-dropoffs" class="admin-tab-content" style="display: none;">
+          <div class="admin-tab-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+            <div>
+              <h3 style="color: #ffaa00; margin-bottom: 4px; font-size: 1.18rem;">🛒 Members Who Went to Payment &amp; Returned Without Paying</h3>
+              <p style="font-size: 0.84rem; color: var(--text-secondary); margin: 0;">
+                Real-time high-intent leads who clicked "Pay ₹399", opened their payment apps, and returned without completing payment. Contact them to close the sale.
+              </p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-sm btn-secondary" onclick="loadAdminPaymentAttempts()">
+                ↻ Refresh Leads
+              </button>
+            </div>
+          </div>
+
+          <div class="admin-user-filter-bar" style="margin-bottom: 16px;">
+            <div class="admin-search-wrap" style="flex: 1;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="admin-dropoffs-search-input" class="form-input" placeholder="Search by Gmail or Name..." oninput="filterAdminDropoffs(this.value)" />
+            </div>
+          </div>
+
+          <div class="table-responsive" style="border: 1px solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden;">
+            <table class="data-table" style="width: 100%;">
+              <thead>
+                <tr>
+                  <th>Trader Name</th>
+                  <th>Gmail / Email</th>
+                  <th>Device</th>
+                  <th>Time Went to Payment</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="admin-dropoffs-table-body">
+                <tr>
+                  <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                    Loading payment dropoffs...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1710,6 +1792,6 @@
   <div id="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="/js/app.js?v=20260914_v20"></script>
+  <script src="/js/app.js?v=20260914_v21"></script>
 </body>
 </html>
