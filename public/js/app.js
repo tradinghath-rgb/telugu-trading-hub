@@ -792,19 +792,9 @@ function renderCharts() {
   }
 
   let cardsHtml = displayList.map(chart => {
-    const isSelected = state.selectedCharts && state.selectedCharts.has(chart.id);
-    const chartImg = chart.chartImage || '/assets/charts/chart-1.svg';
-    const escapedTitle = (chart.title || 'Lesson Chart').replace(/'/g, "\\'");
-
     return `
-      <div class="chart-card ${isSelected ? 'is-selected' : ''}" data-chart-id="${chart.id}" data-chart-url="${chartImg}" data-chart-title="${escapedTitle}">
-        <div class="chart-select-box ${isSelected ? 'selected' : ''}" onclick="toggleChartSelection(event, '${chart.id}', '${chartImg}', '${escapedTitle}')" title="Select chart for batch download">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#060b14" stroke-width="4"><polyline points="20 6 9 17 4 12"/></svg>
-        </div>
-        <button type="button" class="chart-card-dl-btn" onclick="downloadSingleChartDirect(event, '${chartImg}', '${escapedTitle}')" title="Download chart to Gallery (HD PNG)">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        </button>
-        <div class="chart-thumbnail-wrap" onclick="openChartModal('${chart.id}')" style="cursor: pointer;">
+      <div class="chart-card">
+        <div class="chart-thumbnail-wrap" onclick="openChartModal('${chart.id}')" style="cursor: pointer;" title="Watch Video Breakdown">
           <img src="${chart.chartImage || '/assets/charts/chart-1.svg'}" alt="${chart.title}" loading="lazy" decoding="async" />
           <span class="chart-reel-badge">LESSON #${chart.reelNumber || ''}</span>
           <span class="chart-bilingual-pill">
@@ -820,7 +810,7 @@ function renderCharts() {
             <span style="font-size: 0.78rem; color: var(--text-muted);">
               ${chart.views ? `${chart.views.toLocaleString()} traders studied` : 'Updated'}
             </span>
-            <button class="btn btn-sm ${isUnlocked ? 'btn-primary' : 'btn-secondary'}">
+            <button class="btn btn-sm ${isUnlocked ? 'btn-primary' : 'btn-secondary'}" onclick="openChartModal('${chart.id}')">
               ${isUnlocked ? 'Watch Breakdown' : '🔒 Preview (Locked)'}
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             </button>
@@ -915,14 +905,6 @@ function handleChartSearch(query) {
 
 // ==================== BILINGUAL VIDEO & CHART MODAL ====================
 async function openChartModal(chartId) {
-  // If user is currently in multi-select mode, clicking card toggles selection instead of opening modal
-  if (state.selectedCharts && state.selectedCharts.size > 0 && chartId) {
-    const chart = (state.charts || []).find(c => c.id === chartId);
-    if (chart) {
-      toggleChartSelection(null, chart.id, chart.chartImage || '/assets/charts/chart-1.svg', chart.title);
-      return;
-    }
-  }
 
   // Graceful chart resolution: matches by id, or chart-01 / chart-1, or first available chart
   const chart = state.charts.find(c => c.id === chartId) || 
@@ -4623,7 +4605,8 @@ function selectAllCharts(selectAll = true) {
     return;
   }
 
-  const allCards = document.querySelectorAll('.chart-card, .gallery-card');
+  // Target ONLY Hand-Drawn Charts in Chart Vault (.gallery-card), NEVER video lessons!
+  const allCards = document.querySelectorAll('.gallery-card');
   if (!selectAll) {
     state.selectedCharts.clear();
     allCards.forEach(card => {
