@@ -5446,3 +5446,54 @@ body.batch-mode-active .floating-share-trigger {
     padding: 9px 12px !important;
   }
 }
+
+
+/* ==================== V30: BATCH TOOLBAR OVERFLOW FIX ==================== */
+.batch-btn-download {
+  white-space: nowrap !important;
+  line-height: 1.2 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  height: auto !important;
+  min-height: 38px !important;
+  padding: 8px 16px !important;
+  font-weight: 800 !important;
+}
+
+@media (max-width: 640px) {
+  .batch-download-toolbar {
+    bottom: max(14px, env(safe-area-inset-bottom) + 8px) !important;
+    width: calc(100% - 20px) !important;
+    max-width: calc(100% - 20px) !important;
+    padding: 6px 10px !important;
+    height: auto !important;
+    min-height: 48px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 6px !important;
+    box-sizing: border-box !important;
+  }
+  .batch-count-badge {
+    font-size: 0.76rem !important;
+    padding: 4px 8px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+  .batch-btn-download {
+    font-size: 0.82rem !important;
+    padding: 8px 14px !important;
+    min-height: 36px !important;
+    height: auto !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+  .batch-btn-link {
+    font-size: 0.74rem !important;
+    padding: 4px 6px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+  }
+}

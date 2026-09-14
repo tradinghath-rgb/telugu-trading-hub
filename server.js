@@ -129,6 +129,90 @@ app.use((req, res, next) => {
 // Directories
 const DATA_DIR = path.join(__dirname, 'data');
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
+
+// ==================== AUTO-SYNC REELS FROM FOLDERS (v30) ====================
+function syncReelsFromFolders() {
+  try {
+    let charts = readJson('charts.json', []);
+    const existingReelNumbers = new Set(charts.map(c => Number(c.reelNumber)));
+
+    const teluguFiles = fs.existsSync(TELUGU_VIDEO_DIR) ? fs.readdirSync(TELUGU_VIDEO_DIR) : [];
+    const englishFiles = fs.existsSync(ENGLISH_VIDEO_DIR) ? fs.readdirSync(ENGLISH_VIDEO_DIR) : [];
+
+    let newChartsAdded = 0;
+    const folderReels = new Map();
+
+    const scanFiles = (files, dirPath, lang) => {
+      files.forEach(file => {
+        if (!/\.(mp4|webm|mov|mkv)$/i.test(file)) return;
+        const match = file.match(/reel[-_\s]*(\d+)/i);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (!folderReels.has(num)) {
+            folderReels.set(num, { reelNumber: num, teluguFile: null, englishFile: null, rawTitle: '' });
+          }
+          const entry = folderReels.get(num);
+          if (lang === 'telugu') entry.teluguFile = file;
+          if (lang === 'english') entry.englishFile = file;
+
+          const titleMatch = file.match(/\(([^)]+)\)/);
+          if (titleMatch && !entry.rawTitle) {
+            entry.rawTitle = titleMatch[1].trim();
+          }
+        }
+      });
+    };
+
+    scanFiles(teluguFiles, TELUGU_VIDEO_DIR, 'telugu');
+    scanFiles(englishFiles, ENGLISH_VIDEO_DIR, 'english');
+
+    const sortedReelNumbers = Array.from(folderReels.keys()).sort((a, b) => a - b);
+
+    sortedReelNumbers.forEach(num => {
+      if (!existingReelNumbers.has(num)) {
+        const info = folderReels.get(num);
+        const cleanTitleName = info.rawTitle 
+          ? info.rawTitle.charAt(0).toUpperCase() + info.rawTitle.slice(1)
+          : `Institutional Setup Reel-${num}`;
+        
+        let chartImg = `/assets/charts/chart-${num}.svg`;
+        const chartPath = path.join(__dirname, 'public', 'assets', 'charts', `chart-${num}.svg`);
+        if (!fs.existsSync(chartPath)) {
+          chartImg = `/assets/charts/chart-${((num - 1) % 24) + 1}.svg`;
+        }
+
+        const newChart = {
+          id: `chart-${num < 10 ? '0' + num : num}`,
+          reelNumber: num,
+          title: cleanTitleName.includes('Reel') ? cleanTitleName : `${cleanTitleName} Breakdown`,
+          category: 'Price Action & SMC',
+          summary: `High probability institutional trading breakdown for Reel-${num}.`,
+          keyTakeaway: 'Mark key institutional liquidity levels and enter on confirmed structural shift.',
+          teluguVideo: info.teluguFile ? `/videos/telugu/${info.teluguFile}` : '',
+          englishVideo: info.englishFile ? `/videos/english/${info.englishFile}` : '',
+          chartImage: chartImg,
+          dateAdded: new Date().toISOString().split('T')[0],
+          views: Math.floor(Math.random() * 500) + 1200
+        };
+
+        charts.push(newChart);
+        existingReelNumbers.add(num);
+        newChartsAdded++;
+      }
+    });
+
+    if (newChartsAdded > 0) {
+      charts.sort((a, b) => (Number(a.reelNumber) || 0) - (Number(b.reelNumber) || 0));
+      writeJson('charts.json', charts);
+      console.log(`[Auto-Sync] Successfully synchronized ${newChartsAdded} new Reels from video folders into charts.json!`);
+    }
+    return charts;
+  } catch (err) {
+    console.error('[Auto-Sync Error]:', err.message);
+    return readJson('charts.json', []);
+  }
+}
+
 const TELUGU_VIDEO_DIR = path.join(__dirname, 'TELUGU VIDEO');
 const ENGLISH_VIDEO_DIR = path.join(__dirname, 'ENGLISH VIDEO');
 const INTRO_DIR = path.join(__dirname, 'INTRO');
@@ -653,8 +737,13 @@ app.post('/api/site-config', (req, res) => {
 // ==================== CHARTS & VIDEOS API ====================
 
 // Get all charts
+app.get('/api/charts/sync-folders', (req, res) => {
+  const charts = syncReelsFromFolders();
+  res.json({ success: true, count: charts.length, charts });
+});
+
 app.get('/api/charts', (req, res) => {
-  const charts = readJson('charts.json', []);
+  const charts = syncReelsFromFolders();
   res.json(charts);
 });
 
@@ -727,7 +816,7 @@ app.post('/api/charts', upload.fields([
     const newId = `chart-${Date.now().toString().slice(-6)}`;
     const newChart = {
       id: newId,
-      reelNumber: charts.length + 1,
+      reelNumber: Math.max(...charts.map(c => Number(c.reelNumber) || 0), 0) + 1,
       title: title || `Trading Setup #${charts.length + 1}`,
       category: category || 'SMC & Liquidity',
       summary: summary || 'Detailed institutional price action chart analysis.',

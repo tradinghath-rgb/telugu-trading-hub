@@ -479,7 +479,7 @@ function renderDynamicSiteTexts() {
   if (heroCta) {
     if (isMember) {
       heroCta.innerHTML = `
-        <span>✅ Lifetime Access Active — Watch 24+ Lessons</span>
+        <span>✅ Lifetime Access Active — Watch 24+ Reels</span>
       `;
       heroCta.onclick = (e) => {
         if (e) e.preventDefault();
@@ -747,7 +747,7 @@ function renderCharts() {
 
   // Chart Count
   const countEl = document.getElementById('charts-total-count');
-  if (countEl) countEl.textContent = `${filtered.length} Charts & Video Lessons`;
+  if (countEl) countEl.textContent = `${filtered.length} Charts & Reels`;
 
   if (filtered.length === 0) {
     container.innerHTML = `
@@ -777,7 +777,7 @@ function renderCharts() {
       <div class="chart-card">
         <div class="chart-thumbnail-wrap" onclick="openChartModal('${chart.id}')" style="cursor: pointer;" title="Watch Video Breakdown">
           <img src="${chart.chartImage || '/assets/charts/chart-1.svg'}" alt="${chart.title}" loading="lazy" decoding="async" />
-          <span class="chart-reel-badge">LESSON #${chart.reelNumber || ''}</span>
+          <span class="chart-reel-badge">REEL-${chart.reelNumber || ''}</span>
           <span class="chart-bilingual-pill">
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
             TELUGU &amp; ENGLISH
@@ -837,7 +837,7 @@ function renderCharts() {
         moreBanner.innerHTML = `
           <button type="button" class="btn btn-secondary btn-lg" onclick="toggleShowAllVideos(true)" style="display: inline-flex; align-items: center; gap: 10px; border-color: var(--accent-green); background: rgba(0,242,152,0.08); font-weight: 700; color: #fff; cursor: pointer;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-            <span>+ More Videos (Click to Display All Lessons) ▼</span>
+            <span>+ More Videos (Click to Display All Reels) ▼</span>
           </button>
         `;
       } else if (state.showAllVideos) {
@@ -4565,9 +4565,9 @@ function updateBatchToolbar() {
     if (count > 0) {
       toolbar.classList.add('active');
       const badge = document.getElementById('batch-selected-count');
-      if (badge) badge.textContent = `${count} Chart${count > 1 ? 's' : ''} Selected`;
+      if (badge) badge.textContent = `${count} Selected`;
       const btn = document.getElementById('batch-download-action-btn');
-      if (btn) btn.innerHTML = `📥 Download ${count} Selected Chart${count > 1 ? 's' : ''} (HD PNG)`;
+      if (btn) btn.innerHTML = `📥 Download (${count})`;
     } else {
       toolbar.classList.remove('active');
     }
