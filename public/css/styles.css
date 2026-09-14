@@ -4654,3 +4654,795 @@ body.batch-mode-active .floating-share-trigger {
     padding: 3px 8px;
   }
 }
+
+
+/* ==================== V28 MOBILE QUICK-JUMP STRIP & SUPPORT CARD ==================== */
+.mobile-quick-strip-wrap {
+  display: none;
+}
+.support-help-section {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px 24px;
+}
+.support-card-compact {
+  background: rgba(14, 20, 34, 0.85);
+  border: 1px solid rgba(0, 242, 152, 0.35);
+  border-radius: var(--radius-md);
+  padding: 18px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 20px rgba(0, 242, 152, 0.08);
+}
+.support-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 242, 152, 0.12);
+  border: 1px solid rgba(0, 242, 152, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.support-card-text {
+  flex: 1;
+}
+.support-title {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #fff;
+}
+.support-subtitle {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.support-btn-action {
+  padding: 10px 18px !important;
+  font-size: 0.88rem !important;
+  font-weight: 700 !important;
+  white-space: nowrap !important;
+  border-radius: var(--radius-sm) !important;
+}
+
+
+/* ==========================================================================
+   V28 COMPREHENSIVE 9:16 MOBILE PHONE ULTRA-MINIMAL & INTUITIVE OPTIMIZATION
+   Designed specifically for mobile portrait ratios (360x640 to 430x932).
+   Ensures compact sizing, fast navigation, no endless scrolling, zero UI overflow.
+   ========================================================================== */
+@media (max-width: 640px) {
+  :root {
+    --mobile-nav-h: 52px;
+    --mobile-strip-h: 42px;
+  }
+
+  html {
+    scroll-padding-top: calc(var(--mobile-nav-h) + var(--mobile-strip-h) + 12px) !important;
+  }
+
+  html, body {
+    width: 100% !important;
+    overflow-x: hidden !important;
+    -webkit-tap-highlight-color: transparent;
+    font-size: 14.5px !important;
+  }
+
+  /* Prevent automatic zoom on iOS Safari */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+
+  /* Compact Main Header / Navbar */
+  .main-nav {
+    height: var(--mobile-nav-h) !important;
+    padding: 6px 10px !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 1000 !important;
+    background: rgba(6, 9, 16, 0.95) !important;
+    backdrop-filter: blur(14px) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .nav-container {
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 6px !important;
+  }
+
+  .brand-group {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .brand-logo-img {
+    width: 28px !important;
+    height: 28px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .brand-title {
+    font-size: 0.88rem !important;
+    font-weight: 800 !important;
+    white-space: nowrap !important;
+    letter-spacing: -0.2px !important;
+  }
+
+  .brand-badge,
+  .brand-subtitle,
+  .nav-intro-btn {
+    display: none !important;
+  }
+
+  .nav-actions {
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .nav-share-btn {
+    padding: 4px 8px !important;
+    font-size: 0.74rem !important;
+    height: 30px !important;
+    gap: 4px !important;
+  }
+
+  .nav-pricing-btn {
+    padding: 4px 8px !important;
+    font-size: 0.72rem !important;
+    height: 30px !important;
+    border-radius: var(--radius-full) !important;
+  }
+
+  .nav-pricing-btn .nav-pricing-long {
+    display: none !important;
+  }
+
+  .nav-pricing-btn .nav-pricing-short {
+    display: inline-flex !important;
+    font-weight: 800 !important;
+  }
+
+  .nav-signin-btn {
+    padding: 5px 10px !important;
+    font-size: 0.78rem !important;
+    height: 30px !important;
+    gap: 4px !important;
+  }
+
+  .btn-back-home {
+    padding: 5px 9px !important;
+    font-size: 0.74rem !important;
+    height: 30px !important;
+  }
+
+  /* Sticky Quick-Jump Strip for 9:16 Phones */
+  .mobile-quick-strip-wrap {
+    display: block !important;
+    position: sticky !important;
+    top: var(--mobile-nav-h) !important;
+    z-index: 990 !important;
+    background: rgba(6, 9, 16, 0.94) !important;
+    backdrop-filter: blur(14px) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    padding: 5px 8px !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .mobile-quick-strip {
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+  }
+
+  .mobile-quick-strip::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .quick-nav-pill {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    padding: 5px 9px !important;
+    border-radius: var(--radius-full) !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    color: #94a3b8 !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    text-decoration: none !important;
+    flex-shrink: 0 !important;
+    transition: all 0.15s ease !important;
+  }
+
+  .quick-nav-pill:active,
+  .quick-nav-pill.active-nav-pill {
+    background: rgba(0, 242, 152, 0.15) !important;
+    border-color: var(--accent-green) !important;
+    color: var(--accent-green) !important;
+  }
+
+  .quick-nav-pill.highlight-gold {
+    color: var(--accent-gold) !important;
+    background: rgba(255, 215, 0, 0.08) !important;
+    border-color: rgba(255, 215, 0, 0.25) !important;
+  }
+
+  .quick-nav-pill.highlight-gold.active-nav-pill {
+    background: rgba(255, 215, 0, 0.2) !important;
+    border-color: var(--accent-gold) !important;
+    color: var(--accent-gold) !important;
+  }
+
+  /* Minimal Hero Section for 9:16 Phones */
+  .hero-section {
+    padding: 16px 12px 10px !important;
+    gap: 12px !important;
+  }
+
+  .hero-title {
+    font-size: clamp(1.30rem, 5.2vw, 1.52rem) !important;
+    line-height: 1.25 !important;
+    margin-bottom: 6px !important;
+    letter-spacing: -0.3px !important;
+  }
+
+  .hero-subtitle {
+    font-size: 0.80rem !important;
+    line-height: 1.45 !important;
+    margin-bottom: 12px !important;
+    color: #94a3b8 !important;
+  }
+
+  .hero-cta-group {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    margin-bottom: 10px !important;
+    width: 100% !important;
+  }
+
+  .hero-cta-group .btn {
+    width: 100% !important;
+    padding: 10px 14px !important;
+    font-size: 0.86rem !important;
+    border-radius: 8px !important;
+    justify-content: center !important;
+  }
+
+  .hero-member-login-bar {
+    margin-top: 6px !important;
+    font-size: 0.78rem !important;
+    justify-content: center !important;
+  }
+
+  /* Hero 3-Column Compact Trust Bar */
+  .hero-trust-bar {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 6px !important;
+    padding: 10px 0 6px !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.06) !important;
+  }
+
+  .trust-item {
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    gap: 2px !important;
+    padding: 4px 2px !important;
+  }
+
+  .trust-item svg {
+    width: 14px !important;
+    height: 14px !important;
+    color: var(--accent-green) !important;
+  }
+
+  .trust-item-text strong {
+    font-size: 0.72rem !important;
+    display: block !important;
+    line-height: 1.2 !important;
+  }
+
+  .trust-item-text span {
+    font-size: 0.62rem !important;
+    display: block !important;
+    color: var(--text-muted) !important;
+    line-height: 1.1 !important;
+  }
+
+  /* Compact Hero Visual Card */
+  .hero-visual-card {
+    max-height: 180px !important;
+    border-radius: 8px !important;
+    margin-top: 4px !important;
+    overflow: hidden !important;
+  }
+
+  .hero-visual-header {
+    padding: 5px 8px !important;
+  }
+
+  .hero-chart-preview {
+    max-height: 140px !important;
+  }
+
+  .hero-chart-preview img {
+    max-height: 140px !important;
+    object-fit: cover !important;
+  }
+
+  .hero-badge-overlay {
+    top: 6px !important;
+    right: 6px !important;
+    padding: 3px 7px !important;
+    font-size: 0.62rem !important;
+    gap: 4px !important;
+  }
+
+  /* Compact Section Containers */
+  .section {
+    padding: 24px 10px !important;
+  }
+
+  .section-header {
+    padding: 0 6px !important;
+    margin-bottom: 14px !important;
+    text-align: center !important;
+  }
+
+  .section-tag {
+    font-size: 0.66rem !important;
+    letter-spacing: 0.8px !important;
+    padding: 2px 7px !important;
+    margin-bottom: 4px !important;
+  }
+
+  .section-title {
+    font-size: 1.22rem !important;
+    line-height: 1.25 !important;
+    margin-bottom: 4px !important;
+  }
+
+  .section-subtitle {
+    font-size: 0.78rem !important;
+    line-height: 1.35 !important;
+  }
+
+  /* Section 5 Features: Sleek 2-Column Compact Grid */
+  .features-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+    padding: 0 4px !important;
+  }
+
+  .feature-card {
+    padding: 10px 9px !important;
+    border-radius: 8px !important;
+  }
+
+  .feature-icon-box {
+    width: 26px !important;
+    height: 26px !important;
+    margin-bottom: 6px !important;
+    border-radius: 6px !important;
+  }
+
+  .feature-icon-box svg {
+    width: 14px !important;
+    height: 14px !important;
+  }
+
+  .feature-card-title {
+    font-size: 0.80rem !important;
+    margin-bottom: 2px !important;
+    line-height: 1.2 !important;
+  }
+
+  .feature-card-desc {
+    font-size: 0.68rem !important;
+    line-height: 1.35 !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 3 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+  }
+
+  /* Section 6 Hand-Drawn Charts Vault on 9:16 */
+  #chart-gallery-section {
+    padding: 24px 10px !important;
+  }
+
+  .gallery-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    padding: 0 !important;
+  }
+
+  .gallery-card {
+    border-radius: 10px !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+  }
+
+  .gallery-thumb-wrap {
+    aspect-ratio: 16 / 10 !important;
+    max-height: 185px !important;
+    background: #060910 !important;
+  }
+
+  .gallery-thumb-wrap img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+  }
+
+  .gallery-select-badge {
+    width: 32px !important;
+    height: 32px !important;
+    top: 8px !important;
+    left: 8px !important;
+    font-size: 0.95rem !important;
+  }
+
+  .gallery-card-body {
+    padding: 10px 12px !important;
+    gap: 5px !important;
+  }
+
+  .gallery-card-title {
+    font-size: 0.88rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .gallery-card-actions {
+    padding-top: 6px !important;
+    margin-top: 4px !important;
+  }
+
+  .gallery-card-actions .gallery-download-btn {
+    padding: 5px 10px !important;
+    font-size: 0.76rem !important;
+    height: 30px !important;
+  }
+
+  .more-redirect-banner {
+    margin-top: 14px !important;
+  }
+
+  .more-redirect-banner .btn {
+    width: 100% !important;
+    padding: 9px 14px !important;
+    font-size: 0.84rem !important;
+    justify-content: center !important;
+  }
+
+  /* Section 6B Video Lessons on 9:16 */
+  #videos-section {
+    padding: 24px 10px !important;
+  }
+
+  .dashboard-header-bar {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .dashboard-controls {
+    margin-bottom: 14px !important;
+  }
+
+  .search-input-box {
+    margin-bottom: 8px !important;
+    height: 40px !important;
+  }
+
+  .search-input {
+    font-size: 16px !important;
+    height: 40px !important;
+    padding: 0 12px 0 36px !important;
+  }
+
+  .category-pills-list {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    gap: 6px !important;
+    padding: 2px 0 6px !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    width: 100% !important;
+  }
+
+  .category-pills-list::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .category-pill {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+    padding: 5px 11px !important;
+    font-size: 0.74rem !important;
+    border-radius: var(--radius-full) !important;
+  }
+
+  .charts-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    padding: 0 !important;
+  }
+
+  .chart-card {
+    border-radius: 10px !important;
+  }
+
+  .chart-thumbnail-wrap {
+    height: 165px !important;
+    aspect-ratio: 16 / 9 !important;
+  }
+
+  .chart-card-body {
+    padding: 10px 12px !important;
+    gap: 4px !important;
+  }
+
+  .chart-card-title {
+    font-size: 0.88rem !important;
+    line-height: 1.3 !important;
+    margin-bottom: 2px !important;
+  }
+
+  .chart-card-desc {
+    font-size: 0.74rem !important;
+    line-height: 1.35 !important;
+    margin-bottom: 6px !important;
+  }
+
+  .chart-card-footer {
+    margin-top: 4px !important;
+    padding-top: 6px !important;
+  }
+
+  .chart-card-footer .btn {
+    padding: 4px 10px !important;
+    font-size: 0.74rem !important;
+    height: 28px !important;
+  }
+
+  /* Section 7 Pricing Card on 9:16 */
+  #pricing-section {
+    padding: 24px 10px !important;
+  }
+
+  .pricing-card {
+    padding: 16px 14px !important;
+    border-radius: 12px !important;
+    max-width: 100% !important;
+  }
+
+  .price-amount {
+    font-size: clamp(1.9rem, 7vw, 2.3rem) !important;
+  }
+
+  .price-original {
+    font-size: 0.95rem !important;
+  }
+
+  .pricing-checklist {
+    gap: 6px !important;
+    margin: 12px 0 !important;
+  }
+
+  .pricing-checklist li {
+    font-size: 0.78rem !important;
+    line-height: 1.3 !important;
+    gap: 6px !important;
+  }
+
+  .pricing-checklist li svg {
+    width: 14px !important;
+    height: 14px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .checkout-box {
+    padding: 8px 6px !important;
+  }
+
+  .btn-checkout-rzp {
+    font-size: 0.88rem !important;
+    padding: 11px 14px !important;
+    border-radius: 8px !important;
+  }
+
+  /* Section 8 Comments on 9:16 */
+  #comments-section {
+    padding: 24px 10px !important;
+  }
+
+  .comments-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+    padding: 0 !important;
+  }
+
+  .comment-card {
+    padding: 10px 12px !important;
+    border-radius: 8px !important;
+  }
+
+  .comment-avatar {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 0.76rem !important;
+  }
+
+  .comment-author-name {
+    font-size: 0.80rem !important;
+  }
+
+  .comment-body {
+    font-size: 0.78rem !important;
+    line-height: 1.35 !important;
+  }
+
+  .comment-form-box {
+    padding: 12px 10px !important;
+    border-radius: 8px !important;
+  }
+
+  .comment-inputs-row {
+    flex-direction: column !important;
+    gap: 6px !important;
+  }
+
+  /* Dedicated Support Card on 9:16 */
+  .support-help-section {
+    padding: 16px 10px !important;
+  }
+
+  .support-card-compact {
+    padding: 12px 14px !important;
+    border-radius: 10px !important;
+    flex-direction: column !important;
+    text-align: center !important;
+    align-items: center !important;
+    gap: 10px !important;
+  }
+
+  .support-card-icon {
+    width: 38px !important;
+    height: 38px !important;
+  }
+
+  .support-card-text {
+    width: 100% !important;
+  }
+
+  .support-title {
+    font-size: 0.94rem !important;
+  }
+
+  .support-subtitle {
+    font-size: 0.78rem !important;
+  }
+
+  .support-btn-action {
+    width: 100% !important;
+    justify-content: center !important;
+    padding: 8px 14px !important;
+    font-size: 0.82rem !important;
+  }
+
+  /* Footer on 9:16 */
+  .site-footer {
+    padding: 30px 12px 20px !important;
+  }
+
+  .footer-top {
+    gap: 20px !important;
+    margin-bottom: 24px !important;
+  }
+
+  .footer-col-title {
+    font-size: 0.90rem !important;
+    margin-bottom: 8px !important;
+  }
+
+  .footer-links {
+    gap: 6px !important;
+  }
+
+  .footer-links a {
+    font-size: 0.80rem !important;
+  }
+
+  .footer-bottom {
+    padding-top: 14px !important;
+    font-size: 0.72rem !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    text-align: center !important;
+  }
+
+  /* Floating Share & Batch Toolbar for 9:16 Phones */
+  .floating-share-trigger {
+    bottom: max(16px, env(safe-area-inset-bottom) + 10px) !important;
+    right: 14px !important;
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  .floating-share-trigger svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  .floating-share-pulse {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  .batch-download-toolbar {
+    bottom: max(14px, env(safe-area-inset-bottom) + 8px) !important;
+    width: calc(100% - 20px) !important;
+    max-width: calc(100% - 20px) !important;
+    padding: 6px 10px !important;
+    height: 46px !important;
+  }
+
+  .batch-btn-download {
+    font-size: 0.78rem !important;
+    padding: 6px 12px !important;
+    height: 34px !important;
+  }
+
+  .batch-count-badge {
+    font-size: 0.74rem !important;
+    padding: 2px 7px !important;
+  }
+
+  .batch-btn-clear {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  /* Modals on 9:16 Phones */
+  .modal-container {
+    width: calc(100% - 20px) !important;
+    max-width: 390px !important;
+    max-height: 88vh !important;
+    padding: 16px 14px !important;
+    border-radius: 12px !important;
+  }
+
+  .modal-header {
+    padding-bottom: 8px !important;
+    margin-bottom: 10px !important;
+  }
+
+  .modal-title {
+    font-size: 1.05rem !important;
+  }
+
+  .form-input {
+    font-size: 16px !important;
+    padding: 9px 12px !important;
+  }
+}

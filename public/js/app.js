@@ -62,6 +62,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   checkAdminUrlParam();
   checkResetPasswordTokenInUrl();
   renderApp();
+  try { initMobileQuickStripSpy(); } catch (_) {}
 });
 
 // ==================== BROWSER ACCOUNT VAULT (CROSS-DEPLOY PERMANENCE) ====================
@@ -4782,3 +4783,57 @@ function shareToSocial(platform) {
   }
 }
 window.shareToSocial = shareToSocial;
+
+
+// ==================== MOBILE QUICK STRIP SCROLL SPY & OFFSET JUMP (v28) ====================
+function initMobileQuickStripSpy() {
+  const strip = document.querySelector('.mobile-quick-strip');
+  if (!strip) return;
+
+  const links = strip.querySelectorAll('a.quick-nav-pill');
+  links.forEach(link => {
+    link.addEventListener('click', function(e) {
+      const href = this.getAttribute('href');
+      if (href && href.startsWith('#')) {
+        const targetId = href.substring(1);
+        const targetEl = document.getElementById(targetId);
+        if (targetEl) {
+          e.preventDefault();
+          const headerOffset = 96; // 52px nav + 42px quick strip + 2px border
+          const elementPosition = targetEl.getBoundingClientRect().top;
+          const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth'
+          });
+          links.forEach(l => l.classList.remove('active-nav-pill'));
+          this.classList.add('active-nav-pill');
+        }
+      }
+    });
+  });
+
+  const trackedSections = [
+    { id: 'chart-gallery-section', pill: strip.querySelector('a[href="#chart-gallery-section"]') },
+    { id: 'videos-section', pill: strip.querySelector('a[href="#videos-section"]') },
+    { id: 'pricing-section', pill: strip.querySelector('a[href="#pricing-section"]') },
+    { id: 'comments-section', pill: strip.querySelector('a[href="#comments-section"]') },
+    { id: 'support-section', pill: strip.querySelector('a[href="#support-section"]') }
+  ];
+
+  window.addEventListener('scroll', () => {
+    const scrollPos = window.scrollY + 140;
+    trackedSections.forEach(s => {
+      const el = document.getElementById(s.id);
+      if (el && s.pill) {
+        const top = el.offsetTop;
+        const height = el.offsetHeight;
+        if (scrollPos >= top && scrollPos < top + height) {
+          s.pill.classList.add('active-nav-pill');
+        } else {
+          s.pill.classList.remove('active-nav-pill');
+        }
+      }
+    });
+  }, { passive: true });
+}
