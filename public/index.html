@@ -834,29 +834,97 @@
 
   <!-- C. PAYMENT VERIFICATION MODAL -->
   <div id="payment-verify-modal" class="modal-overlay">
-    <div class="modal-card" style="max-width: 480px;">
+    <div class="modal-card" style="max-width: 520px;">
       <div class="modal-header">
-        <h3>Verify Payment &amp; Unlock</h3>
-        <button class="btn-close-modal" onclick="closePaymentVerificationModal()">✕</button>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(0, 242, 152, 0.15); display: flex; align-items: center; justify-content: center; color: var(--accent-emerald);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div>
+            <h3 style="margin: 0; font-size: 1.15rem;">Cross-Verify Payment with Razorpay</h3>
+            <span style="font-size: 0.78rem; color: var(--text-muted);">Enter your 12-digit UTR &amp; upload payment proof</span>
+          </div>
+        </div>
+        <button class="btn-close-modal" onclick="closePaymentVerificationModal()">&times;</button>
       </div>
-      <div class="modal-body">
-        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 16px;">
-          If you completed payment on Razorpay (UPI, GPay, PhonePe, Cards), enter your email below to immediately activate your lifetime membership.
-        </p>
 
-        <div class="form-group">
-          <label class="form-label">Email Used for Payment</label>
-          <input type="email" id="verify-email-input" class="form-input" placeholder="you@gmail.com" />
+      <div class="modal-body" style="padding-top: 14px;">
+        <!-- Step 1 & 2 Instructions -->
+        <div class="verify-instruction-box">
+          <div class="instruction-step">
+            <span class="step-num">1</span>
+            <span>Pay <strong>₹399</strong> via UPI (Google Pay, PhonePe, Paytm, or Cards) on Razorpay.</span>
+          </div>
+          <div class="instruction-step">
+            <span class="step-num">2</span>
+            <span>Copy the <strong>12-digit UTR / UPI Ref ID</strong> and upload a screenshot of your payment receipt below.</span>
+          </div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Razorpay Payment ID (Optional)</label>
-          <input type="text" id="verify-payment-id-input" class="form-input" placeholder="e.g. pay_OhXyZ123" />
-        </div>
+        <form id="payment-verify-form" onsubmit="event.preventDefault(); submitPaymentVerification();">
+          <div class="form-group" style="margin-bottom: 14px;">
+            <label class="form-label" for="verify-email-input">
+              Account Email <span style="color: var(--accent-red); font-size: 0.8rem;">*</span>
+            </label>
+            <input type="email" id="verify-email-input" class="form-input" placeholder="e.g. yourname@gmail.com" required autocomplete="email" />
+            <span class="field-hint">Lifetime access will be unlocked permanently for this email.</span>
+          </div>
 
-        <button class="btn btn-primary" style="width: 100%; margin-top: 8px;" onclick="submitPaymentVerification()">
-          Confirm &amp; Unlock Lifetime Access
-        </button>
+          <div class="form-group" style="margin-bottom: 14px;">
+            <label class="form-label" for="verify-utr-input">
+              UTR ID : <span style="color: var(--accent-red); font-size: 0.85rem; font-weight: 700;">(Mandatory)</span>
+            </label>
+            <input type="text" id="verify-utr-input" class="form-input" placeholder="Enter 12-digit UTR number from PhonePe, GPay, or Paytm" maxlength="30" required autocomplete="off" />
+            <span class="field-hint">Found on PhonePe / GPay / Paytm as "UPI Ref No." or "UTR".</span>
+
+            <!-- Inline Feedback Box directly below UTR input -->
+            <div id="utr-feedback-container" class="utr-feedback-msg" style="display: none;"></div>
+          </div>
+
+          <!-- Screenshot Upload Area -->
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label">
+              Upload Payment Screenshot <span style="color: var(--accent-red); font-size: 0.8rem;">*</span>
+            </label>
+            
+            <div id="payment-screenshot-dropzone" class="payment-screenshot-dropzone" onclick="document.getElementById('verify-screenshot-file').click()">
+              <input type="file" id="verify-screenshot-file" accept="image/png, image/jpeg, image/jpg, image/webp" style="display: none;" onchange="handlePaymentScreenshotSelect(event)" />
+              <div class="dropzone-content-wrapper">
+                <div class="dropzone-icon-circle">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                </div>
+                <div class="dropzone-texts">
+                  <span class="dropzone-main-text"><strong>Drag &amp; drop payment screenshot here</strong></span>
+                  <span class="dropzone-sub-text">or tap to upload from phone / device (PNG, JPG)</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Screenshot Preview Card -->
+            <div id="payment-screenshot-preview" class="screenshot-preview-card" style="display: none;">
+              <img id="screenshot-preview-img" src="" alt="Payment Proof Preview" />
+              <div class="preview-details">
+                <div class="preview-filename" id="screenshot-preview-name">receipt.jpg</div>
+                <div class="preview-filesize" id="screenshot-preview-size"></div>
+              </div>
+              <button type="button" class="btn-remove-screenshot" onclick="removePaymentScreenshot(event)" title="Remove screenshot">&times;</button>
+            </div>
+          </div>
+
+          <!-- Submit Button -->
+          <button type="submit" id="btn-submit-verify" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 8px; position: relative;">
+            <span id="btn-submit-verify-text">Cross-Verify with Razorpay &amp; Unlock</span>
+            <span id="btn-submit-verify-spinner" class="spinner-small" style="display: none;"></span>
+          </button>
+        </form>
+
+        <!-- Direct Razorpay Link -->
+        <div class="verify-footer-cta">
+          <span>Haven't completed ₹399 payment yet?</span>
+          <a href="https://rzp.io/rzp/2a3h6cU" target="_blank" rel="noopener" class="direct-pay-link">
+            Pay ₹399 via Razorpay &rarr;
+          </a>
+        </div>
       </div>
     </div>
   </div>
@@ -923,6 +991,9 @@
           </button>
           <button class="admin-tab-btn" onclick="switchAdminTab('aws', this)">
             AWS Cloud Status
+          </button>
+          <button class="admin-tab-btn" onclick="switchAdminTab('payments', this)">
+            💳 UTRs &amp; Payments
           </button>
         </div>
 

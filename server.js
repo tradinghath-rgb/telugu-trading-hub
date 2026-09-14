@@ -116,12 +116,54 @@ const upload = multer({
   limits: { fileSize: 250 * 1024 * 1024 } // 250MB limit for high-res charts and videos
 });
 
+// Configure Multer for Payment Proof Screenshots
+const PAYMENT_UPLOADS_DIR = path.join(UPLOADS_DIR, 'payments');
+if (!fs.existsSync(PAYMENT_UPLOADS_DIR)) {
+  fs.mkdirSync(PAYMENT_UPLOADS_DIR, { recursive: true });
+}
+
+const paymentStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, PAYMENT_UPLOADS_DIR);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.png';
+    const safeName = `proof_${Date.now()}_${Math.random().toString(36).substring(2, 8)}${ext}`;
+    cb(null, safeName);
+  }
+});
+
+const uploadPaymentProof = multer({
+  storage: paymentStorage,
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15MB limit
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files (PNG, JPG, JPEG, WEBP) are allowed for payment proof.'));
+    }
+  }
+});
+
+// Blacklist of revoked unverified accounts
+const REVOKED_EMAILS = ['abhisheknaidu2005@gmail.com'];
+
 // Helper for Database JSON read/write
 function readJson(fileName, fallback = []) {
   const filePath = path.join(DATA_DIR, fileName);
   if (!fs.existsSync(filePath)) return fallback;
   try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const raw = fs.readFileSync(filePath, 'utf8').replace(/^\uFEFF/, '');
+    const data = JSON.parse(raw);
+    if (fileName === 'users.json' && Array.isArray(data)) {
+      return data.map(u => {
+        if (u && u.email && typeof REVOKED_EMAILS !== 'undefined' && REVOKED_EMAILS.includes(u.email.toLowerCase().trim())) {
+          return { ...u, hasPaid: false, paymentId: null, paidAt: null };
+        }
+        return u;
+      });
+    }
+    return data;
   } catch (e) {
     console.error(`Error reading ${fileName}:`, e.message);
     return fallback;
@@ -269,6 +311,20 @@ async function syncFromCloud(fileName) {
           }
         });
       });
+
+      // Blacklist / Revocation enforcement
+      if (typeof REVOKED_EMAILS !== 'undefined') {
+        REVOKED_EMAILS.forEach(revoked => {
+          const revKey = revoked.trim().toLowerCase();
+          if (userMap.has(revKey)) {
+            const u = userMap.get(revKey);
+            u.hasPaid = false;
+            u.paymentId = null;
+            u.paidAt = null;
+            userMap.set(revKey, u);
+          }
+        });
+      }
 
       // Always guarantee Owner Admin is preserved
       if (!userMap.has(OWNER_EMAIL)) {
@@ -1103,61 +1159,255 @@ app.post('/api/admin/credentials', (req, res) => {
   }
 });
 
-// Payment Verification & Lifetime Access Unlock
-app.post('/api/auth/verify-payment', (req, res) => {
+// ==================== RAZORPAY UTR & PAYMENT VERIFICATION API ====================
+
+/**
+ * Cross-verify UTR or Razorpay Payment ID with Razorpay API
+ * @param {string} utrOrPaymentId - 12-digit UTR/RRN or pay_xxx
+ * @returns {Promise<{ verified: boolean, payment?: any, error?: string }>}
+ */
+async function verifyWithRazorpay(utrOrPaymentId) {
+  const keyId = (process.env.RAZORPAY_KEY_ID || '').trim();
+  const keySecret = (process.env.RAZORPAY_KEY_SECRET || '').trim();
+  const cleanId = (utrOrPaymentId || '').trim();
+
+  // If Razorpay API credentials are not yet configured in .env
+  if (!keyId || !keySecret) {
+    return {
+      verified: false,
+      error: 'Razorpay API credentials (RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET) are not configured in .env on the server. Please contact administrator to activate automated verification.'
+    };
+  }
+
+  const authHeader = 'Basic ' + Buffer.from(`${keyId}:${keySecret}`).toString('base64');
+
   try {
-    const { email, paymentId } = req.body;
-    if (!email) {
-      return res.status(400).json({ error: 'Email is required to activate membership' });
+    // Case A: Direct Razorpay Payment ID (e.g. pay_OhXyZ123)
+    if (cleanId.startsWith('pay_')) {
+      const response = await fetch(`https://api.razorpay.com/v1/payments/${cleanId}`, {
+        headers: { Authorization: authHeader }
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        return {
+          verified: false,
+          error: errData.error?.description || `Razorpay payment ID ${cleanId} not found.`
+        };
+      }
+
+      const payment = await response.json();
+      if (payment.status !== 'captured') {
+        return {
+          verified: false,
+          error: `Payment status is '${payment.status}'. Payment must be fully captured.`
+        };
+      }
+
+      if (payment.amount < 39900) {
+        return {
+          verified: false,
+          error: `Payment amount ₹${payment.amount / 100} is less than required ₹399.`
+        };
+      }
+
+      return { verified: true, payment };
     }
 
+    // Case B: 12-digit UPI UTR / RRN (Search recent captured payments on Razorpay)
+    const listRes = await fetch(`https://api.razorpay.com/v1/payments?count=100`, {
+      headers: { Authorization: authHeader }
+    });
+
+    if (!listRes.ok) {
+      const errData = await listRes.json().catch(() => ({}));
+      return {
+        verified: false,
+        error: errData.error?.description || 'Failed to query Razorpay API.'
+      };
+    }
+
+    const listData = await listRes.json();
+    const items = listData.items || [];
+
+    const matched = items.find(p => {
+      if (p.status !== 'captured') return false;
+      const acq = p.acquirer_data || {};
+      const rrn = (acq.rrn || '').trim();
+      const upiId = (acq.upi_transaction_id || '').trim();
+      const bankTrx = (acq.bank_transaction_id || '').trim();
+      return rrn === cleanId || upiId === cleanId || bankTrx === cleanId || p.id === cleanId;
+    });
+
+    if (matched) {
+      if (matched.amount < 39900) {
+        return {
+          verified: false,
+          error: `Payment amount ₹${matched.amount / 100} is less than required ₹399.`
+        };
+      }
+      return { verified: true, payment: matched };
+    }
+
+    return {
+      verified: false,
+      error: `UTR ID '${cleanId}' not confirmed by Razorpay. Please ensure you completed payment on the official link and entered the correct 12-digit UTR.`
+    };
+  } catch (err) {
+    return {
+      verified: false,
+      error: `Razorpay connection error: ${err.message}`
+    };
+  }
+}
+
+// Payment Verification & Lifetime Access Unlock with UTR & Screenshot
+app.post('/api/auth/verify-payment', uploadPaymentProof.single('screenshot'), async (req, res) => {
+  try {
+    const { email, utrId } = req.body;
+    const cleanEmail = (email || '').trim().toLowerCase();
+    const cleanUtr = (utrId || '').trim();
+
+    if (!cleanEmail) {
+      return res.status(400).json({ success: false, error: 'Email address is required.' });
+    }
+
+    // Revoked / blacklisted accounts check
+    if (REVOKED_EMAILS.includes(cleanEmail)) {
+      return res.status(403).json({
+        success: false,
+        error: 'This account has been flagged for unverified access. Access cannot be granted automatically.'
+      });
+    }
+
+    if (!cleanUtr) {
+      return res.status(400).json({ success: false, error: 'UTR ID : is mandatory. Please enter the 12-digit UTR number from your payment app.' });
+    }
+
+    // Validate format: 10-18 digits OR pay_xxx
+    const isNumericUtr = /^\d{10,18}$/.test(cleanUtr);
+    const isPayId = /^pay_[a-zA-Z0-9]+$/.test(cleanUtr);
+    if (!isNumericUtr && !isPayId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid UTR format. Please enter the valid 12-digit numeric UTR ID from your payment receipt.'
+      });
+    }
+
+    // Screenshot file verification
+    const screenshotFile = req.file ? `/uploads/payments/${req.file.filename}` : null;
+    if (!screenshotFile) {
+      return res.status(400).json({
+        success: false,
+        error: 'Payment screenshot is required. Please upload or drag & drop your payment receipt.'
+      });
+    }
+
+    // Duplicate UTR check across all previous payments
+    const payments = readJson('payments.json', []);
+    const isDuplicate = payments.some(p => (p.utrId || '').trim().toLowerCase() === cleanUtr.toLowerCase() && p.verified);
+    if (isDuplicate) {
+      return res.status(400).json({
+        success: false,
+        error: 'This UTR ID has already been verified and claimed. Each transaction can only be used once.'
+      });
+    }
+
+    // Cross-verify with Razorpay API
+    const verification = await verifyWithRazorpay(cleanUtr);
+
+    // Save payment attempt to payments.json
+    const paymentRecord = {
+      id: `pay_rec_${Date.now()}`,
+      email: cleanEmail,
+      utrId: cleanUtr,
+      screenshotUrl: screenshotFile,
+      verified: Boolean(verification.verified),
+      verifiedAt: verification.verified ? new Date().toISOString() : null,
+      error: verification.error || null,
+      razorpayPaymentId: verification.payment?.id || null,
+      amount: verification.payment ? verification.payment.amount / 100 : 399,
+      submittedAt: new Date().toISOString()
+    };
+
+    payments.push(paymentRecord);
+    writeJson('payments.json', payments);
+
+    if (!verification.verified) {
+      return res.status(400).json({
+        success: false,
+        error: verification.error || 'Payment verification failed: UTR not confirmed by Razorpay. Please try again.'
+      });
+    }
+
+    // On Success: Unlock lifetime access in users.json
     const users = readJson('users.json', []);
-    const userIndex = users.findIndex(u => u.email.toLowerCase() === email.toLowerCase().trim());
+    const userIndex = users.findIndex(u => u.email.toLowerCase() === cleanEmail);
 
-    const activePaymentId = paymentId || `pay_rzp_${Date.now()}`;
-
+    let userSafe;
     if (userIndex === -1) {
-      // Auto register paid user if they just paid on Razorpay
       const newUser = {
         id: `user-${Date.now()}`,
-        email: email.trim().toLowerCase(),
+        email: cleanEmail,
         password: 'ChangeMe@123',
-        name: email.split('@')[0],
+        name: cleanEmail.split('@')[0],
         role: 'member',
         hasPaid: true,
         paidAt: new Date().toISOString(),
-        paymentId: activePaymentId
+        paymentId: verification.payment?.id || cleanUtr
       };
       users.push(newUser);
       writeJson('users.json', users);
-      const { password: _, ...userSafe } = newUser;
-      return res.json({ success: true, message: 'Payment verified! Lifetime access unlocked!', user: userSafe });
+      const { password: _, ...safe } = newUser;
+      userSafe = safe;
+    } else {
+      users[userIndex].hasPaid = true;
+      users[userIndex].paidAt = new Date().toISOString();
+      users[userIndex].paymentId = verification.payment?.id || cleanUtr;
+      writeJson('users.json', users);
+      const { password: _, ...safe } = users[userIndex];
+      userSafe = safe;
     }
 
-    // Mark existing user as paid
-    users[userIndex].hasPaid = true;
-    users[userIndex].paidAt = new Date().toISOString();
-    users[userIndex].paymentId = activePaymentId;
-
-    writeJson('users.json', users);
-
-    const { password: _, ...userSafe } = users[userIndex];
-    res.json({ success: true, message: 'Payment verified! Lifetime access unlocked!', user: userSafe });
+    return res.json({
+      success: true,
+      message: 'Payment Confirmed by Razorpay! Lifetime Access Unlocked!',
+      user: userSafe,
+      utrId: cleanUtr
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Error in /api/auth/verify-payment:', err);
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// Client-Side Self-Healing Account Sync
-// If a user's browser has their registered account saved, automatically self-heal and restore to server
+// Client-Side Account Sync (STRICT: Never trust client-claimed hasPaid!)
 app.post('/api/auth/sync-client-account', (req, res) => {
   try {
-    const { email, password, name, hasPaid, paymentId } = req.body;
+    const { email, password, name, paymentId } = req.body;
     if (!email) return res.status(400).json({ error: 'Email required' });
 
     const cleanEmail = email.trim().toLowerCase();
+
+    // Revoked email check
+    if (REVOKED_EMAILS.includes(cleanEmail)) {
+      const users = readJson('users.json', []);
+      const idx = users.findIndex(u => u.email.toLowerCase() === cleanEmail);
+      if (idx !== -1) {
+        users[idx].hasPaid = false;
+        users[idx].paymentId = null;
+        users[idx].paidAt = null;
+        writeJson('users.json', users);
+      }
+      return res.json({ success: true, restored: false, user: { email: cleanEmail, role: 'member', hasPaid: false } });
+    }
+
     const users = readJson('users.json', []);
     const idx = users.findIndex(u => u.email.toLowerCase() === cleanEmail);
+
+    // hasPaid can ONLY be true if verified in payments.json or already verified on server
+    const payments = readJson('payments.json', []);
+    const isVerifiedPaid = payments.some(p => p.email.toLowerCase() === cleanEmail && p.verified);
 
     if (idx === -1) {
       const newUser = {
@@ -1166,21 +1416,68 @@ app.post('/api/auth/sync-client-account', (req, res) => {
         password: password || 'TradingHub@2026',
         name: name || cleanEmail.split('@')[0],
         role: 'member',
-        hasPaid: !!hasPaid,
-        paymentId: paymentId || null,
+        hasPaid: Boolean(isVerifiedPaid),
+        paymentId: isVerifiedPaid ? paymentId : null,
         createdAt: new Date().toISOString()
       };
       users.push(newUser);
       writeJson('users.json', users);
-      console.log(`[Self-Healing] Restored missing registered user ${cleanEmail} from client vault.`);
       return res.json({ success: true, restored: true, user: newUser });
     } else {
-      if (hasPaid && !users[idx].hasPaid) {
-        users[idx].hasPaid = true;
-        if (paymentId) users[idx].paymentId = paymentId;
+      // If server does not have verified payment and not admin, keep hasPaid false
+      if (!isVerifiedPaid && users[idx].role !== 'admin') {
+        users[idx].hasPaid = false;
         writeJson('users.json', users);
       }
       return res.json({ success: true, restored: false, user: users[idx] });
+    }
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Admin Payment Management Endpoints
+app.get('/api/admin/payments', (req, res) => {
+  try {
+    const payments = readJson('payments.json', []);
+    res.json(payments.slice().reverse());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/admin/payments/:id/action', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action } = req.body;
+    const payments = readJson('payments.json', []);
+    const pIdx = payments.findIndex(p => p.id === id || p.utrId === id);
+
+    if (pIdx === -1) {
+      return res.status(404).json({ error: 'Payment submission not found.' });
+    }
+
+    if (action === 'approve') {
+      payments[pIdx].verified = true;
+      payments[pIdx].verifiedBy = 'admin_manual';
+      payments[pIdx].verifiedAt = new Date().toISOString();
+      writeJson('payments.json', payments);
+
+      // Unlock user
+      const users = readJson('users.json', []);
+      const uIdx = users.findIndex(u => u.email.toLowerCase() === payments[pIdx].email.toLowerCase());
+      if (uIdx !== -1) {
+        users[uIdx].hasPaid = true;
+        users[uIdx].paidAt = new Date().toISOString();
+        users[uIdx].paymentId = payments[pIdx].utrId;
+        writeJson('users.json', users);
+      }
+      return res.json({ success: true, message: 'Payment approved and lifetime access unlocked!' });
+    } else {
+      payments[pIdx].verified = false;
+      payments[pIdx].error = 'Rejected by Admin';
+      writeJson('payments.json', payments);
+      return res.json({ success: true, message: 'Payment submission rejected.' });
     }
   } catch (e) {
     res.status(500).json({ error: e.message });

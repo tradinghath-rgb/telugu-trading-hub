@@ -18,5 +18,27 @@
     "hasPaid": true,
     "paidAt": "2026-09-10T12:00:00.000Z",
     "paymentId": "pay_DEMO_VERIFIED_LIFETIME"
+  },
+  {
+    "id": "user-1789328314651",
+    "email": "abhisheknaidu2005@gmail.com",
+    "password": "Abhi12",
+    "name": "Abhi",
+    "role": "member",
+    "hasPaid": false,
+    "paymentId": null,
+    "createdAt": "2026-09-13T19:38:34.651Z",
+    "paidAt": null,
+    "activeSessionToken": "635ed09e8565ba8565ea0f6c85eec246"
+  },
+  {
+    "id": "user-1789355317002",
+    "email": "attacker@gmail.com",
+    "password": "TradingHub@2026",
+    "name": "Attacker",
+    "role": "member",
+    "hasPaid": false,
+    "paymentId": null,
+    "createdAt": "2026-09-14T03:08:37.002Z"
   }
 ]

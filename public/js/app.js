@@ -28,6 +28,7 @@ const state = {
   gallery: [],
   comments: [],
   currentUser: null,
+  selectedPaymentScreenshot: null,
   activeFilter: 'all',
   searchQuery: '',
   activeModalChart: null,
@@ -51,6 +52,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initGalleryDragDrop();
   initDailyChartDragDrop();
   checkUrlPaymentCallback();
+  initPaymentScreenshotDropzone();
   checkAdminUrlParam();
   checkResetPasswordTokenInUrl();
   renderApp();
@@ -116,6 +118,22 @@ function initAuthState() {
           state.currentUser = null;
           return;
         }
+      }
+      // Explicitly revoke unverified flagged test accounts
+      if (parsed.email && parsed.email.toLowerCase().trim() === 'abhisheknaidu2005@gmail.com') {
+        localStorage.removeItem('tradinghub_user');
+        sessionStorage.removeItem('tradinghub_user');
+        localStorage.removeItem('tradinghub_session_token');
+        try {
+          let vault = JSON.parse(localStorage.getItem('tradinghub_account_vault') || '{}');
+          if (vault['abhisheknaidu2005@gmail.com']) {
+            vault['abhisheknaidu2005@gmail.com'].hasPaid = false;
+            vault['abhisheknaidu2005@gmail.com'].paymentId = null;
+            localStorage.setItem('tradinghub_account_vault', JSON.stringify(vault));
+          }
+        } catch (_) {}
+        state.currentUser = null;
+        return;
       }
       state.currentUser = parsed;
       // Auto-heal account on server in case of new deployment
@@ -475,6 +493,12 @@ function renderNavbar() {
     const isMember = user.hasPaid || isAdmin;
     const shortName = (user.name || user.email.split('@')[0]).split(' ')[0];
 
+    // Hide pricing CTA in navbar for verified PRO members & Admin
+    const pricingCta = document.querySelector('.nav-pricing-cta');
+    if (pricingCta) {
+      pricingCta.style.display = isMember ? 'none' : 'inline-flex';
+    }
+
     authNavGroup.innerHTML = `
       <div class="nav-user-cluster">
         <div class="nav-profile-pill" onclick="openUserProfileModal()" title="View Profile & Provided Features">
@@ -531,10 +555,21 @@ function renderDynamicSiteTexts() {
 
   const heroCta = document.querySelector('[data-bind="heroCta"]');
   if (heroCta) {
-    heroCta.innerHTML = `
-      <span>${cfg.hero?.ctaText || 'Unlock Lifetime Access - ₹399'}</span>
-      <span class="price-pill">₹${cfg.pricing?.price || 399} <s style="opacity: 0.65; font-size: 0.8em; margin-left: 4px; text-decoration: line-through;">₹${cfg.pricing?.originalPrice || 999}</s></span>
-    `;
+    const isMember = Boolean(state.currentUser?.hasPaid || state.currentUser?.role === 'admin');
+    if (isMember) {
+      heroCta.innerHTML = `
+        <span>✅ Lifetime Access Active — Watch 24+ Lessons</span>
+      `;
+      heroCta.onclick = () => {
+        document.getElementById('charts-section')?.scrollIntoView({ behavior: 'smooth' });
+      };
+    } else {
+      heroCta.innerHTML = `
+        <span>${cfg.hero?.ctaText || 'Unlock Lifetime Access - ₹399'}</span>
+        <span class="price-pill">₹${cfg.pricing?.price || 399} <s style="opacity: 0.65; font-size: 0.8em; margin-left: 4px; text-decoration: line-through;">₹${cfg.pricing?.originalPrice || 999}</s></span>
+      `;
+      heroCta.onclick = () => handleCheckoutRedirect('https://rzp.io/rzp/2a3h6cU');
+    }
   }
 
   // Pricing Elements
@@ -1161,41 +1196,185 @@ function closePaymentVerificationModal() {
   if (modal) modal.classList.remove('active');
 }
 
-async function submitPaymentVerification() {
-  const email = document.getElementById('verify-email-input')?.value?.trim();
-  const paymentId = document.getElementById('verify-payment-id-input')?.value?.trim() || `pay_rzp_${Date.now()}`;
+// ==================== PAYMENT SCREENSHOT & UTR VERIFICATION ====================
+function handlePaymentScreenshotSelect(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  if (!file.type.startsWith('image/')) {
+    showToast('Please select a valid image file (PNG, JPG, JPEG, WEBP).', 'error');
+    return;
+  }
+  state.selectedPaymentScreenshot = file;
 
-  if (!email) {
-    showToast('Please enter your email to activate lifetime access', 'error');
+  const previewContainer = document.getElementById('payment-screenshot-preview');
+  const dropzone = document.getElementById('payment-screenshot-dropzone');
+  const previewImg = document.getElementById('screenshot-preview-img');
+  const previewName = document.getElementById('screenshot-preview-name');
+  const previewSize = document.getElementById('screenshot-preview-size');
+
+  if (previewImg) previewImg.src = URL.createObjectURL(file);
+  if (previewName) previewName.textContent = file.name;
+  if (previewSize) previewSize.textContent = `${(file.size / 1024).toFixed(1)} KB`;
+
+  if (previewContainer) previewContainer.style.display = 'flex';
+  if (dropzone) dropzone.style.display = 'none';
+
+  hideUtrFeedback();
+}
+
+function removePaymentScreenshot(event) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  state.selectedPaymentScreenshot = null;
+  const fileInput = document.getElementById('verify-screenshot-file');
+  if (fileInput) fileInput.value = '';
+
+  const previewContainer = document.getElementById('payment-screenshot-preview');
+  const dropzone = document.getElementById('payment-screenshot-dropzone');
+  if (previewContainer) previewContainer.style.display = 'none';
+  if (dropzone) dropzone.style.display = 'block';
+}
+
+function initPaymentScreenshotDropzone() {
+  const dropzone = document.getElementById('payment-screenshot-dropzone');
+  if (!dropzone) return;
+
+  ['dragenter', 'dragover'].forEach(name => {
+    dropzone.addEventListener(name, e => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.add('drag-over');
+    });
+  });
+
+  ['dragleave', 'drop'].forEach(name => {
+    dropzone.addEventListener(name, e => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.remove('drag-over');
+    });
+  });
+
+  dropzone.addEventListener('drop', e => {
+    const file = e.dataTransfer?.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      handlePaymentScreenshotSelect({ target: { files: [file] } });
+    } else if (file) {
+      showToast('Please drop an image file (PNG, JPG, WEBP).', 'error');
+    }
+  });
+}
+
+function showUtrFeedback(type, title, message) {
+  const box = document.getElementById('utr-feedback-container');
+  if (!box) return;
+  box.className = `utr-feedback-msg ${type}`;
+  let icon = type === 'error' ? '❌' : (type === 'success' ? '✅' : '⏳');
+  box.innerHTML = `
+    <span class="feedback-icon">${icon}</span>
+    <div>
+      <strong>${title}</strong>
+      <div style="font-size: 0.8rem; margin-top: 2px;">${message}</div>
+    </div>
+  `;
+  box.style.display = 'flex';
+}
+
+function hideUtrFeedback() {
+  const box = document.getElementById('utr-feedback-container');
+  if (box) box.style.display = 'none';
+}
+
+async function submitPaymentVerification() {
+  const emailInput = document.getElementById('verify-email-input');
+  const utrInput = document.getElementById('verify-utr-input');
+  const btn = document.getElementById('btn-submit-verify');
+  const btnText = document.getElementById('btn-submit-verify-text');
+  const btnSpinner = document.getElementById('btn-submit-verify-spinner');
+
+  const email = (emailInput?.value || '').trim().toLowerCase();
+  const utrId = (utrInput?.value || '').trim();
+
+  hideUtrFeedback();
+
+  if (!email || !email.includes('@')) {
+    showUtrFeedback('error', 'Email Required', 'Please enter a valid email address.');
+    emailInput?.focus();
     return;
   }
 
+  if (!utrId) {
+    showUtrFeedback('error', 'UTR ID Required', 'UTR ID : is mandatory. Please enter your 12-digit UTR number from PhonePe, GPay, or Paytm.');
+    utrInput?.focus();
+    return;
+  }
+
+  // Validate format
+  const isNumericUtr = /^\d{10,18}$/.test(utrId);
+  const isPayId = /^pay_[a-zA-Z0-9]+$/.test(utrId);
+  if (!isNumericUtr && !isPayId) {
+    showUtrFeedback('error', 'Invalid UTR Format', 'Please enter a valid 12-digit numeric UTR ID (e.g. 4251XXXXXXXX) from your payment receipt.');
+    utrInput?.focus();
+    return;
+  }
+
+  if (!state.selectedPaymentScreenshot) {
+    showUtrFeedback('error', 'Screenshot Required', 'Payment screenshot is required. Please upload or drag & drop your payment receipt.');
+    return;
+  }
+
+  // Set loading UI
+  if (btn) btn.disabled = true;
+  if (btnText) btnText.textContent = 'Cross-Verifying with Razorpay...';
+  if (btnSpinner) btnSpinner.style.display = 'inline-block';
+  showUtrFeedback('loading', 'Checking Razorpay...', 'Verifying transaction status and UTR with Razorpay API...');
+
   try {
+    const formData = new FormData();
+    formData.append('email', email);
+    formData.append('utrId', utrId);
+    formData.append('screenshot', state.selectedPaymentScreenshot);
+
     const res = await fetch('/api/auth/verify-payment', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, paymentId })
+      body: formData
     });
     const data = await res.json();
 
-    if (data.success) {
+    if (data.success && data.user) {
+      // Prominent green confirmation directly below the UTR box
+      showUtrFeedback('success', 'Payment Verified by Razorpay!', '✅ Payment successful! Lifetime access unlocked. Welcome to Trading Hub PRO!');
+
       const paidUser = {
         ...data.user,
-        email: email.toLowerCase().trim(),
+        email: email,
         hasPaid: true,
-        paymentId: data.user?.paymentId || paymentId
+        paymentId: utrId
       };
       saveAuthState(paidUser);
       saveToLocalAccountVault(paidUser);
-      closePaymentVerificationModal();
-      showToast('🎉 Congratulations! Lifetime Access Unlocked!', 'success');
-      // Scroll to member dashboard
-      document.getElementById('charts-section')?.scrollIntoView({ behavior: 'smooth' });
+      renderApp();
+
+      showToast('🎉 Payment Confirmed! Lifetime Access Unlocked!', 'success');
+
+      // Close modal after 1.8 seconds and smoothly scroll to charts
+      setTimeout(() => {
+        closePaymentVerificationModal();
+        document.getElementById('charts-section')?.scrollIntoView({ behavior: 'smooth' });
+      }, 1800);
     } else {
-      showToast(data.error || 'Failed to verify payment.', 'error');
+      // Prominent red error directly below UTR box as requested
+      showUtrFeedback('error', 'Payment Verification Failed', data.error || 'Payment failed. UTR not confirmed by Razorpay. Please try again.');
+      showToast(data.error || 'Payment verification failed.', 'error');
     }
   } catch (err) {
-    showToast('Error verifying payment: ' + err.message, 'error');
+    showUtrFeedback('error', 'Connection Error', 'Network error verifying with server: ' + err.message);
+  } finally {
+    if (btn) btn.disabled = false;
+    if (btnText) btnText.textContent = 'Cross-Verify with Razorpay & Unlock';
+    if (btnSpinner) btnSpinner.style.display = 'none';
   }
 }
 
@@ -1789,6 +1968,9 @@ function switchAdminTab(tabName, btn) {
   if (btn) btn.classList.add('active');
   const target = document.getElementById(`admin-tab-${tabName}`);
   if (target) target.style.display = 'block';
+  if (tabName === 'payments') {
+    loadAdminPayments();
+  }
 }
 
 // Fetch available Telugu & English videos on server for dropdowns
@@ -2918,3 +3100,99 @@ window.closeConcurrentSessionModal = closeConcurrentSessionModal;
 window.deleteSingleChart = deleteSingleChart;
 window.openRenameModal = openRenameModal;
 
+
+// ==================== ADMIN PAYMENTS & UTR PROOFS VIEWER ====================
+async function loadAdminPayments() {
+  const tbody = document.getElementById('admin-payments-table-body');
+  if (!tbody) return;
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">
+        <span class="spinner-small" style="margin-right: 8px;"></span> Loading payments...
+      </td>
+    </tr>
+  `;
+
+  try {
+    const res = await fetch('/api/admin/payments');
+    const payments = await res.json();
+
+    if (!Array.isArray(payments) || payments.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">
+            No payment verification submissions yet.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = payments.map(p => {
+      const dateStr = p.submittedAt ? new Date(p.submittedAt).toLocaleString() : 'N/A';
+      const statusBadge = p.verified 
+        ? '<span class="status-badge status-active" style="background: rgba(0,242,152,0.15); color: #00f298; border: 1px solid rgba(0,242,152,0.3); padding: 2px 8px; border-radius: 12px; font-size: 0.78rem;">✅ VERIFIED PRO</span>'
+        : `<span class="status-badge status-danger" style="background: rgba(255,75,75,0.15); color: #ff7575; border: 1px solid rgba(255,75,75,0.3); padding: 2px 8px; border-radius: 12px; font-size: 0.78rem;" title="${p.error || 'Unconfirmed'}">❌ UNCONFIRMED</span>`;
+
+      const screenshotHtml = p.screenshotUrl
+        ? `<a href="${p.screenshotUrl}" target="_blank" rel="noopener" title="Click to view full screenshot proof">
+            <img src="${p.screenshotUrl}" class="admin-payment-proof-thumb" alt="Proof" />
+          </a>`
+        : '<span style="color: var(--text-muted);">None</span>';
+
+      return `
+        <tr>
+          <td style="font-size: 0.82rem; color: var(--text-muted); white-space: nowrap;">${dateStr}</td>
+          <td><strong style="color: #fff;">${p.email}</strong></td>
+          <td><code style="background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; color: var(--accent-gold);">${p.utrId}</code></td>
+          <td>${screenshotHtml}</td>
+          <td>${statusBadge}</td>
+          <td>
+            <div style="display: flex; gap: 6px;">
+              ${!p.verified ? `<button class="btn btn-sm btn-primary" style="padding: 4px 8px; font-size: 0.76rem;" onclick="handleAdminPaymentAction('${p.id || p.utrId}', 'approve')">Approve Access</button>` : ''}
+              ${p.verified ? `<button class="btn btn-sm btn-danger" style="padding: 4px 8px; font-size: 0.76rem;" onclick="handleAdminPaymentAction('${p.id || p.utrId}', 'reject')">Revoke</button>` : ''}
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" style="text-align: center; color: var(--accent-red); padding: 20px;">
+          Failed to load payments: ${err.message}
+        </td>
+      </tr>
+    `;
+  }
+}
+
+async function handleAdminPaymentAction(id, action) {
+  const confirmMsg = action === 'approve' 
+    ? 'Are you sure you want to approve this payment and grant lifetime access to this user?'
+    : 'Are you sure you want to revoke access for this payment?';
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    const res = await fetch(`/api/admin/payments/${id}/action`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message, 'success');
+      loadAdminPayments();
+    } else {
+      showToast(data.error || 'Action failed.', 'error');
+    }
+  } catch (e) {
+    showToast('Error: ' + e.message, 'error');
+  }
+}
+window.loadAdminPayments = loadAdminPayments;
+window.handleAdminPaymentAction = handleAdminPaymentAction;
+window.handlePaymentScreenshotSelect = handlePaymentScreenshotSelect;
+window.removePaymentScreenshot = removePaymentScreenshot;
+window.submitPaymentVerification = submitPaymentVerification;
