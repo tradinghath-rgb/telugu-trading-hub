@@ -4,14 +4,139 @@
  * Razorpay Payment Integration, Admin Plus (+) Upload, Rename, and Bulk Delete.
  */
 
-// Immediately flush any stale/legacy demo sessions from browser cache
-try {
-  const stale = safeStorage.getItem('tradinghub_user');
-  if (stale && (stale.includes('Master') || stale.includes('admin@') || stale.includes('"role":"admin"'))) {
-    safeStorage.removeItem('tradinghub_user');
-    safeSessionStorage.removeItem('tradinghub_user');
+// ==================== RESILIENT HYBRID STORAGE ENGINE ====================
+// Zero-crash dual-layer storage with window.localStorage, window.sessionStorage,
+// cookie persistence, and in-memory store.
+// Guarantees sessions survive mobile browser swipe-down pull-to-refresh,
+// iOS Safari private mode, Android WebViews, and strict storage sandboxes.
+
+const _inMemoryStorage = {};
+
+function _getCookie(name) {
+  try {
+    const prefix = name + '=';
+    const parts = (document.cookie || '').split(';');
+    for (let i = 0; i < parts.length; i++) {
+      let c = parts[i].trim();
+      if (c.indexOf(prefix) === 0) {
+        return decodeURIComponent(c.substring(prefix.length));
+      }
+    }
+  } catch (_) {}
+  return null;
+}
+
+function _setCookie(name, val, days = 365) {
+  try {
+    const d = new Date();
+    d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
+    const expires = 'expires=' + d.toUTCString();
+    document.cookie = name + '=' + encodeURIComponent(val) + ';' + expires + ';path=/;SameSite=Lax';
+  } catch (_) {}
+}
+
+function _deleteCookie(name) {
+  try {
+    document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;SameSite=Lax';
+  } catch (_) {}
+}
+
+const safeStorage = {
+  getItem(key) {
+    try {
+      const val = window.localStorage.getItem(key);
+      if (val !== null && val !== undefined) return val;
+    } catch (_) {}
+    if (_inMemoryStorage[key] !== undefined) return _inMemoryStorage[key];
+    if (key === 'tradinghub_user' || key === 'tradinghub_session_token' || key === 'tradinghub_admin_pin_verified') {
+      const cookieVal = _getCookie('th_' + key);
+      if (cookieVal) {
+        _inMemoryStorage[key] = cookieVal;
+        return cookieVal;
+      }
+    }
+    return null;
+  },
+  setItem(key, val) {
+    const strVal = String(val);
+    _inMemoryStorage[key] = strVal;
+    try {
+      window.localStorage.setItem(key, strVal);
+    } catch (_) {}
+    if (key === 'tradinghub_user' || key === 'tradinghub_session_token' || key === 'tradinghub_admin_pin_verified') {
+      _setCookie('th_' + key, strVal, 365);
+    }
+  },
+  removeItem(key) {
+    delete _inMemoryStorage[key];
+    try {
+      window.localStorage.removeItem(key);
+    } catch (_) {}
+    if (key === 'tradinghub_user' || key === 'tradinghub_session_token' || key === 'tradinghub_admin_pin_verified') {
+      _deleteCookie('th_' + key);
+    }
+  },
+  clear() {
+    for (const k in _inMemoryStorage) delete _inMemoryStorage[k];
+    try {
+      window.localStorage.clear();
+    } catch (_) {}
   }
-} catch (_) {}
+};
+
+const safeSessionStorage = {
+  getItem(key) {
+    try {
+      const val = window.sessionStorage.getItem(key);
+      if (val !== null && val !== undefined) return val;
+    } catch (_) {}
+    return safeStorage.getItem(key);
+  },
+  setItem(key, val) {
+    const strVal = String(val);
+    try {
+      window.sessionStorage.setItem(key, strVal);
+    } catch (_) {}
+    safeStorage.setItem(key, strVal);
+  },
+  removeItem(key) {
+    try {
+      window.sessionStorage.removeItem(key);
+    } catch (_) {}
+    safeStorage.removeItem(key);
+  },
+  clear() {
+    try {
+      window.sessionStorage.clear();
+    } catch (_) {}
+  }
+};
+
+window.safeStorage = safeStorage;
+window.safeSessionStorage = safeSessionStorage;
+
+// ==================== INACTIVITY AUTO-LOGOUT TRACKER ====================
+// Active user interaction tracking. When user is actively browsing, scrolling, or clicking,
+// we refresh last active timestamp. Only if the user is confirmed completely inactive for
+// > 24 hours does the system log them out automatically.
+const INACTIVITY_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24 hours
+let _lastActivityRecord = 0;
+
+function markUserActive() {
+  const now = Date.now();
+  if (now - _lastActivityRecord > 15000) { // throttled to once every 15 seconds
+    _lastActivityRecord = now;
+    if (state.currentUser) {
+      safeStorage.setItem('tradinghub_last_active', String(now));
+    }
+  }
+}
+
+if (typeof window !== 'undefined') {
+  ['touchstart', 'touchmove', 'click', 'keydown', 'scroll', 'pointerdown'].forEach(evt => {
+    window.addEventListener(evt, markUserActive, { passive: true });
+  });
+}
 
 // Fallback safety: If old quickLoginAsAdmin is somehow triggered, force security modal instead
 window.quickLoginAsAdmin = function() {
@@ -123,7 +248,19 @@ async function syncAllLocalAccountsToServer() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(acc)
-        }).catch(() => {});
+        })
+        .then(r => r.json())
+        .then(d => {
+          if (d && d.deleted) {
+            // Account was deleted by admin: purge from local vault permanently
+            try {
+              let v = JSON.parse(safeStorage.getItem('tradinghub_account_vault') || '{}');
+              delete v[acc.email.toLowerCase().trim()];
+              safeStorage.setItem('tradinghub_account_vault', JSON.stringify(v));
+            } catch (_) {}
+          }
+        })
+        .catch(() => {});
       }
     }
   } catch (_) {}
@@ -132,28 +269,48 @@ async function syncAllLocalAccountsToServer() {
 // Load Authentication State from Storage
 function initAuthState() {
   try {
+    // 1. Inactivity check: Only log out if confirmed inactive for > 24 hours
+    const lastActiveStr = safeStorage.getItem('tradinghub_last_active');
+    if (lastActiveStr) {
+      const lastActive = parseInt(lastActiveStr, 10);
+      if (!isNaN(lastActive) && (Date.now() - lastActive > INACTIVITY_TIMEOUT_MS)) {
+        console.log('[AUTH] Confirmed user inactive for > 24h. Auto-logging out.');
+        safeStorage.removeItem('tradinghub_user');
+        safeSessionStorage.removeItem('tradinghub_user');
+        safeStorage.removeItem('tradinghub_session_token');
+        safeSessionStorage.removeItem('tradinghub_session_token');
+        safeStorage.removeItem('tradinghub_admin_pin_verified');
+        safeStorage.removeItem('tradinghub_last_active');
+        state.currentUser = null;
+        document.documentElement.classList.remove('is-admin');
+        document.body.classList.remove('is-admin');
+        document.body.classList.remove('admin-home-blurred');
+        setTimeout(() => {
+          showToast('You were logged out due to inactivity.', 'info');
+        }, 600);
+        return;
+      }
+    }
+
+    // 2. Read user session from resilient dual-layer storage
     const raw = safeSessionStorage.getItem('tradinghub_user') || safeStorage.getItem('tradinghub_user');
     if (raw) {
       const parsed = JSON.parse(raw);
-      // Only keep admin session if active in current browser session
+
+      // Admin verification logic: Keep admin session active across pull-to-refresh
       if (parsed.role === 'admin') {
-        const sessionAuth = safeSessionStorage.getItem('tradinghub_user');
-        if (!sessionAuth) {
-          document.documentElement.classList.remove('is-admin');
-          document.body.classList.remove('is-admin');
-          document.body.classList.remove('admin-home-blurred');
-          safeStorage.removeItem('tradinghub_user');
-          state.currentUser = null;
-          return;
-        }
         document.documentElement.classList.add('is-admin');
         document.body.classList.add('is-admin');
-        // Ultra Privacy: If PIN is not verified for this session, blur home and prompt PIN code
-        if (safeSessionStorage.getItem('tradinghub_admin_pin_verified') !== ADMIN_PIN) {
+        const pinVerified = safeSessionStorage.getItem('tradinghub_admin_pin_verified') || safeStorage.getItem('tradinghub_admin_pin_verified');
+        if (pinVerified === ADMIN_PIN) {
+          document.body.classList.remove('admin-home-blurred');
+        } else {
+          // If PIN not yet entered for this session, prompt for it
           document.body.classList.add('admin-home-blurred');
           setTimeout(() => openAdminPinModal(), 300);
         }
       }
+
       // Explicitly revoke unverified flagged test accounts
       if (parsed.email && parsed.email.toLowerCase().trim() === 'abhisheknaidu2005@gmail.com') {
         safeStorage.removeItem('tradinghub_user');
@@ -170,20 +327,40 @@ function initAuthState() {
         state.currentUser = null;
         return;
       }
+
       state.currentUser = parsed;
-      // Auto-heal account on server in case of new deployment
+      markUserActive();
+
+      // Check with server if account is active or was deleted by admin
       fetch('/api/auth/sync-client-account', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(parsed)
-      }).catch(() => {});
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d && d.deleted) {
+          // Server confirmed account was permanently removed by Admin!
+          safeStorage.removeItem('tradinghub_user');
+          safeSessionStorage.removeItem('tradinghub_user');
+          safeStorage.removeItem('tradinghub_session_token');
+          safeSessionStorage.removeItem('tradinghub_session_token');
+          safeStorage.removeItem('tradinghub_admin_pin_verified');
+          state.currentUser = null;
+          document.documentElement.classList.remove('is-admin');
+          document.body.classList.remove('is-admin');
+          document.body.classList.remove('admin-home-blurred');
+          renderApp();
+          showToast('This account has been removed by administrator.', 'info');
+        }
+      })
+      .catch(() => {});
     }
+
     syncAllLocalAccountsToServer();
     cleanLocalVaultTestAccounts();
   } catch (e) {
-    safeStorage.removeItem('tradinghub_user');
-    safeSessionStorage.removeItem('tradinghub_user');
-    state.currentUser = null;
+    console.warn('[AUTH] Notice during initAuthState:', e);
   }
 }
 
@@ -207,24 +384,20 @@ function saveAuthState(user) {
     if (user) {
       saveToLocalAccountVault(user);
       if (user.sessionToken) {
-        if (user.role === 'admin') {
-          safeSessionStorage.setItem('tradinghub_session_token', user.sessionToken);
-        } else {
-          safeStorage.setItem('tradinghub_session_token', user.sessionToken);
-        }
+        safeSessionStorage.setItem('tradinghub_session_token', user.sessionToken);
+        safeStorage.setItem('tradinghub_session_token', user.sessionToken);
       }
-      if (user.role === 'admin') {
-        safeSessionStorage.setItem('tradinghub_user', JSON.stringify(user));
-        safeStorage.setItem('tradinghub_user', JSON.stringify(user));
-      } else {
-        safeStorage.setItem('tradinghub_user', JSON.stringify(user));
-        safeSessionStorage.setItem('tradinghub_user', JSON.stringify(user));
-      }
+      safeSessionStorage.setItem('tradinghub_user', JSON.stringify(user));
+      safeStorage.setItem('tradinghub_user', JSON.stringify(user));
+      safeStorage.setItem('tradinghub_last_active', String(Date.now()));
     } else {
       safeStorage.removeItem('tradinghub_user');
       safeSessionStorage.removeItem('tradinghub_user');
       safeStorage.removeItem('tradinghub_session_token');
       safeSessionStorage.removeItem('tradinghub_session_token');
+      safeStorage.removeItem('tradinghub_admin_pin_verified');
+      safeSessionStorage.removeItem('tradinghub_admin_pin_verified');
+      safeStorage.removeItem('tradinghub_last_active');
     }
   } catch (_) {}
   renderApp();
@@ -1799,17 +1972,25 @@ async function handleAuthSubmit(e) {
   }
 }
 
-function handleLogout() {
+function handleLogout(isAutoLogout = false) {
   document.documentElement.classList.remove('is-admin');
   document.documentElement.classList.remove('is-pro-member');
   document.body.classList.remove('is-admin');
+  document.body.classList.remove('admin-home-blurred');
   document.body.classList.remove('is-pro-member');
   const navActions = document.querySelector('.nav-actions');
   if (navActions) navActions.classList.remove('is-admin-nav');
   safeSessionStorage.removeItem('tradinghub_admin_pin_verified');
+  safeStorage.removeItem('tradinghub_admin_pin_verified');
   safeSessionStorage.removeItem('tradinghub_session_token');
+  safeStorage.removeItem('tradinghub_session_token');
+  safeStorage.removeItem('tradinghub_last_active');
   saveAuthState(null);
-  showToast('Logged out successfully.', 'info');
+  if (isAutoLogout) {
+    showToast('You were logged out due to inactivity.', 'info');
+  } else {
+    showToast('Logged out successfully.', 'info');
+  }
 }
 
 // ==================== USER PROFILE MODAL & ENTITLEMENTS ====================
@@ -2221,7 +2402,8 @@ function openAdminModal() {
   }
 
   // ULTRA PRIVACY: Check if 6-digit PIN has been verified for this browser session
-  if (safeSessionStorage.getItem('tradinghub_admin_pin_verified') !== ADMIN_PIN) {
+  const pinVerified = safeSessionStorage.getItem('tradinghub_admin_pin_verified') || safeStorage.getItem('tradinghub_admin_pin_verified');
+  if (pinVerified !== ADMIN_PIN) {
     openAdminPinModal();
     return;
   }
@@ -3926,6 +4108,25 @@ async function adminDeleteUser(userId, email) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Failed to delete account');
+
+    const cleanEmail = (email || '').toLowerCase().trim();
+    // 1. Purge from local device account vault so client sync never resurrects it
+    try {
+      let vault = JSON.parse(safeStorage.getItem('tradinghub_account_vault') || '{}');
+      if (vault[cleanEmail]) {
+        delete vault[cleanEmail];
+        safeStorage.setItem('tradinghub_account_vault', JSON.stringify(vault));
+      }
+      let savedDev = JSON.parse(safeStorage.getItem('tradinghub_device_saved_login') || 'null');
+      if (savedDev && savedDev.email && savedDev.email.toLowerCase().trim() === cleanEmail) {
+        safeStorage.removeItem('tradinghub_device_saved_login');
+      }
+    } catch (_) {}
+
+    // 2. If the current logged-in user is this deleted user, log out immediately
+    if (state.currentUser && state.currentUser.email && state.currentUser.email.toLowerCase().trim() === cleanEmail) {
+      handleLogout();
+    }
 
     showToast(data.message || `Account ${email} has been removed.`, 'success');
 

@@ -317,6 +317,59 @@ function writeJson(fileName, data) {
   }
 }
 
+// ==================== DELETED ACCOUNTS TOMBSTONE VAULT ====================
+// Prevents deleted accounts from ever resurrecting across server restarts,
+// cloud backups, or client-side device cache synchronization.
+function getDeletedUserEmails() {
+  const list = readJson('deleted_users.json', []);
+  const emails = new Set();
+  if (Array.isArray(list)) {
+    list.forEach(item => {
+      if (typeof item === 'string') {
+        emails.add(item.toLowerCase().trim());
+      } else if (item && item.email) {
+        emails.add(item.email.toLowerCase().trim());
+      }
+    });
+  }
+  return emails;
+}
+
+function markUserAsDeleted(email) {
+  if (!email) return;
+  const cleanEmail = email.toLowerCase().trim();
+  let list = readJson('deleted_users.json', []);
+  if (!Array.isArray(list)) list = [];
+  const exists = list.some(item => {
+    const e = typeof item === 'string' ? item : item?.email;
+    return e && e.toLowerCase().trim() === cleanEmail;
+  });
+  if (!exists) {
+    list.push({ email: cleanEmail, deletedAt: new Date().toISOString() });
+    writeJson('deleted_users.json', list);
+    try {
+      fs.writeFileSync(path.join(DATA_DIR, 'deleted_users_permanent.json'), JSON.stringify(list, null, 2), 'utf8');
+    } catch (_) {}
+  }
+}
+
+function unmarkUserAsDeleted(email) {
+  if (!email) return;
+  const cleanEmail = email.toLowerCase().trim();
+  let list = readJson('deleted_users.json', []);
+  if (!Array.isArray(list)) list = [];
+  const filtered = list.filter(item => {
+    const e = typeof item === 'string' ? item : item?.email;
+    return e && e.toLowerCase().trim() !== cleanEmail;
+  });
+  if (filtered.length !== list.length) {
+    writeJson('deleted_users.json', filtered);
+    try {
+      fs.writeFileSync(path.join(DATA_DIR, 'deleted_users_permanent.json'), JSON.stringify(filtered, null, 2), 'utf8');
+    } catch (_) {}
+  }
+}
+
 // ==================== CROSS-DEPLOY PERMANENT CLOUD DATA VAULT ====================
 // Automatically preserves all registered user accounts, passwords, lifetime paid statuses,
 // comments, and uploaded charts across Render restarts, redeploys, and code updates.
@@ -445,12 +498,14 @@ async function syncFromCloud(fileName) {
     if (fileName === 'users.json') {
       const userMap = new Map();
       const OWNER_EMAIL = 'abhisheknaidus093@gmail.com';
+      const deletedEmails = getDeletedUserEmails();
 
       candidateSources.forEach(sourceList => {
         if (!Array.isArray(sourceList)) return;
         sourceList.forEach(u => {
           if (!u || !u.email) return;
           const key = u.email.trim().toLowerCase();
+          if (deletedEmails.has(key)) return; // DO NOT restore accounts deleted by admin
           const existing = userMap.get(key);
           if (!existing) {
             userMap.set(key, { ...u, email: key, hasPaid: Boolean(u.hasPaid) });
@@ -503,7 +558,7 @@ async function syncFromCloud(fileName) {
         ownerUser.hasPaid = true;
       }
 
-      merged = Array.from(userMap.values());
+      merged = Array.from(userMap.values()).filter(u => u && u.email && !deletedEmails.has(u.email.trim().toLowerCase()));
     } else {
       const itemMap = new Map();
       candidateSources.forEach(sourceList => {
@@ -1054,6 +1109,9 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(400).json({ error: 'This is the reserved owner account. Please sign in.' });
     }
 
+    // If previously deleted, unmark so the user can register cleanly
+    unmarkUserAsDeleted(cleanEmail);
+
     let users = readJson('users.json', []);
     let existing = users.find(u => u.email.toLowerCase() === cleanEmail);
     if (!existing) {
@@ -1101,6 +1159,13 @@ app.post('/api/auth/login', async (req, res) => {
 
     const cleanEmail = email.trim().toLowerCase();
     const OWNER_EMAIL = 'abhisheknaidus093@gmail.com';
+
+    // Deleted Account Check
+    const deletedEmails = getDeletedUserEmails();
+    if (deletedEmails.has(cleanEmail)) {
+      return res.status(401).json({ error: 'This account has been deleted by administrator. Please register a new account.' });
+    }
+
     let users = readJson('users.json', []);
 
     // Generate fresh session token for this device (supersedes any other device)
@@ -1752,6 +1817,16 @@ app.post('/api/auth/sync-client-account', (req, res) => {
 
     const cleanEmail = email.trim().toLowerCase();
 
+    // Tombstone check: Never recreate a user that was explicitly deleted by Admin
+    const deletedEmails = getDeletedUserEmails();
+    if (deletedEmails.has(cleanEmail)) {
+      return res.json({
+        success: false,
+        deleted: true,
+        error: 'Account has been permanently deleted by administrator.'
+      });
+    }
+
     // Revoked email check
     if (REVOKED_EMAILS.includes(cleanEmail)) {
       const users = readJson('users.json', []);
@@ -1830,7 +1905,7 @@ app.get('/api/admin/users', (req, res) => {
 });
 
 // 2. Toggle PRO Status for a User (Revoke PRO or Grant PRO)
-app.post('/api/admin/users/:id/toggle-pro', (req, res) => {
+app.post('/api/admin/users/:id/toggle-pro', async (req, res) => {
   try {
     const { id } = req.params;
     const { hasPaid } = req.body;
@@ -1868,7 +1943,7 @@ app.post('/api/admin/users/:id/toggle-pro', (req, res) => {
     }
 
     writeJson('users.json', users);
-    syncToCloud('users.json');
+    await syncToCloud('users.json', users);
 
     const actionText = shouldHavePro ? 'Lifetime PRO Access Granted' : 'PRO Access Revoked Successfully';
     res.json({
@@ -1886,7 +1961,7 @@ app.post('/api/admin/users/:id/toggle-pro', (req, res) => {
 });
 
 // 3. Delete / Remove User Account (Remove Gmail)
-app.delete('/api/admin/users/:id', (req, res) => {
+app.delete('/api/admin/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
     let users = readJson('users.json', []);
@@ -1903,13 +1978,25 @@ app.delete('/api/admin/users/:id', (req, res) => {
       return res.status(403).json({ error: 'Cannot delete the Chief Mentor / Owner account.' });
     }
 
-    // Remove user
+    const cleanEmail = targetUser.email.toLowerCase().trim();
+
+    // 1. Mark in tombstone list so cloud mirrors and client syncs never restore this user
+    markUserAsDeleted(cleanEmail);
+
+    // 2. Remove user from current active database
     users.splice(uIdx, 1);
     writeJson('users.json', users);
-    syncToCloud('users.json');
 
-    // Remove any payment records for this user
-    payments = payments.filter(p => !p.email || p.email.toLowerCase() !== targetUser.email.toLowerCase());
+    // 3. Update local permanent backup snapshot
+    try {
+      fs.writeFileSync(path.join(DATA_DIR, 'users_permanent.json'), JSON.stringify(users, null, 2), 'utf8');
+    } catch (_) {}
+
+    // 4. Force immediate propagation to primary and secondary cloud mirrors!
+    await syncToCloud('users.json', users);
+
+    // 5. Remove any payment records for this user
+    payments = payments.filter(p => !p.email || p.email.toLowerCase() !== cleanEmail);
     writeJson('payments.json', payments);
 
     res.json({
@@ -1951,7 +2038,7 @@ app.post('/api/admin/users/:id/reset-password', async (req, res) => {
 });
 
 // 5. Admin Manually Create Member / PRO User
-app.post('/api/admin/users/create', (req, res) => {
+app.post('/api/admin/users/create', async (req, res) => {
   try {
     const { email, password, name, isPro } = req.body;
     if (!email || !password) {
@@ -1963,6 +2050,9 @@ app.post('/api/admin/users/create', (req, res) => {
     if (users.some(u => u.email.toLowerCase() === cleanEmail)) {
       return res.status(400).json({ error: 'A user with this email already exists.' });
     }
+
+    // Unmark in tombstone if previously deleted
+    unmarkUserAsDeleted(cleanEmail);
 
     const shouldBePro = Boolean(isPro);
     const newUser = {
@@ -1980,7 +2070,7 @@ app.post('/api/admin/users/create', (req, res) => {
 
     users.push(newUser);
     writeJson('users.json', users);
-    syncToCloud('users.json');
+    await syncToCloud('users.json', users);
 
     const { password: _, ...userSafe } = newUser;
     res.status(201).json({
