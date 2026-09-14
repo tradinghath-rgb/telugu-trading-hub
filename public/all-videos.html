@@ -124,7 +124,8 @@
         <h3 id="modal-chart-title" class="modal-title">Trading Setup Video Breakdown</h3>
         <button class="btn-close-modal" onclick="closeChartModal()">✕</button>
       </div>
-        <div class="modal-chart-preview-col" style="position: relative; overflow: hidden;">
+      <div class="modal-body modal-video-body" style="display: flex; gap: 20px;">
+        <div class="modal-chart-preview-col" style="position: relative; overflow: hidden; flex: 1;">
           <img id="modal-chart-image" src="/assets/charts/chart-1.svg" alt="Detailed Chart Setup" />
           <div id="modal-chart-lock-overlay" class="chart-locked-overlay" style="display: none;">
             <div class="chart-lock-icon-circle">
@@ -143,7 +144,7 @@
             <p id="modal-chart-takeaway" style="font-size: 0.82rem; color: var(--text-primary); line-height: 1.5;"></p>
           </div>
         </div>
-        <div class="modal-video-player-col">
+        <div class="modal-video-player-col" style="flex: 1;">
           <div id="modal-player-container">
             <!-- Dynamically populated by app.js -->
           </div>
