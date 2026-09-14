@@ -591,7 +591,7 @@ function renderCharts() {
       return `
         <div class="chart-card">
           <div class="chart-thumbnail-wrap ${isUnlocked ? '' : 'locked'}" onclick="${clickAction}" style="cursor: pointer;" title="${isUnlocked ? 'Click to view full screen chart' : '🔒 Locked Chart - Click to Unlock'}">
-            <img src="${item.imageUrl}" alt="${item.title}" loading="lazy" style="${isUnlocked ? '' : 'filter: blur(10px) brightness(0.55); pointer-events: none;'}" />
+            <img src="${item.imageUrl}" alt="${item.title}" loading="lazy" decoding="async" style="${isUnlocked ? '' : 'filter: blur(10px) brightness(0.55); pointer-events: none;'}" />
             ${!isUnlocked ? `
               <div class="gallery-lock-overlay">
                 <div class="gallery-lock-badge">
@@ -735,7 +735,7 @@ function renderCharts() {
     return `
       <div class="chart-card" onclick="openChartModal('${chart.id}')">
         <div class="chart-thumbnail-wrap">
-          <img src="${chart.chartImage || '/assets/charts/chart-1.svg'}" alt="${chart.title}" loading="lazy" />
+          <img src="${chart.chartImage || '/assets/charts/chart-1.svg'}" alt="${chart.title}" loading="lazy" decoding="async" />
           <span class="chart-reel-badge">LESSON #${chart.reelNumber || ''}</span>
           <span class="chart-bilingual-pill">
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
@@ -834,9 +834,13 @@ function setChartCategoryFilter(cat, btn) {
 }
 
 // Search input handler
+let _searchDebounceTimer = null;
 function handleChartSearch(query) {
   state.searchQuery = query;
-  renderCharts();
+  clearTimeout(_searchDebounceTimer);
+  _searchDebounceTimer = setTimeout(() => {
+    renderCharts();
+  }, 100);
 }
 
 // ==================== BILINGUAL VIDEO & CHART MODAL ====================
@@ -2646,7 +2650,7 @@ function renderChartGallery() {
     return `
       <div class="gallery-card">
         <div class="gallery-thumb-wrap ${isUnlocked ? '' : 'locked'}" onclick="${clickAction}" title="${isUnlocked ? 'Click to view full screen' : '🔒 Locked Chart - Click to Unlock'}" style="cursor: pointer;">
-          <img src="${item.imageUrl}" alt="${item.title}" loading="lazy" />
+          <img src="${item.imageUrl}" alt="${item.title}" loading="lazy" decoding="async" />
           ${!isUnlocked ? `
             <div class="gallery-lock-overlay">
               <div class="gallery-lock-badge">
