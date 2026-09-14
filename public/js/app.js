@@ -1136,7 +1136,7 @@ function handleCheckoutRedirect(url) {
   }
 
   // Already logged in: Proceed directly to Razorpay
-  proceedDirectlyToRazorpay(checkoutUrl);
+  proceedDirectlyToPayment(checkoutUrl);
 }
 
 function openCheckoutAuthPromptModal() {
@@ -1161,23 +1161,81 @@ function relocateToAuthFromPrompt(mode = 'login') {
   }, 120);
 }
 
-function proceedDirectlyToRazorpayFromPrompt() {
+function proceedDirectlyToPaymentFromPrompt() {
   const url = pendingCheckoutUrl || state.siteConfig?.pricing?.razorpayUrl || 'https://rzp.io/rzp/2a3h6cU';
   closeCheckoutAuthPromptModal();
-  proceedDirectlyToRazorpay(url);
+  proceedDirectlyToPayment(url);
 }
 
-function proceedDirectlyToRazorpay(url) {
+let _paymentPollingInterval = null;
+
+function proceedDirectlyToPayment(url) {
   window.open(url, '_blank');
-  setTimeout(() => {
-    openPaymentVerificationModal();
-  }, 1000);
+  openWaitingPaymentModal();
 }
+
+function openWaitingPaymentModal() {
+  const modal = document.getElementById('waiting-payment-modal');
+  if (modal) {
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+  startPaymentPolling();
+}
+
+function closeWaitingPaymentModal() {
+  stopPaymentPolling();
+  const modal = document.getElementById('waiting-payment-modal');
+  if (modal) modal.classList.remove('active');
+  const otherActive = document.querySelector('.modal-overlay.active');
+  if (!otherActive) document.body.style.overflow = '';
+}
+
+function startPaymentPolling() {
+  stopPaymentPolling();
+  const email = state.currentUser?.email || localStorage.getItem('tradinghub_pending_email') || '';
+  if (!email) return;
+
+  _paymentPollingInterval = setInterval(async () => {
+    try {
+      const res = await fetch(`/api/auth/check-payment-status?email=${encodeURIComponent(email)}`);
+      const data = await res.json();
+      if (data && data.paid && data.user) {
+        stopPaymentPolling();
+        closeWaitingPaymentModal();
+        saveAuthState(data.user);
+        saveToLocalAccountVault(data.user);
+        renderApp();
+        showToast('🎉 Payment confirmed! Lifetime Access Unlocked!', 'success');
+        document.getElementById('charts-section')?.scrollIntoView({ behavior: 'smooth' });
+      }
+    } catch (_) {}
+  }, 3500);
+}
+
+function stopPaymentPolling() {
+  if (_paymentPollingInterval) {
+    clearInterval(_paymentPollingInterval);
+    _paymentPollingInterval = null;
+  }
+}
+
+function switchFromWaitingToUtrModal() {
+  closeWaitingPaymentModal();
+  openPaymentVerificationModal();
+}
+
+window.proceedDirectlyToPayment = proceedDirectlyToPayment;
+window.openWaitingPaymentModal = openWaitingPaymentModal;
+window.closeWaitingPaymentModal = closeWaitingPaymentModal;
+window.switchFromWaitingToUtrModal = switchFromWaitingToUtrModal;
+window.startPaymentPolling = startPaymentPolling;
+window.stopPaymentPolling = stopPaymentPolling;
 
 window.openCheckoutAuthPromptModal = openCheckoutAuthPromptModal;
 window.closeCheckoutAuthPromptModal = closeCheckoutAuthPromptModal;
 window.relocateToAuthFromPrompt = relocateToAuthFromPrompt;
-window.proceedDirectlyToRazorpayFromPrompt = proceedDirectlyToRazorpayFromPrompt;
+window.proceedDirectlyToPaymentFromPrompt = proceedDirectlyToPaymentFromPrompt;
 
 
 function openPaymentVerificationModal() {
@@ -1707,10 +1765,10 @@ function openUserProfileModal() {
     if (!isMember) {
       items.push({
         id: 'verify-payment',
-        title: 'Verify Razorpay Payment',
+        title: 'Verify Payment & Unlock (UTR)',
         badge: 'UNLOCK',
         badgeColor: 'var(--accent-gold)',
-        desc: 'Already paid ₹399 on Razorpay? Enter details to activate lifetime access',
+        desc: 'Already completed ₹399 payment? Enter your UTR ID to activate lifetime access',
         icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>`,
         isAdminOnly: false
       });

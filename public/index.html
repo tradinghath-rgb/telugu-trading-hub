@@ -420,7 +420,7 @@
           </li>
           <li>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            <span>Direct Razorpay Gateway (UPI, GPay, PhonePe, Cards)</span>
+            <span>Official Secure Payment Gateway (UPI, GPay, PhonePe, Cards)</span>
           </li>
         </ul>
 
@@ -431,7 +431,7 @@
           </button>
           
           <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 8px;">
-            Secure 256-Bit Encrypted Razorpay Checkout • UPI, Cards, Netbanking &amp; Wallets Supported
+            Secure 256-Bit Encrypted Checkout • Instant Access • UPI, Cards, Netbanking &amp; Wallets Supported
           </div>
 
           <!-- Explicit Strict No-Refund Policy Box -->
@@ -444,7 +444,7 @@
 
           <!-- Already Paid Button for Instant Unlock -->
           <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: center; gap: 8px;">
-            <span style="font-size: 0.85rem; color: var(--text-secondary);">Already paid via Razorpay?</span>
+            <span style="font-size: 0.85rem; color: var(--text-secondary);">Already completed payment?</span>
             <button class="btn btn-sm btn-secondary" onclick="openPaymentVerificationModal()">
               Verify Payment / Unlock
             </button>
@@ -514,7 +514,7 @@
           <ul class="footer-links">
             <li><a href="javascript:void(0)" onclick="openAuthModal('login')">Member Login</a></li>
             <li><a href="javascript:void(0)" onclick="openAuthModal('register')">Create New Account</a></li>
-            <li><a href="javascript:void(0)" onclick="openPaymentVerificationModal()">Verify Razorpay Payment</a></li>
+            <li><a href="javascript:void(0)" onclick="openPaymentVerificationModal()">Verify Payment & Unlock (UTR)</a></li>
             <li><a href="javascript:void(0)" onclick="openDedicatedAdminLoginModal()" style="color: var(--accent-gold); font-weight: 600;">Admin Login</a></li>
           </ul>
         </div>
@@ -614,7 +614,7 @@
         <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-subtle); display: flex; align-items: center; justify-content: space-between;">
           <span style="font-size: 0.8rem; color: var(--text-muted);">Want to pay first?</span>
           <button class="btn btn-sm btn-gold" onclick="proceedDirectlyToRazorpayFromPrompt()" style="font-size: 0.8rem; padding: 6px 12px;">
-            Direct Razorpay (₹399) &rarr;
+            Proceed to Payment (₹399) &rarr;
           </button>
         </div>
       </div>
@@ -832,6 +832,40 @@
     </div>
   </div>
 
+  <!-- B4. WAITING FOR PAYMENT COMPLETION MODAL -->
+  <div id="waiting-payment-modal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 480px; text-align: center;">
+      <div class="modal-header" style="justify-content: flex-end; border-bottom: none; padding-bottom: 0;">
+        <button class="btn-close-modal" onclick="closeWaitingPaymentModal()">&times;</button>
+      </div>
+      <div class="modal-body" style="padding-top: 0; padding-bottom: 24px;">
+        <div class="waiting-icon-circle">
+          <div class="spinner-pulse"></div>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+
+        <h3 style="font-size: 1.25rem; margin: 16px 0 8px 0; color: #fff;">Waiting for Payment Confirmation</h3>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5; margin-bottom: 20px;">
+          Please complete your <strong>₹399 payment</strong> in the newly opened window. As soon as payment is received, your lifetime access will unlock automatically!
+        </p>
+
+        <div class="waiting-status-pill">
+          <span class="pulse-dot"></span>
+          <span id="waiting-status-text">Checking transactions in real-time...</span>
+        </div>
+
+        <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.08);">
+          <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 10px;">
+            Already completed payment via PhonePe, Google Pay, or Paytm?
+          </p>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="switchFromWaitingToUtrModal()" style="font-size: 0.84rem;">
+            Enter UTR ID &amp; Screenshot &rarr;
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- C. PAYMENT VERIFICATION MODAL -->
   <div id="payment-verify-modal" class="modal-overlay">
     <div class="modal-card" style="max-width: 520px;">
@@ -853,7 +887,7 @@
         <div class="verify-instruction-box">
           <div class="instruction-step">
             <span class="step-num">1</span>
-            <span>Pay <strong>₹399</strong> via UPI (Google Pay, PhonePe, Paytm, or Cards) on Razorpay.</span>
+            <span>Pay <strong>₹399</strong> via UPI (Google Pay, PhonePe, Paytm, or Cards) using the official secure payment link.</span>
           </div>
           <div class="instruction-step">
             <span class="step-num">2</span>
@@ -918,11 +952,11 @@
           </button>
         </form>
 
-        <!-- Direct Razorpay Link -->
+        <!-- Official Payment Gateway Link -->
         <div class="verify-footer-cta">
           <span>Haven't completed ₹399 payment yet?</span>
           <a href="https://rzp.io/rzp/2a3h6cU" target="_blank" rel="noopener" class="direct-pay-link">
-            Pay ₹399 via Razorpay &rarr;
+            Pay ₹399 via UPI / Cards &rarr;
           </a>
         </div>
       </div>
@@ -954,9 +988,9 @@
           We are not SEBI registered research analysts or financial advisors. Content provided on this platform is purely educational. We do not guarantee profits or provide buy/sell recommendations. You trade at your own risk.
         </p>
 
-        <h4 style="color: #fff; margin-bottom: 6px;">3. Razorpay Payment Agreement</h4>
+        <h4 style="color: #fff; margin-bottom: 6px;">3. Payment Agreement</h4>
         <p>
-          By proceeding with the ₹399 payment via Razorpay, you confirm that you have read, understood, and consented to these terms and our non-refundable agreement.
+          By proceeding with the ₹399 payment via the secure payment portal, you confirm that you have read, understood, and consented to these terms and our non-refundable agreement.
         </p>
       </div>
     </div>
@@ -1080,7 +1114,7 @@
             <div class="cms-form-section">
               <h3>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-                Pricing &amp; Razorpay Payment Configuration
+                Pricing &amp; Payment Gateway Configuration
               </h3>
 
               <div class="form-grid-2">
@@ -1100,7 +1134,7 @@
                   <input type="text" id="cms-discount-badge" class="form-input" />
                 </div>
                 <div class="form-group">
-                  <label class="form-label">Razorpay Checkout URL</label>
+                  <label class="form-label">Payment Checkout Link URL</label>
                   <input type="url" id="cms-razorpay-url" class="form-input" required />
                 </div>
               </div>

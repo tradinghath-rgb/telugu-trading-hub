@@ -1159,6 +1159,118 @@ app.post('/api/admin/credentials', (req, res) => {
   }
 });
 
+// ==================== REAL-TIME PAYMENT STATUS CHECKER ====================
+// Immediately checks if a captured payment was received in live transactions
+app.get('/api/auth/check-payment-status', async (req, res) => {
+  try {
+    const email = (req.query.email || '').trim().toLowerCase();
+    if (!email) {
+      return res.json({ paid: false });
+    }
+
+    // 1. Check if user is already unlocked in local database
+    const users = readJson('users.json', []);
+    const existing = users.find(u => u.email && u.email.toLowerCase() === email);
+    if (existing && existing.hasPaid) {
+      const { password: _, ...safe } = existing;
+      return res.json({ paid: true, user: safe });
+    }
+
+    // 2. Check live transactions on payment gateway
+    const keyId = (process.env.RAZORPAY_KEY_ID || '').trim();
+    const keySecret = (process.env.RAZORPAY_KEY_SECRET || '').trim();
+
+    if (!keyId || !keySecret) {
+      return res.json({ paid: false });
+    }
+
+    const authHeader = 'Basic ' + Buffer.from(`${keyId}:${keySecret}`).toString('base64');
+    const response = await fetch('https://api.razorpay.com/v1/payments?count=20', {
+      headers: { Authorization: authHeader }
+    });
+
+    if (!response.ok) {
+      return res.json({ paid: false });
+    }
+
+    const data = await response.json();
+    const items = data.items || [];
+
+    // Find any captured payment for ₹399 created recently (within last 45 minutes)
+    const fortyFiveMinAgo = Math.floor(Date.now() / 1000) - (45 * 60);
+
+    const match = items.find(p => {
+      if (p.status !== 'captured' || p.amount < 39900) return false;
+      if (p.created_at < fortyFiveMinAgo) return false;
+
+      // Check email match or notes match
+      const pEmail = (p.email || '').trim().toLowerCase();
+      if (pEmail && pEmail === email) return true;
+
+      const notesEmail = (p.notes?.email || '').trim().toLowerCase();
+      if (notesEmail && notesEmail === email) return true;
+
+      return false;
+    });
+
+    if (match) {
+      // Record payment into payments.json
+      const payments = readJson('payments.json', []);
+      const utr = match.acquirer_data?.rrn || match.acquirer_data?.upi_transaction_id || match.id;
+      
+      const alreadyLogged = payments.some(p => p.razorpayPaymentId === match.id);
+      if (!alreadyLogged) {
+        payments.push({
+          id: `pay_rec_${Date.now()}`,
+          email: email,
+          utrId: utr,
+          screenshotUrl: null,
+          verified: true,
+          verifiedAt: new Date().toISOString(),
+          razorpayPaymentId: match.id,
+          amount: match.amount / 100,
+          submittedAt: new Date().toISOString()
+        });
+        writeJson('payments.json', payments);
+      }
+
+      // Unlock user in users.json
+      let safeUser;
+      const userIdx = users.findIndex(u => u.email.toLowerCase() === email);
+      if (userIdx === -1) {
+        const newUser = {
+          id: `user-${Date.now()}`,
+          email: email,
+          password: 'ChangeMe@123',
+          name: email.split('@')[0],
+          role: 'member',
+          hasPaid: true,
+          paidAt: new Date().toISOString(),
+          paymentId: match.id
+        };
+        users.push(newUser);
+        writeJson('users.json', users);
+        const { password: _, ...safe } = newUser;
+        safeUser = safe;
+      } else {
+        users[userIdx].hasPaid = true;
+        users[userIdx].paidAt = new Date().toISOString();
+        users[userIdx].paymentId = match.id;
+        writeJson('users.json', users);
+        const { password: _, ...safe } = users[userIdx];
+        safeUser = safe;
+      }
+
+      return res.json({ paid: true, user: safeUser });
+    }
+
+    return res.json({ paid: false });
+  } catch (err) {
+    console.error('Error in check-payment-status:', err.message);
+    res.json({ paid: false });
+  }
+});
+
 // ==================== RAZORPAY UTR & PAYMENT VERIFICATION API ====================
 
 /**
