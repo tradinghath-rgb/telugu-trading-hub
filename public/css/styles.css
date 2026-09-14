@@ -4374,46 +4374,80 @@ body.admin-home-blurred > *:not(#admin-pin-modal):not(#toast-container) {
   box-shadow: 0 4px 16px rgba(0, 242, 152, 0.35);
 }
 
-/* Multi-Select Chart Card Checkbox */
+/* Multi-Select Chart Card Circular Badge (Gallery-style) */
 .chart-select-box {
   position: absolute;
   top: 10px;
   left: 10px;
-  z-index: 25;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  background: rgba(6, 11, 20, 0.8);
+  z-index: 35;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(6, 11, 20, 0.85);
   backdrop-filter: blur(8px);
-  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  -webkit-backdrop-filter: blur(8px);
+  border: 2px solid rgba(255, 255, 255, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
   user-select: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
 }
 .chart-select-box:hover {
-  border-color: var(--accent-green);
+  border-color: #00f298;
+  transform: scale(1.1);
   background: rgba(0, 242, 152, 0.2);
-  transform: scale(1.08);
 }
 .chart-select-box.selected {
-  background: var(--accent-green);
-  border-color: var(--accent-green);
-  box-shadow: 0 0 10px rgba(0, 242, 152, 0.6);
+  background: #00f298 !important;
+  border-color: #00f298 !important;
+  box-shadow: 0 0 16px rgba(0, 242, 152, 0.85) !important;
+  transform: scale(1.06);
 }
 .chart-select-box svg {
   display: none;
   stroke: #060b14;
 }
 .chart-select-box.selected svg {
-  display: block;
+  display: block !important;
 }
+
+/* 1-Tap Direct Download Icon Button on Every Chart Card */
+.chart-card-dl-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 35;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(6, 11, 20, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1.5px solid rgba(0, 242, 152, 0.6);
+  color: #00f298;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  padding: 0;
+}
+.chart-card-dl-btn:hover {
+  background: #00f298;
+  color: #060b14;
+  transform: scale(1.1);
+  box-shadow: 0 0 16px rgba(0, 242, 152, 0.85);
+}
+
 .chart-card.is-selected,
 .gallery-card.is-selected {
-  border-color: var(--accent-green) !important;
-  box-shadow: 0 0 18px rgba(0, 242, 152, 0.28) !important;
+  border-color: #00f298 !important;
+  border-width: 2px !important;
+  box-shadow: 0 0 20px rgba(0, 242, 152, 0.35) !important;
 }
 
 /* Multi-Select Batch Download Floating Toolbar */
@@ -4483,4 +4517,140 @@ body.admin-home-blurred > *:not(#admin-pin-modal):not(#toast-container) {
 }
 .batch-btn-link:hover {
   color: #fff;
+}
+
+
+/* ==================== V23: GALLERY-STYLE SELECTION & DOWNLOAD ENHANCEMENTS ==================== */
+.chart-select-box {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 35;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(6, 11, 20, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 2.5px solid rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  user-select: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.7);
+}
+.chart-select-box:hover {
+  border-color: #00f298;
+  transform: scale(1.12);
+  background: rgba(0, 242, 152, 0.2);
+}
+.chart-select-box.selected {
+  background: #00f298 !important;
+  border-color: #00f298 !important;
+  box-shadow: 0 0 18px rgba(0, 242, 152, 0.9) !important;
+  transform: scale(1.08);
+}
+.chart-select-box svg {
+  display: none;
+  stroke: #060b14;
+}
+.chart-select-box.selected svg {
+  display: block !important;
+}
+
+/* 1-Tap Direct Download Button on Card */
+.chart-card-dl-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 35;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(6, 11, 20, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1.5px solid rgba(0, 242, 152, 0.65);
+  color: #00f298;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.7);
+  padding: 0;
+}
+.chart-card-dl-btn:hover {
+  background: #00f298;
+  color: #060b14;
+  transform: scale(1.12);
+  box-shadow: 0 0 18px rgba(0, 242, 152, 0.9);
+}
+
+.chart-card.is-selected,
+.gallery-card.is-selected {
+  border-color: #00f298 !important;
+  border-width: 2px !important;
+  box-shadow: 0 0 22px rgba(0, 242, 152, 0.35) !important;
+}
+
+/* Gallery Header Bar with Quick Batch Actions */
+.gallery-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 22px;
+  padding: 12px 18px;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(12px);
+}
+.gallery-header-bar .gallery-status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+.gallery-header-bar .gallery-status-tag svg {
+  color: var(--accent-gold);
+}
+.gallery-header-bar .gallery-action-btns {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* When Batch Toolbar is Active, smoothly hide floating share trigger on mobile */
+body.batch-mode-active .floating-share-trigger {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(60px);
+}
+
+@media (max-width: 640px) {
+  .batch-download-toolbar {
+    bottom: 16px;
+    width: calc(100% - 24px);
+    max-width: calc(100% - 24px);
+    padding: 8px 14px;
+    gap: 8px;
+  }
+  .batch-btn-download {
+    font-size: 0.82rem;
+    padding: 7px 14px;
+    flex: 1;
+    justify-content: center;
+  }
+  .batch-count-badge {
+    font-size: 0.78rem;
+    padding: 3px 8px;
+  }
 }

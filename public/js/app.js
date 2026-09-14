@@ -35,6 +35,7 @@ const state = {
   activeModalChart: null,
   activeVideoLang: 'telugu', // default Telugu
   adminSelectedChartIds: new Set(),
+  selectedCharts: new Map(),
   adminMediaInventory: { teluguVideos: [], englishVideos: [], uploadedMedia: [] },
   showAllVideos: false,
   showAllCharts: false,
@@ -586,16 +587,18 @@ function renderCharts() {
     let cardsHtml = displayList.map(item => {
       const escapedTitle = (item.title || 'Chart Setup').replace(/'/g, "\\'");
       const clickAction = isUnlocked 
-        ? `openGalleryLightbox('${item.imageUrl}', '${escapedTitle}')`
+        ? `openGalleryLightbox('${item.imageUrl}', '${escapedTitle}', '${item.id}')`
         : `handleUnpaidChartClick()`;
       const isSelected = state.selectedCharts && state.selectedCharts.has(item.id);
 
       return `
         <div class="chart-card ${isSelected ? 'is-selected' : ''}" data-chart-id="${item.id}" data-chart-url="${item.imageUrl}" data-chart-title="${escapedTitle}">
           <div class="chart-select-box ${isSelected ? 'selected' : ''}" onclick="toggleChartSelection(event, '${item.id}', '${item.imageUrl}', '${escapedTitle}')" title="Select chart for batch download">
-            <input type="checkbox" class="chart-checkbox" id="chk-chart-${item.id}" ${isSelected ? 'checked' : ''} style="display: none;" />
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#060b14" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#060b14" stroke-width="4"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
+          <button type="button" class="chart-card-dl-btn" onclick="downloadSingleChartDirect(event, '${item.imageUrl}', '${escapedTitle}')" title="Download this chart to Gallery (HD PNG)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          </button>
           <div class="chart-thumbnail-wrap ${isUnlocked ? '' : 'locked'}" onclick="${clickAction}" style="cursor: pointer;" title="${isUnlocked ? 'Click to view full screen chart' : '🔒 Locked Chart - Click to Unlock'}">
             <img src="${item.imageUrl}" alt="${item.title}" loading="lazy" decoding="async" style="${isUnlocked ? '' : 'filter: blur(10px) brightness(0.55); pointer-events: none;'}" />
             ${!isUnlocked ? `
@@ -738,9 +741,19 @@ function renderCharts() {
   }
 
   let cardsHtml = displayList.map(chart => {
+    const isSelected = state.selectedCharts && state.selectedCharts.has(chart.id);
+    const chartImg = chart.chartImage || '/assets/charts/chart-1.svg';
+    const escapedTitle = (chart.title || 'Lesson Chart').replace(/'/g, "\\'");
+
     return `
-      <div class="chart-card" onclick="openChartModal('${chart.id}')">
-        <div class="chart-thumbnail-wrap">
+      <div class="chart-card ${isSelected ? 'is-selected' : ''}" data-chart-id="${chart.id}" data-chart-url="${chartImg}" data-chart-title="${escapedTitle}">
+        <div class="chart-select-box ${isSelected ? 'selected' : ''}" onclick="toggleChartSelection(event, '${chart.id}', '${chartImg}', '${escapedTitle}')" title="Select chart for batch download">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#060b14" stroke-width="4"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <button type="button" class="chart-card-dl-btn" onclick="downloadSingleChartDirect(event, '${chartImg}', '${escapedTitle}')" title="Download chart to Gallery (HD PNG)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
+        <div class="chart-thumbnail-wrap" onclick="openChartModal('${chart.id}')" style="cursor: pointer;">
           <img src="${chart.chartImage || '/assets/charts/chart-1.svg'}" alt="${chart.title}" loading="lazy" decoding="async" />
           <span class="chart-reel-badge">LESSON #${chart.reelNumber || ''}</span>
           <span class="chart-bilingual-pill">
@@ -851,6 +864,14 @@ function handleChartSearch(query) {
 
 // ==================== BILINGUAL VIDEO & CHART MODAL ====================
 async function openChartModal(chartId) {
+  // If user is currently in multi-select mode, clicking card toggles selection instead of opening modal
+  if (state.selectedCharts && state.selectedCharts.size > 0 && chartId) {
+    const chart = (state.charts || []).find(c => c.id === chartId);
+    if (chart) {
+      toggleChartSelection(null, chart.id, chart.chartImage || '/assets/charts/chart-1.svg', chart.title);
+      return;
+    }
+  }
 
   // Graceful chart resolution: matches by id, or chart-01 / chart-1, or first available chart
   const chart = state.charts.find(c => c.id === chartId) || 
@@ -2859,16 +2880,18 @@ function renderChartGallery() {
   let cardsHtml = displayGallery.map(item => {
     const escapedTitle = (item.title || 'Chart Setup').replace(/'/g, "\\'");
     const clickAction = isUnlocked
-      ? `openGalleryLightbox('${item.imageUrl}', '${escapedTitle}')`
+      ? `openGalleryLightbox('${item.imageUrl}', '${escapedTitle}', '${item.id}')`
       : `handleUnpaidChartClick()`;
     const isSelected = state.selectedCharts && state.selectedCharts.has(item.id);
 
     return `
       <div class="gallery-card ${isSelected ? 'is-selected' : ''}" data-chart-id="${item.id}" data-chart-url="${item.imageUrl}" data-chart-title="${escapedTitle}">
         <div class="chart-select-box ${isSelected ? 'selected' : ''}" onclick="toggleChartSelection(event, '${item.id}', '${item.imageUrl}', '${escapedTitle}')" title="Select chart for batch download">
-          <input type="checkbox" class="chart-checkbox" id="chk-chart-${item.id}" ${isSelected ? 'checked' : ''} style="display: none;" />
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#060b14" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#060b14" stroke-width="4"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
+        <button type="button" class="chart-card-dl-btn" onclick="downloadSingleChartDirect(event, '${item.imageUrl}', '${escapedTitle}')" title="Download this chart to Gallery (HD PNG)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
         <div class="gallery-thumb-wrap ${isUnlocked ? '' : 'locked'}" onclick="${clickAction}" title="${isUnlocked ? 'Click to view full screen' : '🔒 Locked Chart - Click to Unlock'}" style="cursor: pointer;">
           <img src="${item.imageUrl}" alt="${item.title}" loading="lazy" decoding="async" />
           ${!isUnlocked ? `
@@ -3093,7 +3116,12 @@ async function handleGalleryFileInput(files) {
   if (fileInput) fileInput.value = '';
 }
 
-function openGalleryLightbox(imageUrl, title) {
+function openGalleryLightbox(imageUrl, title, chartId) {
+  // If user is currently in multi-select mode (1 or more charts selected), clicking card toggles selection
+  if (state.selectedCharts && state.selectedCharts.size > 0 && chartId) {
+    toggleChartSelection(null, chartId, imageUrl, title);
+    return;
+  }
   state.activeLightboxImage = { url: imageUrl, title: title || 'Institutional Chart Setup' };
   const isUnlocked = Boolean(state.currentUser?.hasPaid || state.currentUser?.role === 'admin');
   if (!isUnlocked) {
@@ -4418,82 +4446,93 @@ window.trackPaymentAttempt = trackPaymentAttempt;
 function redirectToGmailSupport(e) {
   if (e && e.preventDefault) e.preventDefault();
   const email = 'tradinghath@gmail.com';
-  const subject = encodeURIComponent('Telugu Trading Hub - Support / Query');
-  const body = encodeURIComponent('Hello Telugu Trading Hub Support Team,\n\nI have a query regarding:\n\n[Write your query here]\n\nMy Registered Email: ' + (state.currentUser?.email || 'Not logged in') + '\nDevice: ' + navigator.userAgent);
+  const subject = encodeURIComponent('Telugu Trading Hub - Trader Support Inquiry');
+  const body = encodeURIComponent('Hello Telugu Trading Hub Team,\n\nI have a query regarding:\n\n[Please type your message here]\n\nMy Account Email: ' + (state.currentUser?.email || 'Not logged in') + '\nDevice: ' + navigator.userAgent);
 
+  // Exact same URL that works seamlessly on desktop and mobile browsers
+  // NEVER redirects to Google Play Store!
   const gmailWebCompose = `https://mail.google.com/mail/?view=cm&fs=1&to=${email}&su=${subject}&body=${body}`;
-  const mailtoFallback = `mailto:${email}?subject=${subject}&body=${body}`;
 
-  const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
-  if (isMobile) {
-    if (/android/i.test(navigator.userAgent)) {
-      window.location.href = `intent://co?to=${email}&subject=${subject}&body=${body}#Intent;scheme=googlegmail;package=com.google.android.gm;end`;
-      setTimeout(() => {
-        window.open(gmailWebCompose, '_blank') || (window.location.href = mailtoFallback);
-      }, 600);
-    } else {
-      window.location.href = `googlegmail:///co?to=${email}&subject=${subject}&body=${body}`;
-      setTimeout(() => {
-        window.open(gmailWebCompose, '_blank') || (window.location.href = mailtoFallback);
-      }, 600);
-    }
-  } else {
-    const win = window.open(gmailWebCompose, '_blank');
-    if (!win) window.location.href = mailtoFallback;
+  const win = window.open(gmailWebCompose, '_blank');
+  if (!win) {
+    window.location.href = gmailWebCompose;
   }
 }
 window.redirectToGmailSupport = redirectToGmailSupport;
 
 // ==================== MULTI-SELECT BATCH CHART DOWNLOAD (v22) ====================
-state.selectedCharts = new Map();
+if (!state.selectedCharts) state.selectedCharts = new Map();
 
 function toggleChartSelection(e, id, url, title) {
   if (e) {
-    e.stopPropagation();
+    if (e.stopPropagation) e.stopPropagation();
+    if (e.preventDefault) e.preventDefault();
   }
 
+  if (!state.selectedCharts) state.selectedCharts = new Map();
+
   const isSelected = state.selectedCharts.has(id);
-  const card = document.querySelector(`[data-chart-id="${id}"]`);
+  const matchingCards = document.querySelectorAll(`[data-chart-id="${id}"]`);
 
   if (!isSelected) {
     state.selectedCharts.set(id, { id, url, title: title || 'Chart Setup' });
-    if (card) {
+    matchingCards.forEach(card => {
       card.classList.add('is-selected');
       const box = card.querySelector('.chart-select-box');
       if (box) box.classList.add('selected');
-      const chk = card.querySelector('.chart-checkbox');
-      if (chk) chk.checked = true;
-    }
+    });
   } else {
     state.selectedCharts.delete(id);
-    if (card) {
+    matchingCards.forEach(card => {
       card.classList.remove('is-selected');
       const box = card.querySelector('.chart-select-box');
       if (box) box.classList.remove('selected');
-      const chk = card.querySelector('.chart-checkbox');
-      if (chk) chk.checked = false;
-    }
+    });
   }
 
   updateBatchToolbar();
 }
 window.toggleChartSelection = toggleChartSelection;
 
+function downloadSingleChartDirect(e, url, title) {
+  if (e) {
+    if (e.stopPropagation) e.stopPropagation();
+    if (e.preventDefault) e.preventDefault();
+  }
+  downloadChartImage(url, title);
+}
+window.downloadSingleChartDirect = downloadSingleChartDirect;
+window.toggleChartSelection = toggleChartSelection;
+
 function updateBatchToolbar() {
   const toolbar = document.getElementById('batch-download-toolbar');
-  if (!toolbar) return;
+  const count = state.selectedCharts ? state.selectedCharts.size : 0;
 
-  const count = state.selectedCharts.size;
+  if (toolbar) {
+    if (count > 0) {
+      toolbar.classList.add('active');
+      const badge = document.getElementById('batch-selected-count');
+      if (badge) badge.textContent = `${count} Chart${count > 1 ? 's' : ''} Selected`;
+      const btn = document.getElementById('batch-download-action-btn');
+      if (btn) btn.innerHTML = `📥 Download ${count} Selected Chart${count > 1 ? 's' : ''} (HD PNG)`;
+    } else {
+      toolbar.classList.remove('active');
+    }
+  }
+
   if (count > 0) {
-    toolbar.classList.add('active');
-    const badge = document.getElementById('batch-selected-count');
-    if (badge) badge.textContent = `${count} Chart${count > 1 ? 's' : ''} Selected`;
-    const btn = document.getElementById('batch-download-action-btn');
-    if (btn) btn.innerHTML = `📥 Download ${count} Selected Chart${count > 1 ? 's' : ''} (HD PNG)`;
+    document.body.classList.add('batch-mode-active');
   } else {
-    toolbar.classList.remove('active');
+    document.body.classList.remove('batch-mode-active');
   }
 }
+window.updateBatchToolbar = updateBatchToolbar;
+
+async function downloadAllChartsDirect() {
+  selectAllCharts(true);
+  await downloadSelectedCharts();
+}
+window.downloadAllChartsDirect = downloadAllChartsDirect;
 window.updateBatchToolbar = updateBatchToolbar;
 
 function selectAllCharts(selectAll = true) {
