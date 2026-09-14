@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/css/styles.css?v=20260914_v25" />
+  <link rel="stylesheet" href="/css/styles.css?v=20260914_v26" />
   <link rel="icon" type="image/png" href="/brand-logo" />
 </head>
 <body>
@@ -287,7 +287,6 @@
 
       <div class="category-pills-list">
         <button class="category-pill active" onclick="setChartCategoryFilter('all', this)">All Setups</button>
-        <button class="category-pill" id="pill-only-charts" onclick="setChartCategoryFilter('only-charts', this)" style="border-color: rgba(0, 242, 152, 0.4);">📊 Only Charts</button>
         <button class="category-pill" onclick="setChartCategoryFilter('SMC & Liquidity', this)">SMC &amp; Liquidity</button>
         <button class="category-pill" onclick="setChartCategoryFilter('Traps & Fakeouts', this)">Traps &amp; Fakeouts</button>
         <button class="category-pill" onclick="setChartCategoryFilter('Price Action Core', this)">Price Action Core</button>
@@ -525,7 +524,7 @@
           <ul class="footer-links">
             <li><span style="color: var(--text-secondary); font-size: 0.85rem;">Need assistance or account access?</span></li>
             <li style="margin-top: 6px;">
-              <a href="https://mail.google.com/mail/?view=cm&fs=1&to=tradinghath@gmail.com&su=Support%20Inquiry%20-%20Telugu%20Trading%20Hub" target="_blank" rel="noopener noreferrer" onclick="redirectToGmailSupport(event)" style="color: var(--accent-green); font-weight: 700; display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem;">
+              <a href="mailto:tradinghath@gmail.com?subject=Telugu%20Trading%20Hub%20-%20Trader%20Support%20Inquiry" target="_blank" rel="noopener noreferrer" onclick="redirectToGmailSupport(event)" style="color: var(--accent-green); font-weight: 700; display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem;">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                 <span>Support / Help: tradinghath@gmail.com</span>
               </a>
@@ -1803,7 +1802,7 @@
   <div id="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="/js/app.js?v=20260914_v25"></script>
+  <script src="/js/app.js?v=20260914_v26"></script>
 
   <!-- V22: SHARE WEBSITE SOCIAL MEDIA POPUP MODAL -->
   <div id="share-website-modal" class="modal-overlay" onclick="if (event.target === this) closeWebsiteShareModal();">

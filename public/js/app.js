@@ -4507,18 +4507,30 @@ window.trackPaymentAttempt = trackPaymentAttempt;
 
 // ==================== SUPPORT EMAIL DIRECT GMAIL APP REDIRECT (v22) ====================
 function redirectToGmailSupport(e) {
-  if (e && e.preventDefault) e.preventDefault();
+  if (e) {
+    if (e.preventDefault) e.preventDefault();
+    if (e.stopPropagation) e.stopPropagation();
+  }
   const email = 'tradinghath@gmail.com';
   const subject = encodeURIComponent('Telugu Trading Hub - Trader Support Inquiry');
-  const body = encodeURIComponent('Hello Telugu Trading Hub Team,\n\nI have a query regarding:\n\n[Please type your message here]\n\nMy Account Email: ' + (state.currentUser?.email || 'Not logged in') + '\nDevice: ' + navigator.userAgent);
+  const body = encodeURIComponent('Hello Telugu Trading Hub Team,\n\nI have a query regarding:\n\n[Please type your message here]\n\nMy Account Email: ' + (state.currentUser?.email || 'Not logged in'));
 
-  // Exact same URL that works seamlessly on desktop and mobile browsers
-  // NEVER redirects to Google Play Store!
-  const gmailWebCompose = `https://mail.google.com/mail/?view=cm&fs=1&to=${email}&su=${subject}&body=${body}`;
+  const isMobile = /Android|iPhone|iPad|iPod|Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-  const win = window.open(gmailWebCompose, '_blank');
-  if (!win) {
-    window.location.href = gmailWebCompose;
+  if (isMobile) {
+    // On Mobile Phones (Android / iOS):
+    // Triggering mailto: directly instructs the mobile OS to launch the native Gmail app
+    // directly in the COMPOSE screen with To, Subject, and Body pre-filled.
+    // This avoids Google's mobile web inbox redirect (mail.google.com/mail/mu/mp/).
+    window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+  } else {
+    // On Desktop / Laptop:
+    // Open Gmail web compose in browser (verified working properly)
+    const gmailWebCompose = `https://mail.google.com/mail/?view=cm&fs=1&to=${email}&su=${subject}&body=${body}`;
+    const win = window.open(gmailWebCompose, '_blank');
+    if (!win || win.closed || typeof win.closed === 'undefined') {
+      window.location.href = gmailWebCompose;
+    }
   }
 }
 window.redirectToGmailSupport = redirectToGmailSupport;
