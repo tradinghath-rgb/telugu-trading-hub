@@ -1952,13 +1952,6 @@ app.post('/api/admin/payments/:id/action', (req, res) => {
   }
 });
 
-// Fallback SPA routing
-app.get('*', (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
-});
-
-// Start Server & Initialize Cloud Data Persistence
-
 // ==================== ABANDONED PAYMENT & DROPOFF TRACKER (v21) ====================
 app.post('/api/payments/track-attempt', (req, res) => {
   try {
@@ -2053,6 +2046,13 @@ app.delete('/api/admin/payment-attempts/:id', (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Fallback SPA routing
+app.get('*', (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+});
+
+// Start Server & Initialize Cloud Data Persistence
 
 app.listen(PORT, async () => {
   console.log(`====================================================`);
