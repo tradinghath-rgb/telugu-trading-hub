@@ -982,7 +982,7 @@ async function openChartModal(chartId) {
     // Locked Video Player Container
     playerContainer.innerHTML = `
       <div style="padding: 36px 20px; text-align: center; background: rgba(14, 20, 34, 0.95); border-radius: var(--radius-md); border: 1px dashed var(--accent-gold);">
-        <div style="width: 54px; height: 54px; border-radius: 50%; background: rgba(255, 215, 0, 0.15); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; color: var(--accent-gold);">
+        <div style="width: 54px; height: 54px; border-radius: 50%; background: #070b14; border: 1.5px solid #ffd700; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px; color: #ffd700;">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         </div>
         <h4 style="font-size: 1.2rem; font-weight: 800; color: #fff; margin-bottom: 8px;">Telugu &amp; English Explanation Video Locked</h4>
@@ -3446,7 +3446,7 @@ function renderAdminUsersTable() {
     // Status Badge
     let statusBadge = '';
     if (isOwner) {
-      statusBadge = '<span class="user-badge-pro" style="background: rgba(255,184,0,0.2); color: var(--accent-gold); border-color: var(--accent-gold);">👑 OWNER</span>';
+      statusBadge = '<span class="user-badge-pro" style="background: #ffd700; color: #000; font-weight: 900; border: 1px solid #ffe600;">👑 OWNER</span>';
     } else if (u.hasPaid) {
       statusBadge = `<span class="user-badge-pro">💎 PRO LIFETIME</span>`;
     } else {
@@ -3662,7 +3662,7 @@ async function loadAdminComments() {
     tbody.innerHTML = comments.map(c => {
       const timeStr = c.timestamp ? new Date(c.timestamp).toLocaleString() : '-';
       const roleBadge = c.role === 'admin' 
-        ? '<span class="user-badge-pro" style="background: rgba(255,184,0,0.2); color: var(--accent-gold);">OWNER</span>'
+        ? '<span class="user-badge-pro" style="background: #ffd700; color: #000; font-weight: 900; border: 1px solid #ffe600;">OWNER</span>'
         : (c.role === 'member' ? '<span class="user-badge-pro">PRO</span>' : '<span class="user-badge-free">TRADER</span>');
 
       return `

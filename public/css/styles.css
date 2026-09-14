@@ -3718,3 +3718,109 @@ body:not(.dedicated-view) #gallery-grid-container:not(.expanded) > .gallery-card
 .admin-payment-proof-thumb:hover {
   transform: scale(1.15);
 }
+
+
+/* ==================== HIGH CONTRAST GOLD & ACCENT RULES ==================== 
+   Guarantees zero yellow-on-yellow or low contrast text on gold elements
+*/
+.btn-gold {
+  background: linear-gradient(135deg, #ffd700, #ffae00) !important;
+  color: #060910 !important;
+  box-shadow: 0 4px 18px rgba(255, 215, 0, 0.35) !important;
+  font-weight: 800 !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+.btn-gold *,
+.btn-gold span,
+.btn-gold strong,
+.btn-gold svg {
+  color: #060910 !important;
+  fill: #060910 !important;
+  stroke: #060910 !important;
+}
+
+.btn-gold:hover {
+  background: linear-gradient(135deg, #ffe033, #ffb81a) !important;
+  color: #000000 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(255, 215, 0, 0.5) !important;
+}
+
+/* Nav Pricing Button: 100% High Contrast */
+.nav-pricing-btn {
+  background: linear-gradient(135deg, #ffd700, #ffae00) !important;
+  color: #060910 !important;
+  font-weight: 900 !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+}
+
+.nav-pricing-btn *,
+.nav-pricing-btn span,
+.nav-pricing-btn svg,
+.nav-flash-svg {
+  color: #060910 !important;
+  fill: #060910 !important;
+  stroke: #060910 !important;
+}
+
+/* Price Urgency Pill: High Contrast (Dark solid background with sharp gold text) */
+.price-urgency-pill {
+  background: #090e18 !important;
+  color: #ffd700 !important;
+  border: 1.5px solid #ffd700 !important;
+  padding: 5px 12px !important;
+  border-radius: var(--radius-full) !important;
+  font-size: 0.82rem !important;
+  font-weight: 800 !important;
+  box-shadow: 0 0 14px rgba(255, 215, 0, 0.25) !important;
+}
+
+.price-urgency-pill * {
+  color: #ffd700 !important;
+  fill: #ffd700 !important;
+}
+
+/* Price Pill: High Contrast */
+.price-pill {
+  background: #090e18 !important;
+  border: 1.5px solid #ffd700 !important;
+  color: #ffd700 !important;
+  font-weight: 800 !important;
+}
+
+/* Gallery Lock Badge: High Contrast */
+.gallery-lock-badge {
+  background: #070b14 !important;
+  border: 1.5px solid #ffd700 !important;
+  color: #ffd700 !important;
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.25) !important;
+}
+
+.gallery-lock-badge * {
+  color: #ffd700 !important;
+  fill: #ffd700 !important;
+}
+
+/* Discount Pill */
+.pricing-discount-pill {
+  background: linear-gradient(135deg, #ffd700, #ffae00) !important;
+  color: #050811 !important;
+  font-weight: 900 !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}
+
+.pricing-discount-pill * {
+  color: #050811 !important;
+}
+
+/* Chart Locked Overlay Circle */
+.chart-lock-icon-circle {
+  background: #070b14 !important;
+  border: 1.5px solid #ffd700 !important;
+  color: #ffd700 !important;
+}
+
+.chart-lock-icon-circle * {
+  color: #ffd700 !important;
+}
