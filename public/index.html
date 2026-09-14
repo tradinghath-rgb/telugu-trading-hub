@@ -12,12 +12,16 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/css/styles.css?v=20260914_v33" />
+  <link rel="stylesheet" href="/css/styles.css?v=20260914_v34" />
   <link rel="icon" type="image/png" href="/brand-logo" />
   <!-- Zero-Latency Auth Pre-check for Mobile Top Bar -->
   <script>
     try {
-      var _u = sessionStorage.getItem('tradinghub_user') || localStorage.getItem('tradinghub_user');
+      var _u = null;
+      try { _u = window.sessionStorage && window.sessionStorage.getItem('tradinghub_user'); } catch (_) {}
+      if (!_u) {
+        try { _u = window.localStorage && window.localStorage.getItem('tradinghub_user'); } catch (_) {}
+      }
       if (_u) {
         var _p = JSON.parse(_u);
         if (_p && _p.role === 'admin') {
@@ -1856,7 +1860,7 @@
   <div id="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="/js/app.js?v=20260914_v33"></script>
+  <script src="/js/app.js?v=20260914_v34"></script>
 
   <!-- V22: SHARE WEBSITE SOCIAL MEDIA POPUP MODAL -->
   <div id="share-website-modal" class="modal-overlay" onclick="if (event.target === this) closeWebsiteShareModal();">

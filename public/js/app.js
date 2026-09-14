@@ -6,17 +6,17 @@
 
 // Immediately flush any stale/legacy demo sessions from browser cache
 try {
-  const stale = localStorage.getItem('tradinghub_user');
+  const stale = safeStorage.getItem('tradinghub_user');
   if (stale && (stale.includes('Master') || stale.includes('admin@') || stale.includes('"role":"admin"'))) {
-    localStorage.removeItem('tradinghub_user');
-    sessionStorage.removeItem('tradinghub_user');
+    safeStorage.removeItem('tradinghub_user');
+    safeSessionStorage.removeItem('tradinghub_user');
   }
 } catch (_) {}
 
 // Fallback safety: If old quickLoginAsAdmin is somehow triggered, force security modal instead
 window.quickLoginAsAdmin = function() {
-  localStorage.removeItem('tradinghub_user');
-  sessionStorage.removeItem('tradinghub_user');
+  safeStorage.removeItem('tradinghub_user');
+  safeSessionStorage.removeItem('tradinghub_user');
   state.currentUser = null;
   openAdminSecurityModal();
 };
@@ -69,7 +69,7 @@ function saveToLocalAccountVault(account) {
   if (!account || !account.email) return;
   try {
     const emailKey = account.email.toLowerCase().trim();
-    let vault = JSON.parse(localStorage.getItem('tradinghub_account_vault') || '{}');
+    let vault = JSON.parse(safeStorage.getItem('tradinghub_account_vault') || '{}');
     const existing = vault[emailKey] || {};
     const isRemembered = account.remembered !== undefined ? Boolean(account.remembered) : Boolean(existing.remembered);
     const pwd = account.password || existing.password || '';
@@ -84,21 +84,21 @@ function saveToLocalAccountVault(account) {
       remembered: isRemembered,
       savedAt: Date.now()
     };
-    localStorage.setItem('tradinghub_account_vault', JSON.stringify(vault));
+    safeStorage.setItem('tradinghub_account_vault', JSON.stringify(vault));
 
     // Save to dedicated single-device quick login if remembered with password
     if (isRemembered && pwd) {
-      localStorage.setItem('tradinghub_device_saved_login', JSON.stringify({
+      safeStorage.setItem('tradinghub_device_saved_login', JSON.stringify({
         email: emailKey,
         password: pwd,
         name: account.name || existing.name || emailKey.split('@')[0],
         savedAt: Date.now()
       }));
     } else if (account.remembered === false) {
-      localStorage.removeItem('tradinghub_device_saved_login');
+      safeStorage.removeItem('tradinghub_device_saved_login');
       vault[emailKey].password = '';
       vault[emailKey].remembered = false;
-      localStorage.setItem('tradinghub_account_vault', JSON.stringify(vault));
+      safeStorage.setItem('tradinghub_account_vault', JSON.stringify(vault));
     }
   } catch (_) {}
 }
@@ -106,7 +106,7 @@ function saveToLocalAccountVault(account) {
 function getLocalAccountVault(email) {
   if (!email) return null;
   try {
-    const vault = JSON.parse(localStorage.getItem('tradinghub_account_vault') || '{}');
+    const vault = JSON.parse(safeStorage.getItem('tradinghub_account_vault') || '{}');
     return vault[email.toLowerCase().trim()] || null;
   } catch (_) {
     return null;
@@ -115,7 +115,7 @@ function getLocalAccountVault(email) {
 
 async function syncAllLocalAccountsToServer() {
   try {
-    const vault = JSON.parse(localStorage.getItem('tradinghub_account_vault') || '{}');
+    const vault = JSON.parse(safeStorage.getItem('tradinghub_account_vault') || '{}');
     const accounts = Object.values(vault);
     for (const acc of accounts) {
       if (acc && acc.email) {
@@ -132,39 +132,39 @@ async function syncAllLocalAccountsToServer() {
 // Load Authentication State from Storage
 function initAuthState() {
   try {
-    const raw = sessionStorage.getItem('tradinghub_user') || localStorage.getItem('tradinghub_user');
+    const raw = safeSessionStorage.getItem('tradinghub_user') || safeStorage.getItem('tradinghub_user');
     if (raw) {
       const parsed = JSON.parse(raw);
       // Only keep admin session if active in current browser session
       if (parsed.role === 'admin') {
-        const sessionAuth = sessionStorage.getItem('tradinghub_user');
+        const sessionAuth = safeSessionStorage.getItem('tradinghub_user');
         if (!sessionAuth) {
           document.documentElement.classList.remove('is-admin');
           document.body.classList.remove('is-admin');
           document.body.classList.remove('admin-home-blurred');
-          localStorage.removeItem('tradinghub_user');
+          safeStorage.removeItem('tradinghub_user');
           state.currentUser = null;
           return;
         }
         document.documentElement.classList.add('is-admin');
         document.body.classList.add('is-admin');
         // Ultra Privacy: If PIN is not verified for this session, blur home and prompt PIN code
-        if (sessionStorage.getItem('tradinghub_admin_pin_verified') !== ADMIN_PIN) {
+        if (safeSessionStorage.getItem('tradinghub_admin_pin_verified') !== ADMIN_PIN) {
           document.body.classList.add('admin-home-blurred');
           setTimeout(() => openAdminPinModal(), 300);
         }
       }
       // Explicitly revoke unverified flagged test accounts
       if (parsed.email && parsed.email.toLowerCase().trim() === 'abhisheknaidu2005@gmail.com') {
-        localStorage.removeItem('tradinghub_user');
-        sessionStorage.removeItem('tradinghub_user');
-        localStorage.removeItem('tradinghub_session_token');
+        safeStorage.removeItem('tradinghub_user');
+        safeSessionStorage.removeItem('tradinghub_user');
+        safeStorage.removeItem('tradinghub_session_token');
         try {
-          let vault = JSON.parse(localStorage.getItem('tradinghub_account_vault') || '{}');
+          let vault = JSON.parse(safeStorage.getItem('tradinghub_account_vault') || '{}');
           if (vault['abhisheknaidu2005@gmail.com']) {
             vault['abhisheknaidu2005@gmail.com'].hasPaid = false;
             vault['abhisheknaidu2005@gmail.com'].paymentId = null;
-            localStorage.setItem('tradinghub_account_vault', JSON.stringify(vault));
+            safeStorage.setItem('tradinghub_account_vault', JSON.stringify(vault));
           }
         } catch (_) {}
         state.currentUser = null;
@@ -181,8 +181,8 @@ function initAuthState() {
     syncAllLocalAccountsToServer();
     cleanLocalVaultTestAccounts();
   } catch (e) {
-    localStorage.removeItem('tradinghub_user');
-    sessionStorage.removeItem('tradinghub_user');
+    safeStorage.removeItem('tradinghub_user');
+    safeSessionStorage.removeItem('tradinghub_user');
     state.currentUser = null;
   }
 }
@@ -203,28 +203,30 @@ function closeConcurrentSessionModal() {
 
 function saveAuthState(user) {
   state.currentUser = user;
-  if (user) {
-    saveToLocalAccountVault(user);
-    if (user.sessionToken) {
-      if (user.role === 'admin') {
-        sessionStorage.setItem('tradinghub_session_token', user.sessionToken);
-      } else {
-        localStorage.setItem('tradinghub_session_token', user.sessionToken);
+  try {
+    if (user) {
+      saveToLocalAccountVault(user);
+      if (user.sessionToken) {
+        if (user.role === 'admin') {
+          safeSessionStorage.setItem('tradinghub_session_token', user.sessionToken);
+        } else {
+          safeStorage.setItem('tradinghub_session_token', user.sessionToken);
+        }
       }
-    }
-    if (user.role === 'admin') {
-      sessionStorage.setItem('tradinghub_user', JSON.stringify(user));
-      localStorage.setItem('tradinghub_user', JSON.stringify(user));
+      if (user.role === 'admin') {
+        safeSessionStorage.setItem('tradinghub_user', JSON.stringify(user));
+        safeStorage.setItem('tradinghub_user', JSON.stringify(user));
+      } else {
+        safeStorage.setItem('tradinghub_user', JSON.stringify(user));
+        safeSessionStorage.setItem('tradinghub_user', JSON.stringify(user));
+      }
     } else {
-      localStorage.setItem('tradinghub_user', JSON.stringify(user));
-      sessionStorage.setItem('tradinghub_user', JSON.stringify(user));
+      safeStorage.removeItem('tradinghub_user');
+      safeSessionStorage.removeItem('tradinghub_user');
+      safeStorage.removeItem('tradinghub_session_token');
+      safeSessionStorage.removeItem('tradinghub_session_token');
     }
-  } else {
-    localStorage.removeItem('tradinghub_user');
-    sessionStorage.removeItem('tradinghub_user');
-    localStorage.removeItem('tradinghub_session_token');
-    sessionStorage.removeItem('tradinghub_session_token');
-  }
+  } catch (_) {}
   renderApp();
 }
 
@@ -1160,9 +1162,9 @@ function proceedDirectlyToPaymentWithDetails() {
   }
 
   // Persist for seamless recognition
-  localStorage.setItem('tradinghub_last_email', email);
-  localStorage.setItem('tradinghub_pending_email', email);
-  if (name) localStorage.setItem('tradinghub_last_name', name);
+  safeStorage.setItem('tradinghub_last_email', email);
+  safeStorage.setItem('tradinghub_pending_email', email);
+  if (name) safeStorage.setItem('tradinghub_last_name', name);
 
   // Track the attempt with captured name and email
   trackPaymentAttempt('Direct Checkout with Details', { email, name });
@@ -1184,7 +1186,7 @@ function proceedDirectlyToPayment(url) {
   const checkoutUrl = url || state.siteConfig?.pricing?.razorpayUrl || 'https://rzp.io/rzp/2a3h6cU';
   const email = state.currentUser?.email || '';
   if (email) {
-    localStorage.setItem('tradinghub_pending_email', email);
+    safeStorage.setItem('tradinghub_pending_email', email);
   }
   // Universal mobile & in-app browser compatible redirect
   window.location.href = checkoutUrl;
@@ -1209,7 +1211,7 @@ function closeWaitingPaymentModal() {
 
 function startPaymentPolling() {
   stopPaymentPolling();
-  const email = state.currentUser?.email || localStorage.getItem('tradinghub_pending_email') || '';
+  const email = state.currentUser?.email || safeStorage.getItem('tradinghub_pending_email') || '';
   if (!email) return;
 
   _paymentPollingInterval = setInterval(async () => {
@@ -1485,12 +1487,12 @@ function openAuthModal(mode = 'login') {
   // Check if this individual device has a saved Gmail & Password
   let savedLogin = null;
   try {
-    savedLogin = JSON.parse(localStorage.getItem('tradinghub_device_saved_login') || 'null');
+    savedLogin = JSON.parse(safeStorage.getItem('tradinghub_device_saved_login') || 'null');
   } catch (_) {}
 
   if (!savedLogin) {
     try {
-      const vault = JSON.parse(localStorage.getItem('tradinghub_account_vault') || '{}');
+      const vault = JSON.parse(safeStorage.getItem('tradinghub_account_vault') || '{}');
       const savedList = Object.values(vault).filter(acc => acc && acc.email && acc.password && acc.remembered);
       if (savedList.length > 0) {
         savedList.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
@@ -1726,15 +1728,19 @@ async function handleAuthSubmit(e) {
     }
 
     if (data.success) {
-      if (data.sessionToken) {
-        data.user.sessionToken = data.sessionToken;
-        if (data.user.role === 'admin') {
-          sessionStorage.setItem('tradinghub_session_token', data.sessionToken);
-        } else {
-          localStorage.setItem('tradinghub_session_token', data.sessionToken);
+      try {
+        if (data.sessionToken) {
+          data.user.sessionToken = data.sessionToken;
+          if (data.user.role === 'admin') {
+            safeSessionStorage.setItem('tradinghub_session_token', data.sessionToken);
+          } else {
+            safeStorage.setItem('tradinghub_session_token', data.sessionToken);
+          }
         }
-      }
-      saveAuthState(data.user);
+      } catch (_) {}
+      try {
+        saveAuthState(data.user);
+      } catch (_) {}
 
       // Requirement: Checkbox remains unchecked by default until user manually clicks it.
       // Only if the user MANUALLY checked the box is the password saved for next time.
@@ -1755,23 +1761,23 @@ async function handleAuthSubmit(e) {
       } else {
         // If user did not check the box, wipe any saved password so they must enter manually next time
         try {
-          let vault = JSON.parse(localStorage.getItem('tradinghub_account_vault') || '{}');
+          let vault = JSON.parse(safeStorage.getItem('tradinghub_account_vault') || '{}');
           const key = email.toLowerCase().trim();
           if (vault[key]) {
             vault[key].password = '';
             vault[key].remembered = false;
-            localStorage.setItem('tradinghub_account_vault', JSON.stringify(vault));
+            safeStorage.setItem('tradinghub_account_vault', JSON.stringify(vault));
           }
         } catch (_) {}
       }
 
       closeAuthModal();
-      localStorage.setItem('tradinghub_has_registered', 'true');
+      try { safeStorage.setItem('tradinghub_has_registered', 'true'); } catch (_) {};
 
       // Requirement: Admin login gives email and password -> home screen blurs and asks code (PIN).
       // Only after admin enters the code can he control everything.
       if (data.user.role === 'admin' || isAdminEmail) {
-        sessionStorage.removeItem('tradinghub_admin_pin_verified');
+        safeSessionStorage.removeItem('tradinghub_admin_pin_verified');
         document.body.classList.add('admin-home-blurred');
         showToast('👋 Admin credentials verified! Please enter your Security Code to unlock controls.', 'info');
         openAdminPinModal();
@@ -1800,8 +1806,8 @@ function handleLogout() {
   document.body.classList.remove('is-pro-member');
   const navActions = document.querySelector('.nav-actions');
   if (navActions) navActions.classList.remove('is-admin-nav');
-  sessionStorage.removeItem('tradinghub_admin_pin_verified');
-  sessionStorage.removeItem('tradinghub_session_token');
+  safeSessionStorage.removeItem('tradinghub_admin_pin_verified');
+  safeSessionStorage.removeItem('tradinghub_session_token');
   saveAuthState(null);
   showToast('Logged out successfully.', 'info');
 }
@@ -2173,7 +2179,7 @@ function closeAdminPinModal() {
   document.body.style.overflow = '';
 
   // If closed without verifying PIN, log out admin for security
-  if (state.currentUser && state.currentUser.role === 'admin' && sessionStorage.getItem('tradinghub_admin_pin_verified') !== ADMIN_PIN) {
+  if (state.currentUser && state.currentUser.role === 'admin' && safeSessionStorage.getItem('tradinghub_admin_pin_verified') !== ADMIN_PIN) {
     handleLogout();
     showToast('Admin verification cancelled. Logged out.', 'info');
     return;
@@ -2191,7 +2197,7 @@ function handleAdminPinSubmit(event) {
   const pin = input?.value?.trim();
 
   if (pin === ADMIN_PIN) {
-    sessionStorage.setItem('tradinghub_admin_pin_verified', ADMIN_PIN);
+    safeSessionStorage.setItem('tradinghub_admin_pin_verified', ADMIN_PIN);
     document.body.classList.remove('admin-home-blurred');
     closeAdminPinModal();
     showToast('👑 Admin Security Code Verified! Full controls unlocked.', 'success');
@@ -2215,7 +2221,7 @@ function openAdminModal() {
   }
 
   // ULTRA PRIVACY: Check if 6-digit PIN has been verified for this browser session
-  if (sessionStorage.getItem('tradinghub_admin_pin_verified') !== ADMIN_PIN) {
+  if (safeSessionStorage.getItem('tradinghub_admin_pin_verified') !== ADMIN_PIN) {
     openAdminPinModal();
     return;
   }
@@ -2852,9 +2858,9 @@ async function handleDedicatedAdminLoginSubmit(event) {
 
       if (data.sessionToken) {
         data.user.sessionToken = data.sessionToken;
-        sessionStorage.setItem('tradinghub_session_token', data.sessionToken);
+        safeSessionStorage.setItem('tradinghub_session_token', data.sessionToken);
       }
-      sessionStorage.setItem('tradinghub_admin_pin_verified', ADMIN_PIN);
+      safeSessionStorage.setItem('tradinghub_admin_pin_verified', ADMIN_PIN);
       saveAuthState(data.user);
       closeDedicatedAdminLoginModal();
       renderApp();
@@ -4218,7 +4224,7 @@ function checkDeviceSavedAccount() {
 
   let vault = {};
   try {
-    vault = JSON.parse(localStorage.getItem('tradinghub_account_vault') || '{}');
+    vault = JSON.parse(safeStorage.getItem('tradinghub_account_vault') || '{}');
   } catch (_) {}
 
   // Only show hint if THIS device specifically has a saved account with password
@@ -4295,7 +4301,7 @@ function handleAuthEmailFocus() {
 
   let vault = {};
   try {
-    vault = JSON.parse(localStorage.getItem('tradinghub_account_vault') || '{}');
+    vault = JSON.parse(safeStorage.getItem('tradinghub_account_vault') || '{}');
   } catch (_) {}
 
   // Only suggest accounts where the user previously checked the "Save Password & Gmail" box
@@ -4360,7 +4366,7 @@ state.adminDropoffsList = [];
 
 async function trackPaymentAttempt(source = 'Checkout Button', customDetails = null) {
   const user = state.currentUser;
-  const email = (customDetails && customDetails.email) || user?.email || localStorage.getItem('tradinghub_last_email') || '';
+  const email = (customDetails && customDetails.email) || user?.email || safeStorage.getItem('tradinghub_last_email') || '';
   const name = (customDetails && customDetails.name) || user?.name || (email ? email.split('@')[0] : 'Interested Trader');
 
   try {
@@ -4371,17 +4377,17 @@ async function trackPaymentAttempt(source = 'Checkout Button', customDetails = n
     });
     const data = await res.json();
     if (data.attemptId) {
-      sessionStorage.setItem('tradinghub_pending_attempt_id', data.attemptId);
-      sessionStorage.setItem('tradinghub_pending_attempt_email', email);
+      safeSessionStorage.setItem('tradinghub_pending_attempt_id', data.attemptId);
+      safeSessionStorage.setItem('tradinghub_pending_attempt_email', email);
     }
   } catch (_) {}
 }
 
 function checkUserReturnFromPayment() {
-  const pendingAttemptId = sessionStorage.getItem('tradinghub_pending_attempt_id');
+  const pendingAttemptId = safeSessionStorage.getItem('tradinghub_pending_attempt_id');
   if (!pendingAttemptId) return;
 
-  const email = sessionStorage.getItem('tradinghub_pending_attempt_email') || state.currentUser?.email || '';
+  const email = safeSessionStorage.getItem('tradinghub_pending_attempt_email') || state.currentUser?.email || '';
 
   if (!state.currentUser?.hasPaid) {
     fetch('/api/payments/track-return', {
@@ -4390,7 +4396,7 @@ function checkUserReturnFromPayment() {
       body: JSON.stringify({ attemptId: pendingAttemptId, email })
     }).catch(() => {});
   }
-  sessionStorage.removeItem('tradinghub_pending_attempt_id');
+  safeSessionStorage.removeItem('tradinghub_pending_attempt_id');
 }
 
 window.addEventListener('focus', checkUserReturnFromPayment);

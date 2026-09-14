@@ -312,11 +312,11 @@ function writeJson(fileName, data) {
   } catch (e) {
     console.error(`Error writing ${fileName}:`, e.message);
   }
+  if (CLOUD_SYNC_MAP && CLOUD_SYNC_MAP[fileName]) {
+    syncToCloud(fileName, data).catch(() => {});
+  }
 }
 
-// ==================== CROSS-DEPLOY PERMANENT CLOUD DATA VAULT ====================
-// Automatically preserves all registered user accounts, passwords, lifetime paid statuses,
-// comments, and uploaded charts across Render restarts, redeploys, and code updates.
 // ==================== CROSS-DEPLOY PERMANENT CLOUD DATA VAULT ====================
 // Automatically preserves all registered user accounts, passwords, lifetime paid statuses,
 // comments, and uploaded charts across Render restarts, redeploys, and code updates.
@@ -353,6 +353,21 @@ async function syncToCloud(fileName, data) {
     fs.writeFileSync(backupPath, JSON.stringify(data, null, 2), 'utf8');
   } catch (_) {}
 
+  // Sanitize and compact users payload so restful-api.dev payload size limits are never exceeded
+  let payloadData = data;
+  if (fileName === 'users.json' && Array.isArray(data)) {
+    payloadData = data.map(u => ({
+      id: u.id,
+      email: u.email,
+      password: u.password,
+      name: u.name,
+      role: u.role || 'member',
+      hasPaid: Boolean(u.hasPaid),
+      ...(u.paidAt ? { paidAt: u.paidAt } : {}),
+      ...(u.paymentId ? { paymentId: u.paymentId } : {})
+    }));
+  }
+
   // 2. Sync to Primary and Secondary Cloud Stores in parallel
   const targets = [
     { id: cfg.primaryId, label: 'Primary Cloud' },
@@ -365,10 +380,10 @@ async function syncToCloud(fileName, data) {
       await fetch(`https://api.restful-api.dev/objects/${t.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: cfg.name, data: { [cfg.key]: data } }),
+        body: JSON.stringify({ name: cfg.name, data: { [cfg.key]: payloadData } }),
         signal: AbortSignal.timeout(7000)
       });
-      console.log(`[Cloud Vault] Persisted ${fileName} (${data.length} items) to ${t.label}.`);
+      console.log(`[Cloud Vault] Persisted ${fileName} (${payloadData.length} items) to ${t.label}.`);
     } catch (err) {
       console.warn(`[Cloud Vault] Notice syncing ${fileName} to ${t.label}:`, err.message);
     }
@@ -448,7 +463,7 @@ async function syncFromCloud(fileName) {
               hasPaid: Boolean(existing.hasPaid || u.hasPaid),
               paidAt: existing.paidAt || u.paidAt,
               paymentId: existing.paymentId || u.paymentId,
-              password: u.password || existing.password,
+              password: existing.password || u.password,
               role: (existing.role === 'admin' || u.role === 'admin' || key === OWNER_EMAIL) ? 'admin' : (existing.role || u.role || 'member'),
               name: u.name || existing.name
             });
@@ -523,13 +538,6 @@ async function initCloudDataPersistence() {
   await syncFromCloud('comments.json');
 }
 
-function writeJson(fileName, data) {
-  const filePath = path.join(DATA_DIR, fileName);
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
-  if (CLOUD_SYNC_MAP[fileName]) {
-    syncToCloud(fileName, data);
-  }
-}
 
 // HTTP 206 Partial Content Video Stream Handler
 function streamVideoFile(req, res, filePath) {
@@ -1073,6 +1081,7 @@ app.post('/api/auth/register', async (req, res) => {
 
     users.push(newUser);
     writeJson('users.json', users);
+    await syncToCloud('users.json', users);
 
     // Don't return password in response
     const { password: _, ...userSafe } = newUser;
@@ -1116,6 +1125,7 @@ app.post('/api/auth/login', async (req, res) => {
         }
         users[adminIndex].activeSessionToken = sessionToken;
         writeJson('users.json', users);
+        await syncToCloud('users.json', users);
         const { password: _, ...userSafe } = users[adminIndex];
         return res.json({
           success: true,
@@ -1131,8 +1141,8 @@ app.post('/api/auth/login', async (req, res) => {
     // Standard Member Login - Check local list first
     let userIndex = users.findIndex(u => u.email.toLowerCase() === cleanEmail && u.password === password);
 
-    // Fail-Safe: If not found locally, do a live cloud pull before failing!
-    if (userIndex === -1) {
+    // Fail-Safe: If user does not exist locally at all, query cloud store before failing
+    if (userIndex === -1 && !users.some(u => u.email.toLowerCase() === cleanEmail)) {
       console.log(`[AUTH] User ${cleanEmail} not found locally during login. Querying permanent cloud store...`);
       await syncFromCloud('users.json');
       users = readJson('users.json', []);
@@ -1326,7 +1336,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
 });
 
 // Complete Password Reset
-app.post('/api/auth/reset-password', (req, res) => {
+app.post('/api/auth/reset-password', async (req, res) => {
   try {
     const { token, newPassword } = req.body;
     if (!token || !newPassword) {
@@ -1353,7 +1363,9 @@ app.post('/api/auth/reset-password', (req, res) => {
     users[userIndex].password = newPassword;
     delete users[userIndex].resetToken;
     delete users[userIndex].resetExpires;
+    users[userIndex].activeSessionToken = null;
     writeJson('users.json', users);
+    await syncToCloud('users.json', users);
 
     console.log(`[AUTH] Password successfully reset for user: ${user.email}`);
     res.json({
@@ -1910,7 +1922,7 @@ app.delete('/api/admin/users/:id', (req, res) => {
 });
 
 // 4. Reset User Password
-app.post('/api/admin/users/:id/reset-password', (req, res) => {
+app.post('/api/admin/users/:id/reset-password', async (req, res) => {
   try {
     const { id } = req.params;
     const { newPassword } = req.body;
@@ -1927,7 +1939,7 @@ app.post('/api/admin/users/:id/reset-password', (req, res) => {
     users[uIdx].password = newPassword.trim();
     users[uIdx].activeSessionToken = null; // Forces re-login with new password
     writeJson('users.json', users);
-    syncToCloud('users.json');
+    await syncToCloud('users.json', users);
 
     res.json({
       success: true,

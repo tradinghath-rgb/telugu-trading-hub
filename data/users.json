@@ -39,7 +39,15 @@
     "name": "Attacker",
     "role": "member",
     "hasPaid": false,
-    "paymentId": null,
     "createdAt": "2026-09-14T03:08:37.002Z"
+  },
+  {
+    "id": "user-1789398113318",
+    "email": "dhanasinganapalli@gmail.com",
+    "password": "Abhi123",
+    "name": "Dhana",
+    "role": "member",
+    "hasPaid": false,
+    "createdAt": "2026-09-14T15:01:53.318Z"
   }
 ]
