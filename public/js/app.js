@@ -299,22 +299,12 @@ function checkAdminUrlParam() {
 // ==================== INTRO VIDEO FLOW ====================
 function initIntroVideo() {
   const overlay = document.getElementById('intro-overlay');
-  const video = document.getElementById('intro-video-element');
-  if (video) video.pause();
-  if (overlay) {
-    overlay.classList.add('hidden');
-    overlay.style.display = 'none';
-  }
+  if (overlay) overlay.remove();
 }
 
 function closeIntroVideo() {
   const overlay = document.getElementById('intro-overlay');
-  const video = document.getElementById('intro-video-element');
-  if (video) video.pause();
-  if (overlay) {
-    overlay.classList.add('hidden');
-    overlay.style.display = 'none';
-  }
+  if (overlay) overlay.remove();
   sessionStorage.setItem('tradinghub_intro_seen', 'true');
 }
 
@@ -1090,8 +1080,13 @@ function proceedDirectlyToPaymentFromPrompt() {
 let _paymentPollingInterval = null;
 
 function proceedDirectlyToPayment(url) {
-  window.open(url, '_blank');
-  openWaitingPaymentModal();
+  const checkoutUrl = url || state.siteConfig?.pricing?.razorpayUrl || 'https://rzp.io/rzp/2a3h6cU';
+  const email = state.currentUser?.email || '';
+  if (email) {
+    localStorage.setItem('tradinghub_pending_email', email);
+  }
+  // Universal mobile & in-app browser compatible redirect
+  window.location.href = checkoutUrl;
 }
 
 function openWaitingPaymentModal() {
