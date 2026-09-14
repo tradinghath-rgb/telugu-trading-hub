@@ -3795,3 +3795,31 @@ window.closeUserProfileModal = closeUserProfileModal;
 window.handleProfileLogout = handleProfileLogout;
 window.handleBulkDeleteSelected = handleBulkDeleteSelected;
 window.closeRenameModal = closeRenameModal;
+
+// Quick Navigation from KPI Top Stats Cards to specific tabs / filters
+function adminNavigateKpi(target) {
+  if (target === 'all-traders') {
+    const tabBtn = document.querySelector('.admin-tabs-nav .admin-tab-btn:nth-child(1)');
+    switchAdminTab('users', tabBtn);
+    const pillAll = document.querySelector('.admin-user-filter-bar .admin-pill-btn:nth-child(1)');
+    filterAdminUsers('all', pillAll);
+  } else if (target === 'pro-traders') {
+    const tabBtn = document.querySelector('.admin-tabs-nav .admin-tab-btn:nth-child(1)');
+    switchAdminTab('users', tabBtn);
+    const pillPro = document.querySelector('.admin-user-filter-bar .admin-pill-btn:nth-child(2)');
+    filterAdminUsers('pro', pillPro);
+  } else if (target === 'free-traders') {
+    const tabBtn = document.querySelector('.admin-tabs-nav .admin-tab-btn:nth-child(1)');
+    switchAdminTab('users', tabBtn);
+    const pillFree = document.querySelector('.admin-user-filter-bar .admin-pill-btn:nth-child(3)');
+    filterAdminUsers('free', pillFree);
+  } else if (target === 'charts') {
+    const tabBtn = document.querySelector('.admin-tabs-nav .admin-tab-btn:nth-child(2)');
+    switchAdminTab('charts', tabBtn);
+  } else if (target === 'comments') {
+    const tabBtn = document.querySelector('.admin-tabs-nav .admin-tab-btn:nth-child(4)');
+    switchAdminTab('comments', tabBtn);
+  }
+}
+
+window.adminNavigateKpi = adminNavigateKpi;

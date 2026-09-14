@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/css/styles.css?v=20260914_v9" />
+  <link rel="stylesheet" href="/css/styles.css?v=20260914_v10" />
   <link rel="icon" type="image/png" href="/brand-logo" />
 </head>
 <body>
@@ -1100,37 +1100,37 @@
 
       <div class="modal-body">
         <!-- Admin Navigation Tabs -->
-        <!-- Live Platform KPI Stats Bar -->
+        <!-- Live Platform KPI Stats Bar (Clickable Quick-Navigation) -->
         <div class="admin-kpi-bar" id="admin-kpi-container">
-          <div class="admin-kpi-card">
+          <div class="admin-kpi-card" onclick="adminNavigateKpi('all-traders')" title="Click to view all registered traders">
             <div class="kpi-icon">👥</div>
             <div class="kpi-info">
               <span class="kpi-label">Total Traders</span>
               <strong class="kpi-val" id="admin-stat-total-users">--</strong>
             </div>
           </div>
-          <div class="admin-kpi-card kpi-pro">
+          <div class="admin-kpi-card kpi-pro" onclick="adminNavigateKpi('pro-traders')" title="Click to filter and view PRO Lifetime members">
             <div class="kpi-icon">💎</div>
             <div class="kpi-info">
               <span class="kpi-label">PRO Lifetime</span>
               <strong class="kpi-val" id="admin-stat-pro-users">--</strong>
             </div>
           </div>
-          <div class="admin-kpi-card">
+          <div class="admin-kpi-card" onclick="adminNavigateKpi('free-traders')" title="Click to filter and view Free Accounts">
             <div class="kpi-icon">🆓</div>
             <div class="kpi-info">
               <span class="kpi-label">Free Accounts</span>
               <strong class="kpi-val" id="admin-stat-free-users">--</strong>
             </div>
           </div>
-          <div class="admin-kpi-card">
+          <div class="admin-kpi-card" onclick="adminNavigateKpi('charts')" title="Click to view charts, uploads &amp; bulk delete">
             <div class="kpi-icon">📈</div>
             <div class="kpi-info">
               <span class="kpi-label">Chart Setups</span>
               <strong class="kpi-val" id="admin-stat-charts">--</strong>
             </div>
           </div>
-          <div class="admin-kpi-card">
+          <div class="admin-kpi-card" onclick="adminNavigateKpi('comments')" title="Click to moderate community comments">
             <div class="kpi-icon">💬</div>
             <div class="kpi-info">
               <span class="kpi-label">Comments</span>
@@ -1577,6 +1577,6 @@
   <div id="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="/js/app.js?v=20260914_v9"></script>
+  <script src="/js/app.js?v=20260914_v10"></script>
 </body>
 </html>

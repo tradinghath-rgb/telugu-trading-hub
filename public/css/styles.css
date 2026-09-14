@@ -3555,7 +3555,19 @@ body:not(.dedicated-view) #gallery-grid-container:not(.expanded) > .gallery-card
   display: flex;
   align-items: center;
   gap: 12px;
-  transition: transform 0.2s ease, border-color 0.2s ease;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-kpi-card:hover {
+  border-color: var(--accent-green);
+  box-shadow: 0 4px 16px rgba(0, 242, 152, 0.18);
+  transform: translateY(-2px);
+}
+
+.admin-kpi-card:active {
+  transform: translateY(0);
 }
 
 .admin-kpi-card:hover {
