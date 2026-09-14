@@ -1327,9 +1327,9 @@ async function submitPaymentVerification() {
 
   // Set loading UI
   if (btn) btn.disabled = true;
-  if (btnText) btnText.textContent = 'Cross-Verifying with Razorpay...';
+  if (btnText) btnText.textContent = 'Verifying...';
   if (btnSpinner) btnSpinner.style.display = 'inline-block';
-  showUtrFeedback('loading', 'Checking Razorpay...', 'Verifying transaction status and UTR with Razorpay API...');
+  showUtrFeedback('loading', 'Verifying...', 'Checking payment details...');
 
   try {
     const formData = new FormData();
@@ -1366,14 +1366,14 @@ async function submitPaymentVerification() {
       }, 1800);
     } else {
       // Prominent red error directly below UTR box as requested
-      showUtrFeedback('error', 'Payment Verification Failed', data.error || 'Payment failed. UTR not confirmed by Razorpay. Please try again.');
-      showToast(data.error || 'Payment verification failed.', 'error');
+      showUtrFeedback('error', 'Payment Verification Failed', 'Please try again.');
+      showToast('Payment verification failed. Please try again.', 'error');
     }
   } catch (err) {
     showUtrFeedback('error', 'Connection Error', 'Network error verifying with server: ' + err.message);
   } finally {
     if (btn) btn.disabled = false;
-    if (btnText) btnText.textContent = 'Cross-Verify with Razorpay & Unlock';
+    if (btnText) btnText.textContent = 'Verify & Unlock';
     if (btnSpinner) btnSpinner.style.display = 'none';
   }
 }

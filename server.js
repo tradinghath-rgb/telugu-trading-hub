@@ -1276,7 +1276,7 @@ app.post('/api/auth/verify-payment', uploadPaymentProof.single('screenshot'), as
     if (REVOKED_EMAILS.includes(cleanEmail)) {
       return res.status(403).json({
         success: false,
-        error: 'This account has been flagged for unverified access. Access cannot be granted automatically.'
+        error: 'Payment verification failed. Please try again.'
       });
     }
 
@@ -1336,7 +1336,7 @@ app.post('/api/auth/verify-payment', uploadPaymentProof.single('screenshot'), as
     if (!verification.verified) {
       return res.status(400).json({
         success: false,
-        error: verification.error || 'Payment verification failed: UTR not confirmed by Razorpay. Please try again.'
+        error: 'Payment verification failed. Please try again.'
       });
     }
 
