@@ -137,14 +137,17 @@ function initAuthState() {
       const parsed = JSON.parse(raw);
       // Only keep admin session if active in current browser session
       if (parsed.role === 'admin') {
-        document.documentElement.classList.add('is-admin');
-        document.body.classList.add('is-admin');
         const sessionAuth = sessionStorage.getItem('tradinghub_user');
         if (!sessionAuth) {
+          document.documentElement.classList.remove('is-admin');
+          document.body.classList.remove('is-admin');
+          document.body.classList.remove('admin-home-blurred');
           localStorage.removeItem('tradinghub_user');
           state.currentUser = null;
           return;
         }
+        document.documentElement.classList.add('is-admin');
+        document.body.classList.add('is-admin');
         // Ultra Privacy: If PIN is not verified for this session, blur home and prompt PIN code
         if (sessionStorage.getItem('tradinghub_admin_pin_verified') !== ADMIN_PIN) {
           document.body.classList.add('admin-home-blurred');
@@ -1943,16 +1946,6 @@ function openUserProfileModal() {
       isAdminOnly: false
     });
 
-    items.push({
-      id: 'intro',
-      title: 'Watch Platform Intro Video',
-      badge: 'REPLAY',
-      badgeColor: 'var(--text-muted)',
-      desc: 'Watch the full introduction video explaining trading methodology',
-      icon: `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>`,
-      isAdminOnly: false
-    });
-
     featuresList.innerHTML = items.map(item => `
       <div class="profile-feature-card ${item.isAdminOnly ? 'admin-feature' : ''}" onclick="redirectToFeature('${item.id}')">
         <div class="profile-feature-icon ${item.isAdminOnly ? 'admin-icon' : ''}">
@@ -2175,9 +2168,12 @@ function closeAdminPinModal() {
   const input = document.getElementById('cms-security-pin-input');
   if (input) input.value = '';
 
-  // If closed without verifying PIN, log out admin and remove blur for security
+  // Always clean up blur and body scroll lock when pin modal closes
+  document.body.classList.remove('admin-home-blurred');
+  document.body.style.overflow = '';
+
+  // If closed without verifying PIN, log out admin for security
   if (state.currentUser && state.currentUser.role === 'admin' && sessionStorage.getItem('tradinghub_admin_pin_verified') !== ADMIN_PIN) {
-    document.body.classList.remove('admin-home-blurred');
     handleLogout();
     showToast('Admin verification cancelled. Logged out.', 'info');
     return;

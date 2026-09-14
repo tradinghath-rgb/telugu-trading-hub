@@ -215,7 +215,6 @@ function syncReelsFromFolders() {
 
 const TELUGU_VIDEO_DIR = path.join(__dirname, 'TELUGU VIDEO');
 const ENGLISH_VIDEO_DIR = path.join(__dirname, 'ENGLISH VIDEO');
-const INTRO_DIR = path.join(__dirname, 'INTRO');
 const LOGO_DIR = path.join(__dirname, 'LOGO');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
@@ -661,16 +660,7 @@ app.get('/videos/english/:filename', (req, res) => {
   streamVideoFile(req, res, filePath);
 });
 
-app.get('/videos/intro/:filename', (req, res) => {
-  const filePath = path.join(INTRO_DIR, req.params.filename);
-  streamVideoFile(req, res, filePath);
-});
 
-// Default intro video direct stream
-app.get('/intro-video', (req, res) => {
-  const introFile = path.join(INTRO_DIR, 'lv_0_20260901105849.mp4');
-  streamVideoFile(req, res, introFile);
-});
 
 // Default logo direct endpoint
 app.get('/brand-logo', (req, res) => {

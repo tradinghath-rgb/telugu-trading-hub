@@ -10,8 +10,6 @@ if (!fs.existsSync(dataDir)) {
 const initialSiteConfig = {
   brandName: "TRADING HUB",
   tagline: "High Probability Drawn Charts & Bilingual Telugu/English Analysis",
-  introVideo: "/videos/intro/lv_0_20260901105849.mp4",
-  autoPlayIntro: true,
   pricing: {
     price: 399,
     currencySymbol: "₹",

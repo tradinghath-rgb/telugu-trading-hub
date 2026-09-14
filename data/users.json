@@ -7,7 +7,8 @@
     "role": "admin",
     "hasPaid": true,
     "paidAt": "2026-09-01T00:00:00.000Z",
-    "paymentId": "ADMIN_PROVISIONED"
+    "paymentId": "ADMIN_PROVISIONED",
+    "activeSessionToken": "c8e5103d4bcea84690c2313833144b8d"
   },
   {
     "id": "demo-member-1",
