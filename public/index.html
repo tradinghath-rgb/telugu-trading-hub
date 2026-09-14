@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/css/styles.css?v=20260914_v10" />
+  <link rel="stylesheet" href="/css/styles.css?v=20260914_v11" />
   <link rel="icon" type="image/png" href="/brand-logo" />
 </head>
 <body>
@@ -730,29 +730,31 @@
         <button class="btn-close-modal" onclick="closeAuthModal()">✕</button>
       </div>
       <div class="modal-body">
-        <p id="auth-modal-desc" style="color: var(--text-secondary); font-size: 0.86rem; margin-bottom: 14px; display: none; line-height: 1.5;"></p>
+        <form id="auth-modal-form" onsubmit="event.preventDefault(); handleAuthSubmit(event);" action="javascript:void(0);">
+          <p id="auth-modal-desc" style="color: var(--text-secondary); font-size: 0.86rem; margin-bottom: 14px; display: none; line-height: 1.5;"></p>
 
-        <div id="auth-name-group" class="form-group" style="display: none;">
-          <label class="form-label">Full Name</label>
-          <input type="text" id="auth-name-input" class="form-input" placeholder="e.g. Ramesh Reddy" />
-        </div>
-
-        <div class="form-group" id="auth-email-group">
-          <label class="form-label">Gmail / Email Address</label>
-          <input type="email" id="auth-email-input" class="form-input" placeholder="you@gmail.com" required autocomplete="off" value="" />
-        </div>
-
-        <div class="form-group" id="auth-password-group">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <label class="form-label" style="margin-bottom: 0;">Password</label>
-            <a href="javascript:void(0)" onclick="setAuthModalMode('forgot')" style="color: var(--accent-gold); font-size: 0.8rem; text-decoration: underline; cursor: pointer;">Forgot?</a>
+          <div id="auth-name-group" class="form-group" style="display: none;">
+            <label class="form-label">Full Name</label>
+            <input type="text" id="auth-name-input" class="form-input" placeholder="e.g. Ramesh Reddy" autocomplete="name" />
           </div>
-          <input type="password" id="auth-password-input" class="form-input" placeholder="••••••••" required autocomplete="new-password" value="" />
-        </div>
 
-        <button id="auth-submit-btn" class="btn btn-primary" style="width: 100%; margin-top: 10px;" onclick="handleAuthSubmit()">
-          Login
-        </button>
+          <div class="form-group" id="auth-email-group">
+            <label class="form-label">Gmail / Email Address</label>
+            <input type="email" id="auth-email-input" class="form-input" placeholder="you@gmail.com" required autocomplete="email" value="" />
+          </div>
+
+          <div class="form-group" id="auth-password-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label class="form-label" style="margin-bottom: 0;">Password</label>
+              <a href="javascript:void(0)" onclick="setAuthModalMode('forgot')" style="color: var(--accent-gold); font-size: 0.8rem; text-decoration: underline; cursor: pointer;">Forgot?</a>
+            </div>
+            <input type="password" id="auth-password-input" class="form-input" placeholder="••••••••" required autocomplete="current-password" value="" />
+          </div>
+
+          <button type="submit" id="auth-submit-btn" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+            Login
+          </button>
+        </form>
 
         <div id="auth-toggle-prompt" style="text-align: center; font-size: 0.88rem; color: var(--text-secondary); margin-top: 16px;">
           Need an account? <a href="javascript:void(0)" onclick="setAuthModalMode('register')" style="color: var(--accent-green); font-weight: bold;">Sign Up</a>
@@ -1577,6 +1579,6 @@
   <div id="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="/js/app.js?v=20260914_v10"></script>
+  <script src="/js/app.js?v=20260914_v11"></script>
 </body>
 </html>

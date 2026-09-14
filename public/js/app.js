@@ -1454,6 +1454,21 @@ async function submitPaymentVerification() {
 }
 
 // ==================== AUTH MODAL (SIGNUP / LOGIN) ====================
+function bindAuthEnterKey() {
+  ['auth-email-input', 'auth-password-input', 'auth-name-input'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el._hasEnterListener) {
+      el._hasEnterListener = true;
+      el.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          handleAuthSubmit(event);
+        }
+      });
+    }
+  });
+}
+
 function openAuthModal(mode = 'login') {
   const modal = document.getElementById('auth-modal');
   if (!modal) return;
@@ -1465,6 +1480,15 @@ function openAuthModal(mode = 'login') {
 
   setAuthModalMode(mode);
   modal.classList.add('active');
+  bindAuthEnterKey();
+  setTimeout(() => {
+    if (mode === 'register') {
+      const nameInput = document.getElementById('auth-name-input');
+      if (nameInput) nameInput.focus();
+    } else if (emailInput) {
+      emailInput.focus();
+    }
+  }, 100);
 }
 
 function closeAuthModal() {
@@ -1515,8 +1539,10 @@ function setAuthModalMode(mode) {
   }
 }
 
-async function handleAuthSubmit() {
-  const mode = document.getElementById('auth-submit-btn').dataset.mode || 'login';
+async function handleAuthSubmit(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const submitBtn = document.getElementById('auth-submit-btn');
+  const mode = submitBtn?.dataset?.mode || 'login';
   const email = document.getElementById('auth-email-input').value.trim();
   const password = document.getElementById('auth-password-input')?.value;
   const name = document.getElementById('auth-name-input')?.value?.trim();
@@ -3823,3 +3849,5 @@ function adminNavigateKpi(target) {
 }
 
 window.adminNavigateKpi = adminNavigateKpi;
+
+window.bindAuthEnterKey = bindAuthEnterKey;
