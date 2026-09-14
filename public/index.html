@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/css/styles.css?v=20260914_v12" />
+  <link rel="stylesheet" href="/css/styles.css?v=20260914_v13" />
   <link rel="icon" type="image/png" href="/brand-logo" />
 </head>
 <body>
@@ -734,15 +734,7 @@
         <form id="auth-modal-form" onsubmit="event.preventDefault(); handleAuthSubmit(event);" action="javascript:void(0);">
           <p id="auth-modal-desc" style="color: var(--text-secondary); font-size: 0.86rem; margin-bottom: 14px; display: none; line-height: 1.5;"></p>
 
-          <!-- Multi-Account Quick Selector Bar -->
-          <div id="saved-accounts-container" class="saved-accounts-bar" style="display: none;">
-            <div class="saved-accounts-header">
-              <span class="saved-accounts-title">
-                ⚡ Saved Accounts (Tap to Fill)
-              </span>
-            </div>
-            <div id="saved-accounts-list" class="saved-accounts-pills"></div>
-          </div>
+
 
           <div id="auth-name-group" class="form-group" style="display: none;">
             <label class="form-label" for="auth-name-input">Full Name</label>
@@ -750,7 +742,10 @@
           </div>
 
           <div class="form-group" id="auth-email-group">
-            <label class="form-label" for="auth-email-input">Gmail / Email Address</label>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label class="form-label" for="auth-email-input" style="margin-bottom: 0;">Gmail / Email Address</label>
+              <span id="auth-saved-hint" style="display: none; font-size: 0.78rem; color: var(--accent-green); cursor: pointer; text-decoration: underline;" onclick="fillDeviceSavedAccount()">🔑 Fill saved login</span>
+            </div>
             <input type="email" id="auth-email-input" class="form-input" placeholder="you@gmail.com" required autocomplete="email" oninput="handleAuthEmailInput(this.value)" />
           </div>
 
@@ -1646,6 +1641,6 @@
   <div id="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="/js/app.js?v=20260914_v12"></script>
+  <script src="/js/app.js?v=20260914_v13"></script>
 </body>
 </html>

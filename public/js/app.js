@@ -147,12 +147,7 @@ function initAuthState() {
       }).catch(() => {});
     }
     syncAllLocalAccountsToServer();
-
-    // Start single device session validation
-    validateActiveSession();
-    if (!window._sessionValidationInterval) {
-      window._sessionValidationInterval = setInterval(validateActiveSession, 25000);
-    }
+    cleanLocalVaultTestAccounts();
   } catch (e) {
     localStorage.removeItem('tradinghub_user');
     sessionStorage.removeItem('tradinghub_user');
@@ -160,50 +155,18 @@ function initAuthState() {
   }
 }
 
-// Single Device Session Enforcement
+// Multi-Device Access Enabled: Allows multiple phones, laptops, and PCs simultaneously
 async function validateActiveSession() {
-  if (!state.currentUser || !state.currentUser.email) return true;
-  const token = state.currentUser.sessionToken || 
-                (state.currentUser.role === 'admin' 
-                  ? sessionStorage.getItem('tradinghub_session_token') 
-                  : localStorage.getItem('tradinghub_session_token'));
-  if (!token) return true;
-
-  try {
-    const res = await fetch('/api/auth/validate-session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: state.currentUser.email, sessionToken: token })
-    });
-    const data = await res.json();
-    if (data.valid === false && data.reason === 'concurrent_session') {
-      handleConcurrentLogout(data.message);
-      return false;
-    }
-  } catch (_) {}
   return true;
 }
 
-function handleConcurrentLogout(message) {
-  closeChartModal();
-  saveAuthState(null);
-  localStorage.removeItem('tradinghub_session_token');
-  sessionStorage.removeItem('tradinghub_session_token');
-  renderApp();
-  const modal = document.getElementById('concurrent-session-modal');
-  if (modal) {
-    modal.classList.add('active');
-    document.body.style.overflow = 'hidden';
-  } else {
-    showToast(message || '⚠️ Your account was logged in from another device. You have been logged out here.', 'error');
-  }
+function handleConcurrentLogout() {
+  // Multi-device enabled: no-op, user is never kicked out when using another phone or PC
 }
 
 function closeConcurrentSessionModal() {
   const modal = document.getElementById('concurrent-session-modal');
   if (modal) modal.classList.remove('active');
-  const otherActive = document.querySelector('.modal-overlay.active');
-  if (!otherActive) document.body.style.overflow = '';
 }
 
 function saveAuthState(user) {
@@ -344,23 +307,34 @@ function initIntroVideo() {
   if (!overlay || !video) return;
 
   const introSeen = sessionStorage.getItem('tradinghub_intro_seen');
-  
   if (introSeen) {
     overlay.classList.add('hidden');
     return;
   }
 
+  // Gracefully dismiss if video errors or stalls
+  video.addEventListener('error', () => {
+    console.warn('Intro video error, dismissing overlay.');
+    closeIntroVideo();
+  });
+
+  // Tap anywhere on overlay background to enter website immediately
+  overlay.addEventListener('click', (e) => {
+    if (!e.target.closest('#intro-mute-btn')) {
+      closeIntroVideo();
+    }
+  });
+
   // Set video source
   const introSrc = state.siteConfig?.introVideo || '/intro-video';
   video.src = introSrc;
 
-  // Browser Autoplay handling (often requires muted initially)
+  // Browser Autoplay handling (requires muted initially)
   video.muted = true;
   const playPromise = video.play();
 
   if (playPromise !== undefined) {
     playPromise.then(() => {
-      // Autoplay started successfully (muted)
       if (muteBtn) {
         muteBtn.innerHTML = `
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
@@ -378,7 +352,14 @@ function initIntroVideo() {
     });
   }
 
-  // Progress update
+  // Mobile safety fallback: if paused or buffering, keep skip button pulsing
+  setTimeout(() => {
+    if (video.paused && !sessionStorage.getItem('tradinghub_intro_seen')) {
+      const skipPrompt = document.getElementById('intro-skip-btn');
+      if (skipPrompt) skipPrompt.style.boxShadow = '0 0 15px rgba(0, 242, 152, 0.7)';
+    }
+  }, 2500);
+
   video.addEventListener('timeupdate', () => {
     if (video.duration && progressBar) {
       const pct = (video.currentTime / video.duration) * 100;
@@ -386,19 +367,20 @@ function initIntroVideo() {
     }
   });
 
-  // Auto transition when intro ends
   video.addEventListener('ended', () => {
     closeIntroVideo();
   });
 
-  // Skip button
   if (skipBtn) {
-    skipBtn.addEventListener('click', closeIntroVideo);
+    skipBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeIntroVideo();
+    });
   }
 
-  // Mute / Unmute / Play trigger button
   if (muteBtn) {
-    muteBtn.addEventListener('click', () => {
+    muteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
       if (video.paused) {
         video.play();
         video.muted = false;
@@ -947,9 +929,6 @@ function handleChartSearch(query) {
 
 // ==================== BILINGUAL VIDEO & CHART MODAL ====================
 async function openChartModal(chartId) {
-  // Validate active device session first
-  const isValid = await validateActiveSession();
-  if (!isValid) return;
 
   // Graceful chart resolution: matches by id, or chart-01 / chart-1, or first available chart
   const chart = state.charts.find(c => c.id === chartId) || 
@@ -1121,7 +1100,7 @@ function loadActiveModalVideo() {
     </div>
 
     <div class="video-container-box">
-      <video id="modal-video-element" class="video-player-elem" controls autoplay playsinline controlsList="nodownload" oncontextmenu="return false;">
+      <video id="modal-video-element" class="video-player-elem" controls playsinline webkit-playsinline preload="metadata" controlsList="nodownload" oncontextmenu="return false;">
         <source src="${videoUrl}" type="video/mp4" />
         Your browser does not support HTML5 video playback.
       </video>
@@ -1132,6 +1111,15 @@ function loadActiveModalVideo() {
       <span>Speed: Selectable in video controls</span>
     </div>
   `;
+
+  setTimeout(() => {
+    const videoEl = document.getElementById('modal-video-element');
+    if (videoEl) {
+      videoEl.play().catch(() => {
+        // Mobile browsers require direct user tap to start unmuted audio; video is loaded and ready
+      });
+    }
+  }, 60);
 }
 
 // ==================== RAZORPAY CHECKOUT & PAYMENT VERIFICATION ====================
@@ -1514,7 +1502,7 @@ function setAuthModalMode(mode) {
   const passwordGroup = document.getElementById('auth-password-group');
   const descEl = document.getElementById('auth-modal-desc');
   const rememberGroup = document.getElementById('auth-remember-group');
-  const savedAccountsContainer = document.getElementById('saved-accounts-container');
+  const savedHint = document.getElementById('auth-saved-hint');
 
   resetPasswordToggle('auth-password-input');
 
@@ -1528,7 +1516,7 @@ function setAuthModalMode(mode) {
     if (nameGroup) nameGroup.style.display = 'none';
     if (passwordGroup) passwordGroup.style.display = 'none';
     if (rememberGroup) rememberGroup.style.display = 'none';
-    if (savedAccountsContainer) savedAccountsContainer.style.display = 'none';
+    if (savedHint) savedHint.style.display = 'none';
     toggleText.innerHTML = `Remembered your password? <a href="javascript:void(0)" onclick="setAuthModalMode('login')" style="color: var(--accent-green); font-weight: bold;">Login</a>`;
     submitBtn.dataset.mode = 'forgot';
   } else if (mode === 'register') {
@@ -1538,7 +1526,7 @@ function setAuthModalMode(mode) {
     if (nameGroup) nameGroup.style.display = 'block';
     if (passwordGroup) passwordGroup.style.display = 'block';
     if (rememberGroup) rememberGroup.style.display = 'block';
-    if (savedAccountsContainer) savedAccountsContainer.style.display = 'none';
+    if (savedHint) savedHint.style.display = 'none';
     toggleText.innerHTML = `Already registered? <a href="javascript:void(0)" onclick="setAuthModalMode('login')" style="color: var(--accent-green); font-weight: bold;">Login</a>`;
     submitBtn.dataset.mode = 'register';
   } else {
@@ -1550,7 +1538,7 @@ function setAuthModalMode(mode) {
     if (rememberGroup) rememberGroup.style.display = 'block';
     toggleText.innerHTML = `Need an account? <a href="javascript:void(0)" onclick="setAuthModalMode('register')" style="color: var(--accent-green); font-weight: bold;">Sign Up</a>`;
     submitBtn.dataset.mode = 'login';
-    renderSavedAccountsPills();
+    checkDeviceSavedAccount();
   }
 }
 
@@ -3922,105 +3910,77 @@ function resetPasswordToggle(inputId) {
   }
 }
 
-function renderSavedAccountsPills() {
-  const container = document.getElementById('saved-accounts-container');
-  const listEl = document.getElementById('saved-accounts-list');
-  if (!container || !listEl) return;
+function cleanLocalVaultTestAccounts() {
+  try {
+    let vault = JSON.parse(localStorage.getItem('tradinghub_account_vault') || '{}');
+    let changed = false;
+    ['student@tradinghub.in', 'student@tradinghub.com', 'abhisheknaidu2005@gmail.com', 'test@test.com'].forEach(dummy => {
+      if (vault[dummy]) {
+        delete vault[dummy];
+        changed = true;
+      }
+    });
+    if (changed) {
+      localStorage.setItem('tradinghub_account_vault', JSON.stringify(vault));
+    }
+  } catch (_) {}
+}
 
-  const submitBtn = document.getElementById('auth-submit-btn');
-  const mode = submitBtn?.dataset?.mode || 'login';
+function checkDeviceSavedAccount() {
+  const hint = document.getElementById('auth-saved-hint');
+  if (!hint) return;
 
-  // Only show saved account quick selector in Login mode
-  if (mode !== 'login') {
-    container.style.display = 'none';
-    return;
-  }
+  cleanLocalVaultTestAccounts();
 
   let vault = {};
   try {
     vault = JSON.parse(localStorage.getItem('tradinghub_account_vault') || '{}');
   } catch (_) {}
 
-  // Filter accounts with valid email and non-empty password
+  // Only show hint if THIS device specifically has a saved account with password
   const savedList = Object.values(vault).filter(acc => acc && acc.email && acc.password);
-
-  if (savedList.length === 0) {
-    container.style.display = 'none';
-    return;
-  }
-
-  // Sort by savedAt descending (most recently used first)
-  savedList.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
-
-  container.style.display = 'block';
-  const emailInput = document.getElementById('auth-email-input');
-  const currentEmail = emailInput?.value?.trim()?.toLowerCase() || '';
-
-  listEl.innerHTML = savedList.map((acc, idx) => {
-    const isSelected = currentEmail ? (acc.email.toLowerCase() === currentEmail) : (idx === 0);
-    const badge = acc.role === 'admin' ? '👑' : (acc.hasPaid ? '💎' : '👤');
-    return `
-      <div class="saved-account-pill ${isSelected ? 'selected' : ''}" onclick="selectSavedAccount('${escapeHtml(acc.email)}')" title="Login as ${escapeHtml(acc.email)}">
-        <span class="saved-pill-badge">${badge}</span>
-        <span class="saved-pill-email">${escapeHtml(acc.email)}</span>
-        <button type="button" class="saved-pill-remove" onclick="removeSavedAccount('${escapeHtml(acc.email)}', event)" title="Remove ${escapeHtml(acc.email)} from this device">✕</button>
-      </div>
-    `;
-  }).join('');
-
-  // Auto-fill inputs with the most recent account if fields are currently blank
-  if (savedList.length > 0 && (!emailInput || !emailInput.value.trim())) {
-    selectSavedAccount(savedList[0].email, false);
+  if (savedList.length > 0) {
+    savedList.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+    const recent = savedList[0];
+    hint.style.display = 'inline';
+    hint.textContent = '🔑 Fill saved login';
+    hint.title = `Fill saved login on this device for ${recent.email}`;
+    hint.dataset.email = recent.email;
+  } else {
+    hint.style.display = 'none';
   }
 }
 
-function selectSavedAccount(email, focusPassword = true) {
-  if (!email) return;
-  const acc = getLocalAccountVault(email);
-  if (!acc) return;
+function fillDeviceSavedAccount() {
+  const hint = document.getElementById('auth-saved-hint');
+  const targetEmail = hint?.dataset?.email;
+  if (!targetEmail) return;
+
+  const acc = getLocalAccountVault(targetEmail);
+  if (!acc || !acc.password) return;
 
   const emailInput = document.getElementById('auth-email-input');
   const passInput = document.getElementById('auth-password-input');
 
   if (emailInput) emailInput.value = acc.email;
-  if (passInput && acc.password) passInput.value = acc.password;
-
-  // Highlight pill
-  document.querySelectorAll('.saved-account-pill').forEach(pill => {
-    const pillEmail = pill.querySelector('.saved-pill-email')?.textContent?.trim();
-    if (pillEmail && pillEmail.toLowerCase() === acc.email.toLowerCase()) {
-      pill.classList.add('selected');
-    } else {
-      pill.classList.remove('selected');
-    }
-  });
-
-  if (focusPassword && passInput) {
-    passInput.focus();
-  }
+  if (passInput) passInput.value = acc.password;
+  _lastAutofilledAccount = acc.email.toLowerCase().trim();
+  showToast(`Filled saved login for ${acc.email}`, 'info');
 }
 
-function removeSavedAccount(email, event) {
-  if (event && event.stopPropagation) event.stopPropagation();
+function renderSavedAccountsPills() {
+  // Deprecated: Public list of saved accounts removed for individual device privacy
+  checkDeviceSavedAccount();
+}
+
+function selectSavedAccount(email) {
   if (!email) return;
-
-  try {
-    let vault = JSON.parse(localStorage.getItem('tradinghub_account_vault') || '{}');
-    const key = email.toLowerCase().trim();
-    delete vault[key];
-    localStorage.setItem('tradinghub_account_vault', JSON.stringify(vault));
-    
-    // Clear inputs if currently showing deleted account
-    const emailInput = document.getElementById('auth-email-input');
-    if (emailInput && emailInput.value.trim().toLowerCase() === key) {
-      emailInput.value = '';
-      const passInput = document.getElementById('auth-password-input');
-      if (passInput) passInput.value = '';
-    }
-
-    renderSavedAccountsPills();
-    showToast(`Removed ${email} from saved accounts.`, 'info');
-  } catch (_) {}
+  const acc = getLocalAccountVault(email);
+  if (!acc) return;
+  const emailInput = document.getElementById('auth-email-input');
+  const passInput = document.getElementById('auth-password-input');
+  if (emailInput) emailInput.value = acc.email;
+  if (passInput && acc.password) passInput.value = acc.password;
 }
 
 let _lastAutofilledAccount = '';
@@ -4058,6 +4018,8 @@ function handleAuthEmailInput(val) {
 }
 
 window.togglePasswordVisibility = togglePasswordVisibility;
+window.fillDeviceSavedAccount = fillDeviceSavedAccount;
+window.checkDeviceSavedAccount = checkDeviceSavedAccount;
 window.resetPasswordToggle = resetPasswordToggle;
 window.renderSavedAccountsPills = renderSavedAccountsPills;
 window.selectSavedAccount = selectSavedAccount;

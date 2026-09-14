@@ -935,10 +935,7 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    // Invalidate any older device session by assigning new activeSessionToken
-    users[userIndex].activeSessionToken = sessionToken;
-    writeJson('users.json', users);
-
+    // Multi-device login: Allow multiple devices (phone, laptop, PC) at the same time
     const user = users[userIndex];
     const userSafe = {
       id: user.id,
@@ -955,11 +952,11 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// Validate Active Session (Single Device Enforcement API)
+// Validate Active Session (Multi-Device Supported: Allows Mobile, Laptop & PC Simultaneously)
 app.post('/api/auth/validate-session', (req, res) => {
   try {
-    const { email, sessionToken } = req.body;
-    if (!email || !sessionToken) {
+    const { email } = req.body;
+    if (!email) {
       return res.json({ valid: false, reason: 'missing_credentials' });
     }
 
@@ -971,21 +968,8 @@ app.post('/api/auth/validate-session', (req, res) => {
       return res.json({ valid: false, reason: 'user_not_found' });
     }
 
-    // Exempt owner and student accounts from concurrent device dropouts during testing
-    if (cleanEmail === 'abhisheknaidus093@gmail.com' || cleanEmail === 'student@tradinghub.in') {
-      return res.json({ valid: true, hasPaid: Boolean(user.hasPaid) });
-    }
-
-    // If activeSessionToken exists and doesn't match this device, user logged in elsewhere
-    if (user.activeSessionToken && user.activeSessionToken !== sessionToken) {
-      return res.json({
-        valid: false,
-        reason: 'concurrent_session',
-        message: 'Your account was logged in from another device (mobile, laptop, or PC). You have been logged out here.'
-      });
-    }
-
-    res.json({ valid: true, hasPaid: !!user.hasPaid, role: user.role });
+    // Allow multiple devices to access simultaneously without logout or playback blocking
+    res.json({ valid: true, hasPaid: Boolean(user.hasPaid), role: user.role });
   } catch (err) {
     res.status(500).json({ valid: false, error: err.message });
   }
