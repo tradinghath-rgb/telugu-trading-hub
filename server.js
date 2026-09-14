@@ -1251,7 +1251,7 @@ async function verifyWithRazorpay(utrOrPaymentId) {
 
     return {
       verified: false,
-      error: `UTR ID '${cleanId}' not confirmed by Razorpay. Please ensure you completed payment on the official link and entered the correct 12-digit UTR.`
+      error: 'Payment verification failed. Please try again.'
     };
   } catch (err) {
     return {
