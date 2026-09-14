@@ -692,7 +692,7 @@ function renderCharts() {
             ${!isUnlocked ? `
               <div class="gallery-lock-overlay">
                 <div class="gallery-lock-badge">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                   <span>LOCKED SETUP</span>
                 </div>
                 <span style="font-size: 0.72rem; color: var(--accent-gold); font-weight: 700; margin-top: 4px;">Unlock to View</span>
@@ -709,10 +709,10 @@ function renderCharts() {
             <div class="chart-card-footer" style="align-items: center; justify-content: space-between;">
               <button class="btn btn-sm ${isUnlocked ? 'btn-secondary' : 'btn-gold'}" onclick="${clickAction}" style="padding: 5px 12px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 4px;">
                 ${isUnlocked ? `
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                   <span>Inspect Chart</span>
                 ` : `
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                   <span>🔒 Unlock to View</span>
                 `}
               </button>
@@ -817,11 +817,11 @@ function renderCharts() {
     return;
   }
 
-  // Strict 5-Video Display Limit on Home Page until user hits More
+  // Strict 3-Video Display Limit on Home Page until user hits More
   let displayList = filtered;
   let hasMore = false;
-  if (isHomePage && !state.showAllVideos && filtered.length > 5) {
-    displayList = filtered.slice(0, 5);
+  if (isHomePage && !state.showAllVideos && filtered.length > 3) {
+    displayList = filtered.slice(0, 3);
     hasMore = true;
     container.classList.remove('expanded');
   } else if (isHomePage && state.showAllVideos) {
@@ -835,7 +835,7 @@ function renderCharts() {
           <img src="${chart.chartImage || '/assets/charts/chart-1.svg'}" alt="${chart.title}" loading="lazy" />
           <span class="chart-reel-badge">LESSON #${chart.reelNumber || ''}</span>
           <span class="chart-bilingual-pill">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
             TELUGU &amp; ENGLISH
           </span>
         </div>
@@ -849,7 +849,7 @@ function renderCharts() {
             </span>
             <button class="btn btn-sm ${isUnlocked ? 'btn-primary' : 'btn-secondary'}">
               ${isUnlocked ? 'Watch Breakdown' : '🔒 Preview (Locked)'}
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
             </button>
           </div>
           ${isAdmin ? `
@@ -872,12 +872,12 @@ function renderCharts() {
     cardsHtml += `
       <div class="chart-card more-explore-card" onclick="toggleShowAllVideos(true)" style="cursor: pointer;" title="Click to display all 24+ videos">
         <div class="more-card-content">
-          <div class="more-card-icon" style="font-size: 2.2rem; margin-bottom: 8px;">➕</div>
+          <div class="more-card-icon">➕</div>
           <div class="more-card-badge" style="background: rgba(0, 242, 152, 0.15); color: var(--accent-green);">+ MORE VIDEOS</div>
           <h3 class="more-card-title">+ More Videos</h3>
-          <p class="more-card-desc">Click here to reveal all 24+ Telugu &amp; English trading lessons in this view.</p>
+          <p class="more-card-desc">Click here to reveal all Telugu &amp; English trading lessons in this view.</p>
           <button class="btn btn-sm btn-primary" onclick="event.stopPropagation(); toggleShowAllVideos(true);" style="margin-top: 8px;">
-            Show All 24+ Videos ▼
+            Show All Videos ▼
           </button>
         </div>
       </div>
@@ -889,11 +889,11 @@ function renderCharts() {
   // More Videos Banner
   if (moreBanner) {
     if (isHomePage) {
-      if (!state.showAllVideos && filtered.length > 5) {
+      if (!state.showAllVideos && filtered.length > 3) {
         moreBanner.innerHTML = `
           <button type="button" class="btn btn-secondary btn-lg" onclick="toggleShowAllVideos(true)" style="display: inline-flex; align-items: center; gap: 10px; border-color: var(--accent-green); background: rgba(0,242,152,0.08); font-weight: 700; color: #fff; cursor: pointer;">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-            <span>+ More Videos (Click to Display All 24+ Lessons) ▼</span>
+            <span>+ More Videos (Click to Display All Lessons) ▼</span>
           </button>
         `;
       } else if (state.showAllVideos) {
@@ -901,7 +901,7 @@ function renderCharts() {
           <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; align-items: center;">
             <button type="button" class="btn btn-secondary btn-lg" onclick="toggleShowAllVideos(false)" style="border-color: rgba(255,255,255,0.25); color: #fff; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
-              <span>▲ Show Less (Hide &amp; Collapse to 5 Videos)</span>
+              <span>▲ Show Less (Hide &amp; Collapse to 3 Videos)</span>
             </button>
             <a href="/all-videos" class="btn btn-primary btn-lg" style="display: inline-flex; align-items: center; gap: 8px;">
               <span>Explore in Full Video Library Page &rarr;</span>
@@ -1406,7 +1406,7 @@ async function submitPaymentVerification() {
 
     if (data.success && data.user) {
       // Prominent green confirmation directly below the UTR box
-      showUtrFeedback('success', 'Payment Verified by Razorpay!', '✅ Payment successful! Lifetime access unlocked. Welcome to Trading Hub PRO!');
+      showUtrFeedback('success', 'Payment Verified!', '✅ Payment successful! Lifetime access unlocked. Welcome to Trading Hub PRO!');
 
       const paidUser = {
         ...data.user,
@@ -2658,7 +2658,7 @@ function renderChartGallery() {
           ${!isUnlocked ? `
             <div class="gallery-lock-overlay">
               <div class="gallery-lock-badge">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                 <span>LOCKED SETUP</span>
               </div>
               <span style="font-size: 0.72rem; color: var(--accent-gold); font-weight: 700; margin-top: 4px;">Unlock to View</span>
@@ -2670,10 +2670,10 @@ function renderChartGallery() {
           <div class="gallery-card-actions">
             <button class="btn btn-sm ${isUnlocked ? 'btn-secondary' : 'btn-gold'}" onclick="${clickAction}" style="padding: 4px 10px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 4px;">
               ${isUnlocked ? `
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <span>Inspect</span>
               ` : `
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                 <span>🔒 Unlock to View</span>
               `}
             </button>

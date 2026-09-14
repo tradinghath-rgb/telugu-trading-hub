@@ -1304,7 +1304,7 @@ async function verifyWithRazorpay(utrOrPaymentId) {
         const errData = await response.json().catch(() => ({}));
         return {
           verified: false,
-          error: errData.error?.description || `Razorpay payment ID ${cleanId} not found.`
+          error: 'Payment verification failed. Please try again.'
         };
       }
 
@@ -1335,7 +1335,7 @@ async function verifyWithRazorpay(utrOrPaymentId) {
       const errData = await listRes.json().catch(() => ({}));
       return {
         verified: false,
-        error: errData.error?.description || 'Failed to query Razorpay API.'
+        error: 'Payment verification failed. Please try again.'
       };
     }
 
@@ -1368,7 +1368,7 @@ async function verifyWithRazorpay(utrOrPaymentId) {
   } catch (err) {
     return {
       verified: false,
-      error: `Razorpay connection error: ${err.message}`
+      error: 'Payment verification failed. Please try again.'
     };
   }
 }
@@ -1483,7 +1483,7 @@ app.post('/api/auth/verify-payment', uploadPaymentProof.single('screenshot'), as
 
     return res.json({
       success: true,
-      message: 'Payment Confirmed by Razorpay! Lifetime Access Unlocked!',
+      message: 'Payment Confirmed! Lifetime Access Unlocked!',
       user: userSafe,
       utrId: cleanUtr
     });
