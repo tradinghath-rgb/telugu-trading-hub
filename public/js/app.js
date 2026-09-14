@@ -53,7 +53,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadCharts();
   await loadChartGallery();
   await loadComments();
-  initIntroVideo();
   initMarketTicker();
   initGalleryDragDrop();
   initDailyChartDragDrop();
@@ -325,30 +324,11 @@ function checkAdminUrlParam() {
 }
 
 // ==================== INTRO VIDEO FLOW ====================
-function initIntroVideo() {
-  const overlay = document.getElementById('intro-overlay');
-  if (overlay) overlay.remove();
-}
+function initIntroVideo() {}
 
-function closeIntroVideo() {
-  const overlay = document.getElementById('intro-overlay');
-  if (overlay) overlay.remove();
-  sessionStorage.setItem('tradinghub_intro_seen', 'true');
-}
+function closeIntroVideo() {}
 
-function replayIntro() {
-  const overlay = document.getElementById('intro-overlay');
-  const video = document.getElementById('intro-video-element');
-  if (!overlay || !video) return;
-
-  overlay.classList.remove('hidden');
-  video.currentTime = 0;
-  video.muted = false;
-  video.play().catch(() => {
-    video.muted = true;
-    video.play();
-  });
-}
+function replayIntro() {}
 
 // ==================== LIVE MARKET TICKER ====================
 function initMarketTicker() {
@@ -2021,9 +2001,6 @@ function redirectToFeature(featureId) {
         break;
       case 'terms':
         openTermsModal();
-        break;
-      case 'intro':
-        replayIntro();
         break;
       default:
         break;
