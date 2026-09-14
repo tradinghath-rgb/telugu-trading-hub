@@ -1478,6 +1478,7 @@ function openAuthModal(mode = 'login') {
   if (emailInput) emailInput.value = '';
   if (passInput) passInput.value = '';
 
+  resetPasswordToggle('auth-password-input');
   setAuthModalMode(mode);
   modal.classList.add('active');
   bindAuthEnterKey();
@@ -1485,10 +1486,14 @@ function openAuthModal(mode = 'login') {
     if (mode === 'register') {
       const nameInput = document.getElementById('auth-name-input');
       if (nameInput) nameInput.focus();
-    } else if (emailInput) {
-      emailInput.focus();
+    } else {
+      if (emailInput && !emailInput.value) {
+        emailInput.focus();
+      } else if (passInput) {
+        passInput.focus();
+      }
     }
-  }, 100);
+  }, 120);
 }
 
 function closeAuthModal() {
@@ -1508,6 +1513,10 @@ function setAuthModalMode(mode) {
   const nameGroup = document.getElementById('auth-name-group');
   const passwordGroup = document.getElementById('auth-password-group');
   const descEl = document.getElementById('auth-modal-desc');
+  const rememberGroup = document.getElementById('auth-remember-group');
+  const savedAccountsContainer = document.getElementById('saved-accounts-container');
+
+  resetPasswordToggle('auth-password-input');
 
   if (mode === 'forgot') {
     title.textContent = 'Reset Your Password';
@@ -1518,6 +1527,8 @@ function setAuthModalMode(mode) {
     submitBtn.textContent = 'Send Reset Link';
     if (nameGroup) nameGroup.style.display = 'none';
     if (passwordGroup) passwordGroup.style.display = 'none';
+    if (rememberGroup) rememberGroup.style.display = 'none';
+    if (savedAccountsContainer) savedAccountsContainer.style.display = 'none';
     toggleText.innerHTML = `Remembered your password? <a href="javascript:void(0)" onclick="setAuthModalMode('login')" style="color: var(--accent-green); font-weight: bold;">Login</a>`;
     submitBtn.dataset.mode = 'forgot';
   } else if (mode === 'register') {
@@ -1526,6 +1537,8 @@ function setAuthModalMode(mode) {
     submitBtn.textContent = 'Sign Up & Continue';
     if (nameGroup) nameGroup.style.display = 'block';
     if (passwordGroup) passwordGroup.style.display = 'block';
+    if (rememberGroup) rememberGroup.style.display = 'block';
+    if (savedAccountsContainer) savedAccountsContainer.style.display = 'none';
     toggleText.innerHTML = `Already registered? <a href="javascript:void(0)" onclick="setAuthModalMode('login')" style="color: var(--accent-green); font-weight: bold;">Login</a>`;
     submitBtn.dataset.mode = 'register';
   } else {
@@ -1534,8 +1547,10 @@ function setAuthModalMode(mode) {
     submitBtn.textContent = 'Login';
     if (nameGroup) nameGroup.style.display = 'none';
     if (passwordGroup) passwordGroup.style.display = 'block';
+    if (rememberGroup) rememberGroup.style.display = 'block';
     toggleText.innerHTML = `Need an account? <a href="javascript:void(0)" onclick="setAuthModalMode('register')" style="color: var(--accent-green); font-weight: bold;">Sign Up</a>`;
     submitBtn.dataset.mode = 'login';
+    renderSavedAccountsPills();
   }
 }
 
@@ -1655,14 +1670,31 @@ async function handleAuthSubmit(e) {
         }
       }
       saveAuthState(data.user);
-      saveToLocalAccountVault({
-        email,
-        password,
-        name: data.user.name || name,
-        role: data.user.role,
-        hasPaid: data.user.hasPaid,
-        paymentId: data.user.paymentId
-      });
+
+      const rememberCheckbox = document.getElementById('auth-remember-me');
+      const shouldRemember = rememberCheckbox ? rememberCheckbox.checked : true;
+
+      if (shouldRemember) {
+        saveToLocalAccountVault({
+          email,
+          password,
+          name: data.user.name || name,
+          role: data.user.role,
+          hasPaid: data.user.hasPaid,
+          paymentId: data.user.paymentId,
+          savedAt: Date.now()
+        });
+      } else {
+        try {
+          let vault = JSON.parse(localStorage.getItem('tradinghub_account_vault') || '{}');
+          const key = email.toLowerCase().trim();
+          if (vault[key]) {
+            vault[key].password = '';
+            localStorage.setItem('tradinghub_account_vault', JSON.stringify(vault));
+          }
+        } catch (_) {}
+      }
+
       closeAuthModal();
       localStorage.setItem('tradinghub_has_registered', 'true');
       renderApp(); // Immediately update all UI, navbar, and card bindings for active session
@@ -3851,3 +3883,183 @@ function adminNavigateKpi(target) {
 window.adminNavigateKpi = adminNavigateKpi;
 
 window.bindAuthEnterKey = bindAuthEnterKey;
+
+
+// ==================== PASSWORD EYE TOGGLE & SAVED ACCOUNTS AUTOFILL ====================
+function togglePasswordVisibility(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+
+  const isPassword = input.type === 'password';
+  input.type = isPassword ? 'text' : 'password';
+
+  const targetBtn = btn || input.closest('.password-input-wrapper')?.querySelector('.btn-toggle-password');
+  if (targetBtn) {
+    const eyeOpen = targetBtn.querySelector('.eye-open');
+    const eyeClosed = targetBtn.querySelector('.eye-closed');
+    if (eyeOpen && eyeClosed) {
+      eyeOpen.style.display = isPassword ? 'none' : 'block';
+      eyeClosed.style.display = isPassword ? 'block' : 'none';
+    }
+    targetBtn.setAttribute('title', isPassword ? 'Hide password' : 'Show password');
+  }
+}
+
+function resetPasswordToggle(inputId) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  input.type = 'password';
+  const wrapper = input.closest('.password-input-wrapper');
+  if (wrapper) {
+    const targetBtn = wrapper.querySelector('.btn-toggle-password');
+    if (targetBtn) {
+      const eyeOpen = targetBtn.querySelector('.eye-open');
+      const eyeClosed = targetBtn.querySelector('.eye-closed');
+      if (eyeOpen) eyeOpen.style.display = 'block';
+      if (eyeClosed) eyeClosed.style.display = 'none';
+      targetBtn.setAttribute('title', 'Show password');
+    }
+  }
+}
+
+function renderSavedAccountsPills() {
+  const container = document.getElementById('saved-accounts-container');
+  const listEl = document.getElementById('saved-accounts-list');
+  if (!container || !listEl) return;
+
+  const submitBtn = document.getElementById('auth-submit-btn');
+  const mode = submitBtn?.dataset?.mode || 'login';
+
+  // Only show saved account quick selector in Login mode
+  if (mode !== 'login') {
+    container.style.display = 'none';
+    return;
+  }
+
+  let vault = {};
+  try {
+    vault = JSON.parse(localStorage.getItem('tradinghub_account_vault') || '{}');
+  } catch (_) {}
+
+  // Filter accounts with valid email and non-empty password
+  const savedList = Object.values(vault).filter(acc => acc && acc.email && acc.password);
+
+  if (savedList.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+
+  // Sort by savedAt descending (most recently used first)
+  savedList.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+
+  container.style.display = 'block';
+  const emailInput = document.getElementById('auth-email-input');
+  const currentEmail = emailInput?.value?.trim()?.toLowerCase() || '';
+
+  listEl.innerHTML = savedList.map((acc, idx) => {
+    const isSelected = currentEmail ? (acc.email.toLowerCase() === currentEmail) : (idx === 0);
+    const badge = acc.role === 'admin' ? '👑' : (acc.hasPaid ? '💎' : '👤');
+    return `
+      <div class="saved-account-pill ${isSelected ? 'selected' : ''}" onclick="selectSavedAccount('${escapeHtml(acc.email)}')" title="Login as ${escapeHtml(acc.email)}">
+        <span class="saved-pill-badge">${badge}</span>
+        <span class="saved-pill-email">${escapeHtml(acc.email)}</span>
+        <button type="button" class="saved-pill-remove" onclick="removeSavedAccount('${escapeHtml(acc.email)}', event)" title="Remove ${escapeHtml(acc.email)} from this device">✕</button>
+      </div>
+    `;
+  }).join('');
+
+  // Auto-fill inputs with the most recent account if fields are currently blank
+  if (savedList.length > 0 && (!emailInput || !emailInput.value.trim())) {
+    selectSavedAccount(savedList[0].email, false);
+  }
+}
+
+function selectSavedAccount(email, focusPassword = true) {
+  if (!email) return;
+  const acc = getLocalAccountVault(email);
+  if (!acc) return;
+
+  const emailInput = document.getElementById('auth-email-input');
+  const passInput = document.getElementById('auth-password-input');
+
+  if (emailInput) emailInput.value = acc.email;
+  if (passInput && acc.password) passInput.value = acc.password;
+
+  // Highlight pill
+  document.querySelectorAll('.saved-account-pill').forEach(pill => {
+    const pillEmail = pill.querySelector('.saved-pill-email')?.textContent?.trim();
+    if (pillEmail && pillEmail.toLowerCase() === acc.email.toLowerCase()) {
+      pill.classList.add('selected');
+    } else {
+      pill.classList.remove('selected');
+    }
+  });
+
+  if (focusPassword && passInput) {
+    passInput.focus();
+  }
+}
+
+function removeSavedAccount(email, event) {
+  if (event && event.stopPropagation) event.stopPropagation();
+  if (!email) return;
+
+  try {
+    let vault = JSON.parse(localStorage.getItem('tradinghub_account_vault') || '{}');
+    const key = email.toLowerCase().trim();
+    delete vault[key];
+    localStorage.setItem('tradinghub_account_vault', JSON.stringify(vault));
+    
+    // Clear inputs if currently showing deleted account
+    const emailInput = document.getElementById('auth-email-input');
+    if (emailInput && emailInput.value.trim().toLowerCase() === key) {
+      emailInput.value = '';
+      const passInput = document.getElementById('auth-password-input');
+      if (passInput) passInput.value = '';
+    }
+
+    renderSavedAccountsPills();
+    showToast(`Removed ${email} from saved accounts.`, 'info');
+  } catch (_) {}
+}
+
+let _lastAutofilledAccount = '';
+
+function handleAuthEmailInput(val) {
+  const q = (val || '').trim().toLowerCase();
+  const passInput = document.getElementById('auth-password-input');
+
+  if (!q) {
+    document.querySelectorAll('.saved-account-pill').forEach(pill => pill.classList.remove('selected'));
+    if (passInput) passInput.value = '';
+    _lastAutofilledAccount = '';
+    return;
+  }
+
+  const acc = getLocalAccountVault(q);
+  if (acc && acc.password) {
+    if (passInput) passInput.value = acc.password;
+    _lastAutofilledAccount = q;
+    document.querySelectorAll('.saved-account-pill').forEach(pill => {
+      const pillEmail = pill.querySelector('.saved-pill-email')?.textContent?.trim()?.toLowerCase();
+      if (pillEmail === q) {
+        pill.classList.add('selected');
+      } else {
+        pill.classList.remove('selected');
+      }
+    });
+  } else {
+    if (_lastAutofilledAccount && _lastAutofilledAccount !== q) {
+      if (passInput) passInput.value = '';
+      _lastAutofilledAccount = '';
+    }
+    document.querySelectorAll('.saved-account-pill').forEach(pill => pill.classList.remove('selected'));
+  }
+}
+
+window.togglePasswordVisibility = togglePasswordVisibility;
+window.resetPasswordToggle = resetPasswordToggle;
+window.renderSavedAccountsPills = renderSavedAccountsPills;
+window.selectSavedAccount = selectSavedAccount;
+window.removeSavedAccount = removeSavedAccount;
+window.handleAuthEmailInput = handleAuthEmailInput;

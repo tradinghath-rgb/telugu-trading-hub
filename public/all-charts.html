@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/css/styles.css?v=20260914_v11" />
+  <link rel="stylesheet" href="/css/styles.css?v=20260914_v12" />
   <link rel="icon" type="image/png" href="/brand-logo" />
 </head>
 <body>
@@ -184,38 +184,72 @@
   </div>
 
   <!-- C. AUTH MODAL (LOGIN / SIGN UP) -->
+  <!-- B. AUTH MODAL (LOGIN / SIGN UP) -->
   <div id="auth-modal" class="modal-overlay">
     <div class="modal-card" style="max-width: 440px;">
       <div class="modal-header">
-        <h3 id="auth-modal-title" class="modal-title">Welcome Back! Login</h3>
+        <h3 id="auth-modal-title">Login</h3>
         <button class="btn-close-modal" onclick="closeAuthModal()">✕</button>
       </div>
       <div class="modal-body">
-        <p id="auth-modal-desc" style="display: none; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.5;"></p>
-        <form id="auth-form" onsubmit="event.preventDefault(); handleAuthSubmit();">
+        <form id="auth-modal-form" onsubmit="event.preventDefault(); handleAuthSubmit(event);" action="javascript:void(0);">
+          <p id="auth-modal-desc" style="color: var(--text-secondary); font-size: 0.86rem; margin-bottom: 14px; display: none; line-height: 1.5;"></p>
+
+          <!-- Multi-Account Quick Selector Bar -->
+          <div id="saved-accounts-container" class="saved-accounts-bar" style="display: none;">
+            <div class="saved-accounts-header">
+              <span class="saved-accounts-title">
+                ⚡ Saved Accounts (Tap to Fill)
+              </span>
+            </div>
+            <div id="saved-accounts-list" class="saved-accounts-pills"></div>
+          </div>
+
           <div id="auth-name-group" class="form-group" style="display: none;">
-            <label class="form-label" for="auth-name-input">Your Full Name</label>
-            <input type="text" id="auth-name-input" class="form-input" placeholder="e.g. Ramesh Varma" autocomplete="name" />
+            <label class="form-label" for="auth-name-input">Full Name</label>
+            <input type="text" id="auth-name-input" class="form-input" placeholder="e.g. Ramesh Reddy" autocomplete="name" />
           </div>
-          <div class="form-group">
+
+          <div class="form-group" id="auth-email-group">
             <label class="form-label" for="auth-email-input">Gmail / Email Address</label>
-            <input type="email" id="auth-email-input" class="form-input" placeholder="you@gmail.com" required autocomplete="email" />
+            <input type="email" id="auth-email-input" class="form-input" placeholder="you@gmail.com" required autocomplete="email" oninput="handleAuthEmailInput(this.value)" />
           </div>
-          <div id="auth-password-group" class="form-group">
+
+          <div class="form-group" id="auth-password-group">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
               <label class="form-label" for="auth-password-input" style="margin-bottom: 0;">Password</label>
-              <a href="javascript:void(0)" onclick="setAuthModalMode('forgot')" style="font-size: 0.78rem; color: var(--accent-green); text-decoration: underline; cursor: pointer;">
-                Forgot Password?
-              </a>
+              <a href="javascript:void(0)" onclick="setAuthModalMode('forgot')" style="color: var(--accent-gold); font-size: 0.8rem; text-decoration: underline; cursor: pointer;">Forgot?</a>
             </div>
-            <input type="password" id="auth-password-input" class="form-input" placeholder="••••••••" required autocomplete="current-password" />
+            <div class="password-input-wrapper">
+              <input type="password" id="auth-password-input" class="form-input" placeholder="••••••••" required autocomplete="current-password" />
+              <button type="button" class="btn-toggle-password" onclick="togglePasswordVisibility('auth-password-input', this)" title="Show password" tabindex="-1">
+                <svg class="eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                <svg class="eye-closed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                  <line x1="1" y1="1" x2="23" y2="23"></line>
+                </svg>
+              </button>
+            </div>
           </div>
-          <button type="submit" id="auth-submit-btn" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 8px;">
+
+          <!-- Remember Me Checkbox -->
+          <div class="form-group-checkbox" id="auth-remember-group" style="margin-top: 10px; margin-bottom: 14px;">
+            <label class="custom-checkbox-label">
+              <input type="checkbox" id="auth-remember-me" checked style="accent-color: var(--accent-green); width: 16px; height: 16px; cursor: pointer;" />
+              <span>Save Password &amp; Gmail for fast login</span>
+            </label>
+          </div>
+
+          <button type="submit" id="auth-submit-btn" class="btn btn-primary" style="width: 100%; margin-top: 4px;">
             Login
           </button>
         </form>
-        <div style="margin-top: 18px; text-align: center; font-size: 0.88rem; color: var(--text-secondary);">
-          <span id="auth-toggle-prompt">Need an account? <a href="javascript:void(0)" onclick="setAuthModalMode('register')" style="color: var(--accent-green); font-weight: bold;">Sign Up</a></span>
+
+        <div id="auth-toggle-prompt" style="text-align: center; font-size: 0.88rem; color: var(--text-secondary); margin-top: 16px;">
+          Need an account? <a href="javascript:void(0)" onclick="setAuthModalMode('register')" style="color: var(--accent-green); font-weight: bold;">Sign Up</a>
         </div>
       </div>
     </div>
@@ -243,6 +277,6 @@
   <div id="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="/js/app.js?v=20260914_v11"></script>
+  <script src="/js/app.js?v=20260914_v12"></script>
 </body>
 </html>

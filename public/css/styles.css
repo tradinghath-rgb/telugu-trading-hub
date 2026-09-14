@@ -3836,3 +3836,153 @@ body:not(.dedicated-view) #gallery-grid-container:not(.expanded) > .gallery-card
 .chart-lock-icon-circle * {
   color: #ffd700 !important;
 }
+
+/* ==================== PASSWORD EYE TOGGLE & SAVED ACCOUNTS ==================== */
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.password-input-wrapper .form-input {
+  width: 100%;
+  padding-right: 44px !important;
+}
+
+.btn-toggle-password {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease, transform 0.15s ease;
+  border-radius: 4px;
+  z-index: 2;
+}
+
+.btn-toggle-password:hover {
+  color: var(--accent-green);
+}
+
+.btn-toggle-password:active {
+  transform: translateY(-50%) scale(0.92);
+}
+
+.saved-accounts-bar {
+  background: rgba(255, 215, 0, 0.04);
+  border: 1px dashed rgba(255, 215, 0, 0.25);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  text-align: left;
+}
+
+.saved-accounts-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.saved-accounts-title {
+  font-size: 0.76rem;
+  font-weight: 800;
+  color: var(--accent-gold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.saved-accounts-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.saved-account-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #080c16;
+  border: 1px solid var(--border-subtle);
+  padding: 5px 10px;
+  border-radius: var(--radius-full);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  max-width: 100%;
+}
+
+.saved-account-pill:hover {
+  border-color: var(--accent-green);
+  background: rgba(0, 242, 152, 0.08);
+  color: #fff;
+}
+
+.saved-account-pill.selected {
+  border-color: var(--accent-gold);
+  background: rgba(255, 215, 0, 0.12);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 0 10px rgba(255, 215, 0, 0.15);
+}
+
+.saved-pill-badge {
+  font-size: 0.85rem;
+}
+
+.saved-pill-email {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+}
+
+.saved-pill-remove {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  cursor: pointer;
+  padding: 0 2px;
+  margin-left: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease;
+}
+
+.saved-pill-remove:hover {
+  color: var(--accent-red);
+}
+
+.form-group-checkbox {
+  user-select: none;
+}
+
+.custom-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+}
+
+.custom-checkbox-label:hover {
+  color: #fff;
+}
