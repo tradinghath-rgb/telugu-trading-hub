@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/css/styles.css?v=20260914_v23" />
+  <link rel="stylesheet" href="/css/styles.css?v=20260914_v24" />
   <link rel="icon" type="image/png" href="/brand-logo" />
 </head>
 <body>
@@ -91,7 +91,7 @@
           <span>Unlock Lifetime Access - ₹399</span>
           <span class="price-pill">₹399 <s style="opacity: 0.65; font-size: 0.8em; margin-left: 4px; text-decoration: line-through;">₹999</s></span>
         </button>
-        <a href="#charts-section" class="btn btn-secondary btn-lg">
+        <a href="#chart-gallery-section" class="btn btn-secondary btn-lg">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
           <span>Explore 24+ Chart Setups</span>
         </a>
@@ -222,12 +222,48 @@
     </div>
   </section>
 
-  <!-- ==================== 6. CHARTS & VIDEOS CURRICULUM ==================== -->
-  <section id="charts-section" class="section">
+  <!-- ==================== 6. HAND-DRAWN CHARTS VAULT ==================== -->
+  <section id="chart-gallery-section" class="section">
+    <div class="section-header">
+      <span class="section-tag">INSTITUTIONAL CHART VAULT</span>
+      <h2 class="section-title">Hand-Drawn Technical Chart Setups</h2>
+      <p class="section-subtitle">
+        High-resolution drawn setups, price action templates, and candlestick patterns for visual study.
+      </p>
+    </div>
+
+    <!-- Admin Drag-and-Drop Upload Box (Visible Only to Admin) -->
+    <div id="gallery-admin-dropzone" class="gallery-upload-box" style="display: none;">
+      <div class="gallery-dropzone-inner" id="gallery-drop-area" onclick="document.getElementById('gallery-file-input').click()">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--accent-green)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <h4 style="color: #fff; margin: 8px 0 4px; font-size: 1rem;">Drag &amp; Drop Chart Image Here, or Click to Browse</h4>
+        <p style="color: var(--text-secondary); font-size: 0.82rem; margin: 0;">Upload PNG, JPG, SVG, or WebP. Owner / Admin Exclusive Tool.</p>
+        <input type="file" id="gallery-file-input" style="display: none;" accept="image/*" onchange="handleGalleryFileInput(this.files)" />
+      </div>
+    </div>
+
+    <!-- Gallery Grid -->
+    <div id="gallery-grid-container" class="gallery-grid">
+      <!-- Injected via app.js -->
+    </div>
+
+    <!-- More Charts Vault Action Bar -->
+    <div id="gallery-more-banner" class="more-redirect-banner">
+      <button type="button" class="btn btn-secondary btn-lg" onclick="toggleShowAllGallery(true)" style="display: inline-flex; align-items: center; gap: 10px; border-color: var(--accent-gold); background: rgba(255,215,0,0.08); font-weight: 700; color: #fff; cursor: pointer;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        <span>+ More Charts (Click to Display All Vault Charts) ▼</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- ==================== 6B. BILINGUAL VIDEO BREAKDOWN LESSONS ==================== -->
+  <section id="videos-section" class="section">
+    <!-- Alias anchor so #charts-section links continue to work smoothly -->
+    <div id="charts-section" style="position: relative; top: -80px; visibility: hidden;"></div>
     <div class="dashboard-header-bar">
       <div>
         <span class="section-tag">LESSON CURRICULUM</span>
-        <h2 class="section-title" style="margin-bottom: 4px;">Trading Charts &amp; Bilingual Videos</h2>
+        <h2 class="section-title" style="margin-bottom: 4px;">24+ Bilingual Video Breakdown Lessons</h2>
         <p style="color: var(--text-secondary); font-size: 0.95rem;">
           Click on any chart to inspect the high-resolution drawn levels and watch the Telugu/English breakdown.
         </p>
@@ -286,40 +322,6 @@
       <button type="button" id="charts-more-toggle-btn" class="btn btn-secondary btn-lg" onclick="toggleShowAllVideos(true)" style="display: inline-flex; align-items: center; gap: 10px; border-color: var(--accent-green); background: rgba(0,242,152,0.08); font-weight: 700; color: #fff; cursor: pointer;">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
         <span id="charts-more-btn-text">+ More Videos (Click to Display All 24+ Lessons) ▼</span>
-      </button>
-    </div>
-  </section>
-
-  <!-- ==================== 6B. IMAGE-ONLY CHART VAULT ==================== -->
-  <section id="chart-gallery-section" class="section">
-    <div class="section-header">
-      <span class="section-tag">IMAGE ONLY VAULT</span>
-      <h2 class="section-title">Institutional Chart Vault</h2>
-      <p class="section-subtitle">
-        High-resolution drawn setups, price action templates, and candlestick patterns for visual study.
-      </p>
-    </div>
-
-    <!-- Admin Drag-and-Drop Upload Box (Visible Only to Admin) -->
-    <div id="gallery-admin-dropzone" class="gallery-upload-box" style="display: none;">
-      <div class="gallery-dropzone-inner" id="gallery-drop-area" onclick="document.getElementById('gallery-file-input').click()">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--accent-green)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        <h4 style="color: #fff; margin: 8px 0 4px; font-size: 1rem;">Drag &amp; Drop Chart Image Here, or Click to Browse</h4>
-        <p style="color: var(--text-secondary); font-size: 0.82rem; margin: 0;">Upload PNG, JPG, SVG, or WebP. Owner / Admin Exclusive Tool.</p>
-        <input type="file" id="gallery-file-input" style="display: none;" accept="image/*" onchange="handleGalleryFileInput(this.files)" />
-      </div>
-    </div>
-
-    <!-- Gallery Grid -->
-    <div id="gallery-grid-container" class="gallery-grid">
-      <!-- Injected via app.js -->
-    </div>
-
-    <!-- More Charts Vault Action Bar -->
-    <div id="gallery-more-banner" class="more-redirect-banner">
-      <button type="button" class="btn btn-secondary btn-lg" onclick="toggleShowAllGallery(true)" style="display: inline-flex; align-items: center; gap: 10px; border-color: var(--accent-gold); background: rgba(255,215,0,0.08); font-weight: 700; color: #fff; cursor: pointer;">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-        <span>+ More Charts (Click to Display All Vault Charts) ▼</span>
       </button>
     </div>
   </section>
@@ -1801,7 +1803,7 @@
   <div id="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="/js/app.js?v=20260914_v23"></script>
+  <script src="/js/app.js?v=20260914_v24"></script>
 
   <!-- V22: SHARE WEBSITE SOCIAL MEDIA POPUP MODAL -->
   <div id="share-website-modal" class="modal-overlay" onclick="if (event.target === this) closeWebsiteShareModal();">

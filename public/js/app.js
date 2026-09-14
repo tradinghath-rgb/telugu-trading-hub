@@ -71,16 +71,35 @@ function saveToLocalAccountVault(account) {
     const emailKey = account.email.toLowerCase().trim();
     let vault = JSON.parse(localStorage.getItem('tradinghub_account_vault') || '{}');
     const existing = vault[emailKey] || {};
+    const isRemembered = account.remembered !== undefined ? Boolean(account.remembered) : Boolean(existing.remembered);
+    const pwd = account.password || existing.password || '';
+
     vault[emailKey] = {
       email: emailKey,
-      password: account.password || existing.password || '',
+      password: pwd,
       name: account.name || existing.name || emailKey.split('@')[0],
       hasPaid: Boolean(account.hasPaid || existing.hasPaid),
       paymentId: account.paymentId || existing.paymentId || null,
       role: account.role || existing.role || 'member',
+      remembered: isRemembered,
       savedAt: Date.now()
     };
     localStorage.setItem('tradinghub_account_vault', JSON.stringify(vault));
+
+    // Save to dedicated single-device quick login if remembered with password
+    if (isRemembered && pwd) {
+      localStorage.setItem('tradinghub_device_saved_login', JSON.stringify({
+        email: emailKey,
+        password: pwd,
+        name: account.name || existing.name || emailKey.split('@')[0],
+        savedAt: Date.now()
+      }));
+    } else if (account.remembered === false) {
+      localStorage.removeItem('tradinghub_device_saved_login');
+      vault[emailKey].password = '';
+      vault[emailKey].remembered = false;
+      localStorage.setItem('tradinghub_account_vault', JSON.stringify(vault));
+    }
   } catch (_) {}
 }
 
@@ -395,9 +414,15 @@ function renderNavbar() {
     const shortName = (user.name || user.email.split('@')[0]).split(' ')[0];
 
     // Hide pricing CTA in navbar for verified PRO members & Admin
-    const pricingCta = document.querySelector('.nav-pricing-cta');
-    if (pricingCta) {
-      pricingCta.style.display = isMember ? 'none' : 'inline-flex';
+    const pricingBtns = document.querySelectorAll('.nav-pricing-btn, .nav-pricing-cta');
+    pricingBtns.forEach(btn => {
+      btn.style.display = isMember ? 'none' : 'inline-flex';
+    });
+
+    // Hide hero login bar if already logged in
+    const heroLoginBar = document.querySelector('.hero-member-login-bar');
+    if (heroLoginBar) {
+      heroLoginBar.style.display = 'none';
     }
 
     authNavGroup.innerHTML = `
@@ -423,6 +448,15 @@ function renderNavbar() {
       </div>
     `;
   } else {
+    const heroLoginBar = document.querySelector('.hero-member-login-bar');
+    if (heroLoginBar) {
+      heroLoginBar.style.display = 'flex';
+    }
+    const pricingBtns = document.querySelectorAll('.nav-pricing-btn, .nav-pricing-cta');
+    pricingBtns.forEach(btn => {
+      btn.style.display = 'inline-flex';
+    });
+
     // Guest view: Show prominent dual Login & Sign Up buttons for instant access
     authNavGroup.innerHTML = `
       <div class="nav-guest-cluster">
@@ -459,14 +493,17 @@ function renderDynamicSiteTexts() {
   if (heroSubtitle) heroSubtitle.textContent = cfg.hero?.subtitle || '';
 
   const heroCta = document.querySelector('[data-bind="heroCta"]');
+  const isMember = Boolean(state.currentUser?.hasPaid || state.currentUser?.role === 'admin');
+
   if (heroCta) {
-    const isMember = Boolean(state.currentUser?.hasPaid || state.currentUser?.role === 'admin');
     if (isMember) {
       heroCta.innerHTML = `
         <span>✅ Lifetime Access Active — Watch 24+ Lessons</span>
       `;
-      heroCta.onclick = () => {
-        document.getElementById('charts-section')?.scrollIntoView({ behavior: 'smooth' });
+      heroCta.onclick = (e) => {
+        if (e) e.preventDefault();
+        const vSec = document.getElementById('videos-section') || document.getElementById('charts-section');
+        if (vSec) vSec.scrollIntoView({ behavior: 'smooth' });
       };
     } else {
       heroCta.innerHTML = `
@@ -477,6 +514,12 @@ function renderDynamicSiteTexts() {
     }
   }
 
+  // Hide hero login bar if user is logged in
+  const heroLoginBar = document.querySelector('.hero-member-login-bar');
+  if (heroLoginBar) {
+    heroLoginBar.style.display = state.currentUser ? 'none' : 'flex';
+  }
+
   // Pricing Elements
   document.querySelectorAll('[data-bind="price"]').forEach(el => el.textContent = `₹${cfg.pricing?.price || 399}`);
   document.querySelectorAll('[data-bind="originalPrice"]').forEach(el => el.textContent = `₹${cfg.pricing?.originalPrice || 999}`);
@@ -484,9 +527,17 @@ function renderDynamicSiteTexts() {
   document.querySelectorAll('[data-bind="discountBadge"]').forEach(el => el.textContent = cfg.pricing?.discountBadge || '60% LIMITED LAUNCH OFFER');
   document.querySelectorAll('[data-bind="accessType"]').forEach(el => el.textContent = cfg.pricing?.accessType || 'LIFETIME ACCESS');
 
-  // Razorpay Buttons Link Binding
+  // Razorpay Buttons Link Binding (NEVER overwrite heroCta when user is a PRO member!)
   const checkoutUrl = cfg.pricing?.razorpayUrl || 'https://rzp.io/rzp/2a3h6cU';
   document.querySelectorAll('[data-action="checkout-razorpay"]').forEach(btn => {
+    if (btn === heroCta && isMember) {
+      btn.onclick = (e) => {
+        if (e) e.preventDefault();
+        const vSec = document.getElementById('videos-section') || document.getElementById('charts-section');
+        if (vSec) vSec.scrollIntoView({ behavior: 'smooth' });
+      };
+      return;
+    }
     btn.onclick = () => handleCheckoutRedirect(checkoutUrl);
   });
 }
@@ -1069,11 +1120,20 @@ function loadActiveModalVideo() {
 let pendingCheckoutUrl = null;
 
 function handleCheckoutRedirect(url) {
+  // If user has already paid (PRO member or admin): NEVER redirect to payment!
+  const isMember = Boolean(state.currentUser?.hasPaid || state.currentUser?.role === 'admin');
+  if (isMember) {
+    showToast('✨ Lifetime PRO Access is already active! Directing to Video Lessons...', 'info');
+    const vSec = document.getElementById('videos-section') || document.getElementById('charts-section');
+    if (vSec) vSec.scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+
   const checkoutUrl = url || state.siteConfig?.pricing?.razorpayUrl || 'https://rzp.io/rzp/2a3h6cU';
   pendingCheckoutUrl = checkoutUrl;
   try { trackPaymentAttempt('Checkout Redirect Button'); } catch (_) {}
 
-  // If user is already logged in: Proceed directly to payment - NEVER prompt for login!
+  // If user is already logged in (unpaid): Proceed directly to payment - NEVER prompt for login!
   if (state.currentUser) {
     proceedDirectlyToPayment(checkoutUrl);
     return;
@@ -1438,17 +1498,40 @@ function openAuthModal(mode = 'login') {
   const passInput = document.getElementById('auth-password-input');
   const pinInput = document.getElementById('auth-admin-pin-input');
   const pinGroup = document.getElementById('auth-admin-pin-group');
-  if (emailInput) emailInput.value = '';
-  if (passInput) passInput.value = '';
+  const rememberCheckbox = document.getElementById('auth-remember-me');
+
   if (pinInput) pinInput.value = '';
   if (pinGroup) pinGroup.style.display = 'none';
 
+  // Check if this individual device has a saved Gmail & Password
+  let savedLogin = null;
+  try {
+    savedLogin = JSON.parse(localStorage.getItem('tradinghub_device_saved_login') || 'null');
+  } catch (_) {}
+
+  if (!savedLogin) {
+    try {
+      const vault = JSON.parse(localStorage.getItem('tradinghub_account_vault') || '{}');
+      const savedList = Object.values(vault).filter(acc => acc && acc.email && acc.password && acc.remembered);
+      if (savedList.length > 0) {
+        savedList.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+        savedLogin = savedList[0];
+      }
+    } catch (_) {}
+  }
+
+  if (mode === 'login' && savedLogin && savedLogin.email && savedLogin.password) {
+    if (emailInput) emailInput.value = savedLogin.email;
+    if (passInput) passInput.value = savedLogin.password;
+    if (rememberCheckbox) rememberCheckbox.checked = true;
+  } else {
+    if (emailInput) emailInput.value = '';
+    if (passInput) passInput.value = '';
+    if (rememberCheckbox) rememberCheckbox.checked = false;
+  }
+
   resetPasswordToggle('auth-password-input');
   resetPasswordToggle('auth-admin-pin-input');
-  
-  // Requirement: Checkbox remains unchecked by default until user manually clicks it
-  const rememberCheckbox = document.getElementById('auth-remember-me');
-  if (rememberCheckbox) rememberCheckbox.checked = false;
 
   hideAuthSuggestionDropdown();
   setAuthModalMode(mode);
@@ -4149,19 +4232,7 @@ function resetPasswordToggle(inputId) {
 }
 
 function cleanLocalVaultTestAccounts() {
-  try {
-    let vault = JSON.parse(localStorage.getItem('tradinghub_account_vault') || '{}');
-    let changed = false;
-    ['student@tradinghub.in', 'student@tradinghub.com', 'abhisheknaidu2005@gmail.com', 'test@test.com'].forEach(dummy => {
-      if (vault[dummy]) {
-        delete vault[dummy];
-        changed = true;
-      }
-    });
-    if (changed) {
-      localStorage.setItem('tradinghub_account_vault', JSON.stringify(vault));
-    }
-  } catch (_) {}
+  // Never delete student or valid member accounts
 }
 
 function checkDeviceSavedAccount() {
@@ -4224,9 +4295,19 @@ function selectSavedAccount(email) {
 let _lastAutofilledAccount = '';
 
 function handleAuthEmailInput(val) {
-  // Requirement: Do NOT give password automatically when user types email.
-  // Password is only populated if the user explicitly clicked the suggestion on focus.
   hideAuthSuggestionDropdown();
+  const trimmed = (val || '').toLowerCase().trim();
+  if (!trimmed) return;
+
+  const acc = getLocalAccountVault(trimmed);
+  if (acc && acc.password && acc.remembered) {
+    const passInput = document.getElementById('auth-password-input');
+    if (passInput) {
+      passInput.value = acc.password;
+      const rememberCheckbox = document.getElementById('auth-remember-me');
+      if (rememberCheckbox) rememberCheckbox.checked = true;
+    }
+  }
 }
 
 function handleAuthEmailFocus() {
