@@ -37,7 +37,10 @@ const state = {
   adminMediaInventory: { teluguVideos: [], englishVideos: [], uploadedMedia: [] },
   showAllVideos: false,
   showAllCharts: false,
-  showAllGalleryCharts: false
+  showAllGalleryCharts: false,
+  adminUsersList: [],
+  adminUserFilter: 'all',
+  adminUserSearch: ''
 };
 
 // ==================== INITIALIZATION ====================
@@ -3160,8 +3163,8 @@ function formatTimeAgo(isoString) {
 }
 
 function escapeHtml(str) {
-  if (!str) return '';
-  return str.replace(/[&<>'"]/g, tag => ({
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/[&<>'"]/g, tag => ({
     '&': '&amp;',
     '<': '&lt;',
     '>': '&gt;',
@@ -3375,13 +3378,13 @@ async function loadAdminUsers() {
 
   try {
     const res = await fetch('/api/admin/users');
-    if (!res.ok) throw new Error('Failed to load users');
+    if (!res.ok) throw new Error(`Server returned HTTP ${res.status}`);
     const users = await res.json();
-    state.adminUsersList = users || [];
+    state.adminUsersList = Array.isArray(users) ? users : [];
 
     // Update filter counts
     const countAll = state.adminUsersList.length;
-    const countPro = state.adminUsersList.filter(u => u.hasPaid).length;
+    const countPro = state.adminUsersList.filter(u => u && u.hasPaid).length;
     const countFree = countAll - countPro;
 
     const elAll = document.getElementById('count-users-all');
@@ -3397,7 +3400,7 @@ async function loadAdminUsers() {
     tbody.innerHTML = `
       <tr>
         <td colspan="6" style="text-align: center; color: var(--accent-red); padding: 24px;">
-          Failed to load users. Please refresh.
+          Failed to load users (${escapeHtml(e.message)}). Please refresh.
         </td>
       </tr>
     `;
@@ -3409,98 +3412,112 @@ function renderAdminUsersTable() {
   const tbody = document.getElementById('admin-users-table-body');
   if (!tbody) return;
 
-  let list = [...(state.adminUsersList || [])];
+  try {
+    let list = [...(state.adminUsersList || [])];
 
-  // Apply Filter Pill
-  if (state.adminUserFilter === 'pro') {
-    list = list.filter(u => u.hasPaid);
-  } else if (state.adminUserFilter === 'free') {
-    list = list.filter(u => !u.hasPaid);
-  }
-
-  // Apply Search
-  if (state.adminUserSearch.trim()) {
-    const q = state.adminUserSearch.toLowerCase().trim();
-    list = list.filter(u => 
-      (u.email && u.email.toLowerCase().includes(q)) ||
-      (u.name && u.name.toLowerCase().includes(q)) ||
-      (u.paymentId && u.paymentId.toLowerCase().includes(q))
-    );
-  }
-
-  if (list.length === 0) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">
-          No trader accounts match your search or filter.
-        </td>
-      </tr>
-    `;
-    return;
-  }
-
-  tbody.innerHTML = list.map(u => {
-    const isOwner = u.email && u.email.toLowerCase() === 'abhisheknaidus093@gmail.com';
-    const initial = (u.name || u.email || 'T')[0].toUpperCase();
-    const joinedStr = u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '-';
-    
-    // Status Badge
-    let statusBadge = '';
-    if (isOwner) {
-      statusBadge = '<span class="user-badge-pro" style="background: #ffd700; color: #000; font-weight: 900; border: 1px solid #ffe600;">👑 OWNER</span>';
-    } else if (u.hasPaid) {
-      statusBadge = `<span class="user-badge-pro">💎 PRO LIFETIME</span>`;
-    } else {
-      statusBadge = '<span class="user-badge-free">🆓 FREE TRADER</span>';
+    // Apply Filter Pill (all / pro / free)
+    const filter = state.adminUserFilter || 'all';
+    if (filter === 'pro') {
+      list = list.filter(u => u && u.hasPaid);
+    } else if (filter === 'free') {
+      list = list.filter(u => u && !u.hasPaid);
     }
 
-    const payRef = u.paymentId 
-      ? `<code style="background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; color: var(--accent-gold); font-size: 0.78rem;">${escapeHtml(u.paymentId)}</code>`
-      : '<span style="color: var(--text-muted); font-size: 0.8rem;">None</span>';
+    // Apply Search safely
+    const q = (state.adminUserSearch || '').toLowerCase().trim();
+    if (q) {
+      list = list.filter(u => 
+        (u.email && u.email.toLowerCase().includes(q)) ||
+        (u.name && u.name.toLowerCase().includes(q)) ||
+        (u.paymentId && String(u.paymentId).toLowerCase().includes(q))
+      );
+    }
 
-    return `
-      <tr>
-        <td>
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <div class="user-table-avatar" style="${isOwner ? 'border-color: var(--accent-gold); color: var(--accent-gold);' : ''}">${initial}</div>
-            <div>
-              <strong style="color: #fff; font-size: 0.88rem;">${escapeHtml(u.name || 'Trader')}</strong>
-              <div style="font-size: 0.72rem; color: var(--text-muted);">Role: ${escapeHtml(u.role || 'member')}</div>
+    if (list.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">
+            No trader accounts match your search or filter.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = list.map(u => {
+      if (!u) return '';
+      const email = u.email || '';
+      const isOwner = email.toLowerCase() === 'abhisheknaidus093@gmail.com';
+      const initial = (u.name || email || 'T')[0].toUpperCase();
+      const joinedStr = u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '-';
+      
+      // Status Badge
+      let statusBadge = '';
+      if (isOwner) {
+        statusBadge = '<span class="user-badge-pro" style="background: #ffd700; color: #000; font-weight: 900; border: 1px solid #ffe600;">👑 OWNER</span>';
+      } else if (u.hasPaid) {
+        statusBadge = '<span class="user-badge-pro">💎 PRO LIFETIME</span>';
+      } else {
+        statusBadge = '<span class="user-badge-free">🆓 FREE TRADER</span>';
+      }
+
+      const payRef = u.paymentId 
+        ? `<code style="background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; color: var(--accent-gold); font-size: 0.78rem;">${escapeHtml(u.paymentId)}</code>`
+        : '<span style="color: var(--text-muted); font-size: 0.8rem;">None</span>';
+
+      return `
+        <tr>
+          <td>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <div class="user-table-avatar" style="${isOwner ? 'border-color: var(--accent-gold); color: var(--accent-gold);' : ''}">${escapeHtml(initial)}</div>
+              <div>
+                <strong style="color: #fff; font-size: 0.88rem;">${escapeHtml(u.name || 'Trader')}</strong>
+                <div style="font-size: 0.72rem; color: var(--text-muted);">Role: ${escapeHtml(u.role || 'member')}</div>
+              </div>
             </div>
-          </div>
-        </td>
-        <td>
-          <span style="font-family: var(--font-mono); font-size: 0.82rem; color: var(--text-highlight);">${escapeHtml(u.email)}</span>
-        </td>
-        <td>${statusBadge}</td>
-        <td>${payRef}</td>
-        <td style="font-size: 0.8rem; color: var(--text-muted); white-space: nowrap;">${joinedStr}</td>
-        <td>
-          <div class="admin-action-btn-group">
-            ${!isOwner ? (u.hasPaid ? `
-              <button class="btn btn-sm btn-danger" style="padding: 4px 8px; font-size: 0.74rem; white-space: nowrap;" onclick="adminTogglePro('${u.id || u.email}', false, '${escapeHtml(u.email)}')" title="Revoke PRO Access immediately">
-                ⛔ Revoke PRO
-              </button>
-            ` : `
-              <button class="btn btn-sm btn-primary" style="padding: 4px 8px; font-size: 0.74rem; white-space: nowrap;" onclick="adminTogglePro('${u.id || u.email}', true, '${escapeHtml(u.email)}')" title="Grant Lifetime PRO Access">
-                💎 Grant PRO
-              </button>
-            `) : ''}
+          </td>
+          <td>
+            <span style="font-family: var(--font-mono); font-size: 0.82rem; color: var(--text-highlight);">${escapeHtml(email)}</span>
+          </td>
+          <td>${statusBadge}</td>
+          <td>${payRef}</td>
+          <td style="font-size: 0.8rem; color: var(--text-muted); white-space: nowrap;">${joinedStr}</td>
+          <td>
+            <div class="admin-action-btn-group">
+              ${!isOwner ? (u.hasPaid ? `
+                <button class="btn btn-sm btn-danger" style="padding: 4px 8px; font-size: 0.74rem; white-space: nowrap;" onclick="adminTogglePro('${u.id || email}', false, '${escapeHtml(email)}')" title="Revoke PRO Access immediately">
+                  ⛔ Revoke PRO
+                </button>
+              ` : `
+                <button class="btn btn-sm btn-primary" style="padding: 4px 8px; font-size: 0.74rem; white-space: nowrap;" onclick="adminTogglePro('${u.id || email}', true, '${escapeHtml(email)}')" title="Grant Lifetime PRO Access">
+                  💎 Grant PRO
+                </button>
+              `) : ''}
 
-            <button class="btn btn-sm btn-secondary" style="padding: 4px 8px; font-size: 0.74rem;" onclick="adminPromptResetPassword('${u.id || u.email}', '${escapeHtml(u.email)}')" title="Reset Password for this account">
-              🔑
-            </button>
-
-            ${!isOwner ? `
-              <button class="btn btn-sm btn-danger" style="padding: 4px 8px; font-size: 0.74rem;" onclick="adminDeleteUser('${u.id || u.email}', '${escapeHtml(u.email)}')" title="Permanently Remove / Delete this Gmail account">
-                🗑️
+              <button class="btn btn-sm btn-secondary" style="padding: 4px 8px; font-size: 0.74rem;" onclick="adminPromptResetPassword('${u.id || email}', '${escapeHtml(email)}')" title="Reset Password for this account">
+                🔑
               </button>
-            ` : ''}
-          </div>
+
+              ${!isOwner ? `
+                <button class="btn btn-sm btn-danger" style="padding: 4px 8px; font-size: 0.74rem;" onclick="adminDeleteUser('${u.id || email}', '${escapeHtml(email)}')" title="Permanently Remove / Delete this Gmail account">
+                  🗑️
+                </button>
+              ` : ''}
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Error in renderAdminUsersTable:', err);
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" style="text-align: center; color: var(--accent-red); padding: 24px;">
+          Render Error: ${escapeHtml(err.message)}
         </td>
       </tr>
     `;
-  }).join('');
+  }
 }
 
 // Search Users
