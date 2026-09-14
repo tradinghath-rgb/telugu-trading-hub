@@ -416,12 +416,16 @@ function renderNavbar() {
       </div>
     `;
   } else {
-    // Guest view: Show prominent Login button with Profile Icon for visitors and registered members
+    // Guest view: Show prominent dual Login & Sign Up buttons for instant access
     authNavGroup.innerHTML = `
       <div class="nav-guest-cluster">
-        <button class="btn btn-sm btn-primary nav-signin-btn" onclick="openAuthModal('login')" title="Member Login">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <button class="btn btn-sm btn-secondary nav-signin-btn" onclick="openAuthModal('login')" title="Member Login">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
           <span>Login</span>
+        </button>
+        <button class="btn btn-sm btn-primary nav-signup-btn" onclick="openAuthModal('register')" title="Create Account (Sign Up)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+          <span>Sign Up</span>
         </button>
       </div>
     `;
@@ -1067,9 +1071,7 @@ function closeCheckoutAuthPromptModal() {
 
 function relocateToAuthFromPrompt(mode = 'login') {
   closeCheckoutAuthPromptModal();
-  setTimeout(() => {
-    openAuthModal(mode);
-  }, 120);
+  openAuthModal(mode);
 }
 
 function proceedDirectlyToPaymentFromPrompt() {
@@ -1386,24 +1388,34 @@ function openAuthModal(mode = 'login') {
   resetPasswordToggle('auth-admin-pin-input');
   setAuthModalMode(mode);
   modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
   bindAuthEnterKey();
-  setTimeout(() => {
-    if (mode === 'register') {
-      const nameInput = document.getElementById('auth-name-input');
-      if (nameInput) nameInput.focus();
-    } else {
-      if (emailInput && !emailInput.value) {
-        emailInput.focus();
-      } else if (passInput) {
-        passInput.focus();
+
+  // On desktop, auto-focus convenient field; on mobile, allow clean scroll without virtual keyboard jump
+  if (window.innerWidth > 768) {
+    setTimeout(() => {
+      if (mode === 'register') {
+        const nameInput = document.getElementById('auth-name-input');
+        if (nameInput) nameInput.focus();
+      } else {
+        if (emailInput && !emailInput.value) {
+          emailInput.focus();
+        } else if (passInput) {
+          passInput.focus();
+        }
       }
-    }
-  }, 120);
+    }, 120);
+  }
 }
 
 function closeAuthModal() {
   const modal = document.getElementById('auth-modal');
   if (modal) modal.classList.remove('active');
+
+  const otherActive = document.querySelector('.modal-overlay.active');
+  if (!otherActive) {
+    document.body.style.overflow = '';
+  }
 
   const emailInput = document.getElementById('auth-email-input');
   const passInput = document.getElementById('auth-password-input');
@@ -1425,6 +1437,10 @@ function setAuthModalMode(mode) {
   const rememberGroup = document.getElementById('auth-remember-group');
   const savedHint = document.getElementById('auth-saved-hint');
 
+  const tabLogin = document.getElementById('auth-tab-login');
+  const tabRegister = document.getElementById('auth-tab-register');
+  const tabsNav = document.getElementById('auth-tabs-nav');
+
   resetPasswordToggle('auth-password-input');
   resetPasswordToggle('auth-admin-pin-input');
 
@@ -1442,6 +1458,7 @@ function setAuthModalMode(mode) {
   }
 
   if (mode === 'forgot') {
+    if (tabsNav) tabsNav.style.display = 'none';
     title.textContent = 'Reset Your Password';
     if (descEl) {
       descEl.textContent = 'Enter your registered Gmail / Email address. We will generate a secure password reset link for your account.';
@@ -1455,6 +1472,9 @@ function setAuthModalMode(mode) {
     toggleText.innerHTML = `Remembered your password? <a href="javascript:void(0)" onclick="setAuthModalMode('login')" style="color: var(--accent-green); font-weight: bold;">Login</a>`;
     submitBtn.dataset.mode = 'forgot';
   } else if (mode === 'register') {
+    if (tabsNav) tabsNav.style.display = 'flex';
+    if (tabRegister) tabRegister.classList.add('active');
+    if (tabLogin) tabLogin.classList.remove('active');
     title.textContent = 'Create Member Account';
     if (descEl) descEl.style.display = 'none';
     submitBtn.textContent = 'Sign Up & Continue';
@@ -1465,6 +1485,9 @@ function setAuthModalMode(mode) {
     toggleText.innerHTML = `Already registered? <a href="javascript:void(0)" onclick="setAuthModalMode('login')" style="color: var(--accent-green); font-weight: bold;">Login</a>`;
     submitBtn.dataset.mode = 'register';
   } else {
+    if (tabsNav) tabsNav.style.display = 'flex';
+    if (tabLogin) tabLogin.classList.add('active');
+    if (tabRegister) tabRegister.classList.remove('active');
     title.textContent = 'Welcome Back! Login';
     if (descEl) descEl.style.display = 'none';
     submitBtn.textContent = 'Login';
