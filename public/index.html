@@ -586,6 +586,74 @@
             </div>
           </div>
         </div>
+
+        <!-- Tab 4: UTRs & Payments Table -->
+        <div id="admin-tab-payments" class="admin-tab-content" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+            <p style="color: var(--text-secondary); font-size: 0.88rem; margin: 0;">
+              Verify UTR transactions, cross-check payment screenshots, and manually approve or revoke ₹399 PRO access.
+            </p>
+            <button class="btn btn-sm btn-secondary" onclick="loadAdminPayments()">
+              🔄 Refresh Payments
+            </button>
+          </div>
+
+          <div class="admin-table-container">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Date &amp; Time</th>
+                  <th>Gmail / Email</th>
+                  <th>12-Digit UTR</th>
+                  <th>Screenshot Proof</th>
+                  <th>Status</th>
+                  <th style="width: 170px;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="admin-payments-table-body">
+                <tr>
+                  <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                    No payment verification submissions yet.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab 5: Comments Moderation -->
+        <div id="admin-tab-comments" class="admin-tab-content" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+            <p style="color: var(--text-secondary); font-size: 0.88rem; margin: 0;">
+              Moderate trader community feedback, reviews, and discussion messages. Delete any inappropriate content.
+            </p>
+            <button class="btn btn-sm btn-secondary" onclick="loadAdminComments()">
+              🔄 Refresh Comments
+            </button>
+          </div>
+
+          <div class="admin-table-container">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Author</th>
+                  <th>Role</th>
+                  <th>Protected Email</th>
+                  <th>Comment Message</th>
+                  <th>Posted</th>
+                  <th style="width: 90px; text-align: right;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="admin-comments-table-body">
+                <tr>
+                  <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                    Loading comments...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -1031,23 +1099,117 @@
 
       <div class="modal-body">
         <!-- Admin Navigation Tabs -->
+        <!-- Live Platform KPI Stats Bar -->
+        <div class="admin-kpi-bar" id="admin-kpi-container">
+          <div class="admin-kpi-card">
+            <div class="kpi-icon">👥</div>
+            <div class="kpi-info">
+              <span class="kpi-label">Total Traders</span>
+              <strong class="kpi-val" id="admin-stat-total-users">--</strong>
+            </div>
+          </div>
+          <div class="admin-kpi-card kpi-pro">
+            <div class="kpi-icon">💎</div>
+            <div class="kpi-info">
+              <span class="kpi-label">PRO Lifetime</span>
+              <strong class="kpi-val" id="admin-stat-pro-users">--</strong>
+            </div>
+          </div>
+          <div class="admin-kpi-card">
+            <div class="kpi-icon">🆓</div>
+            <div class="kpi-info">
+              <span class="kpi-label">Free Accounts</span>
+              <strong class="kpi-val" id="admin-stat-free-users">--</strong>
+            </div>
+          </div>
+          <div class="admin-kpi-card">
+            <div class="kpi-icon">📈</div>
+            <div class="kpi-info">
+              <span class="kpi-label">Chart Setups</span>
+              <strong class="kpi-val" id="admin-stat-charts">--</strong>
+            </div>
+          </div>
+          <div class="admin-kpi-card">
+            <div class="kpi-icon">💬</div>
+            <div class="kpi-info">
+              <span class="kpi-label">Comments</span>
+              <strong class="kpi-val" id="admin-stat-comments">--</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Admin Navigation Tabs -->
         <div class="admin-tabs-nav">
-          <button class="admin-tab-btn active" onclick="switchAdminTab('charts', this)">
-            Manage Charts &amp; Bulk Delete
+          <button class="admin-tab-btn active" onclick="switchAdminTab('users', this)">
+            👥 User Management &amp; PRO Access
           </button>
-          <button class="admin-tab-btn" onclick="switchAdminTab('cms', this)">
-            Live Site Text CMS Editor
-          </button>
-          <button class="admin-tab-btn" onclick="switchAdminTab('aws', this)">
-            AWS Cloud Status
+          <button class="admin-tab-btn" onclick="switchAdminTab('charts', this)">
+            📈 Charts &amp; Bulk Delete
           </button>
           <button class="admin-tab-btn" onclick="switchAdminTab('payments', this)">
             💳 UTRs &amp; Payments
           </button>
+          <button class="admin-tab-btn" onclick="switchAdminTab('comments', this)">
+            💬 Comments Moderation
+          </button>
+          <button class="admin-tab-btn" onclick="switchAdminTab('cms', this)">
+            ⚙️ Live Site Text CMS
+          </button>
+          <button class="admin-tab-btn" onclick="switchAdminTab('aws', this)">
+            ☁️ AWS Cloud Status
+          </button>
         </div>
 
         <!-- Tab 1: Charts Table with Bulk Delete -->
-        <div id="admin-tab-charts" class="admin-tab-content">
+        <!-- Tab 0: USER MANAGEMENT & PRO REVOCATION (PRIMARY ADMIN CONTROL) -->
+        <div id="admin-tab-users" class="admin-tab-content" style="display: block;">
+          <div class="admin-user-filter-bar">
+            <div class="admin-search-wrap">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <input type="text" id="admin-user-search-input" class="form-input" placeholder="Search by Gmail / Name / UTR..." oninput="handleAdminUserSearch(this.value)" />
+            </div>
+
+            <div class="admin-user-pills">
+              <button class="admin-pill-btn active" onclick="filterAdminUsers('all', this)" id="pill-filter-all">
+                All (<span id="count-users-all">0</span>)
+              </button>
+              <button class="admin-pill-btn" onclick="filterAdminUsers('pro', this)" id="pill-filter-pro">
+                💎 PRO (<span id="count-users-pro">0</span>)
+              </button>
+              <button class="admin-pill-btn" onclick="filterAdminUsers('free', this)" id="pill-filter-free">
+                🆓 Free (<span id="count-users-free">0</span>)
+              </button>
+            </div>
+
+            <button class="btn btn-sm btn-primary" onclick="openAdminCreateUserModal()" style="white-space: nowrap; gap: 6px;">
+              <span style="font-size: 1.1rem; line-height: 1;">+</span> Add Trader
+            </button>
+          </div>
+
+          <div class="admin-table-container" style="margin-top: 14px;">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Trader Profile</th>
+                  <th>Gmail / Email</th>
+                  <th>Access Level</th>
+                  <th>Payment Ref / UTR</th>
+                  <th>Joined Date</th>
+                  <th style="text-align: right; width: 220px;">Owner Actions</th>
+                </tr>
+              </thead>
+              <tbody id="admin-users-table-body">
+                <tr>
+                  <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                    <span class="spinner-small" style="margin-right: 8px;"></span> Loading user accounts...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="admin-tab-charts" class="admin-tab-content" style="display: none;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
             <p style="color: var(--text-secondary); font-size: 0.9rem;">
               Click the <strong>Plus (+) button</strong> above to upload a new chart. Use checkboxes to delete single or multiple charts simultaneously.
@@ -1233,6 +1395,49 @@
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  
+  <!-- G. ADMIN CREATE TRADER MODAL -->
+  <div id="admin-create-user-modal" class="modal-overlay">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="background: var(--accent-green); color: #000; font-weight: 900; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">+</span>
+          <h3>Add Trader Account</h3>
+        </div>
+        <button class="btn-close-modal" onclick="closeAdminCreateUserModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="admin-create-user-form" onsubmit="handleAdminSubmitCreateUser(event)">
+          <div class="form-group">
+            <label class="form-label">Gmail / Email Address</label>
+            <input type="email" id="admin-new-user-email" class="form-input" placeholder="trader@gmail.com" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Trader Name</label>
+            <input type="text" id="admin-new-user-name" class="form-input" placeholder="e.g. Rahul Sharma" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Account Password</label>
+            <input type="password" id="admin-new-user-password" class="form-input" placeholder="Minimum 4 characters" required />
+          </div>
+
+          <div class="form-group" style="display: flex; align-items: center; gap: 10px; background: rgba(0,242,152,0.08); padding: 12px; border-radius: var(--radius-sm); border: 1px solid rgba(0,242,152,0.25);">
+            <input type="checkbox" id="admin-new-user-is-pro" style="width: 18px; height: 18px; accent-color: var(--accent-green); cursor: pointer;" />
+            <label for="admin-new-user-is-pro" style="margin: 0; font-size: 0.88rem; color: #fff; cursor: pointer; font-weight: 700;">
+              💎 Grant Lifetime PRO Access (₹399 Unlocked)
+            </label>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 10px;">
+            Create Trader Account
+          </button>
+        </form>
       </div>
     </div>
   </div>

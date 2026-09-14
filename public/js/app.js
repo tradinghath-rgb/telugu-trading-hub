@@ -2008,10 +2008,17 @@ function openAdminModal() {
     cmsEmail.value = 'Authorized Owner Account';
   }
 
+  // Load live overview & users by default
+  loadAdminStats();
+  loadAdminUsers();
   loadAdminMediaInventory();
   renderAdminChartsTable();
   populateCmsForm();
   loadAwsStatus();
+
+  // Ensure 'users' tab is active by default
+  const firstTabBtn = document.querySelector('.admin-tabs-nav .admin-tab-btn');
+  if (firstTabBtn) switchAdminTab('users', firstTabBtn);
 
   modal.classList.add('active');
   document.body.style.overflow = 'hidden';
@@ -2029,8 +2036,20 @@ function switchAdminTab(tabName, btn) {
   if (btn) btn.classList.add('active');
   const target = document.getElementById(`admin-tab-${tabName}`);
   if (target) target.style.display = 'block';
-  if (tabName === 'payments') {
+
+  if (tabName === 'users') {
+    loadAdminUsers();
+    loadAdminStats();
+  } else if (tabName === 'payments') {
     loadAdminPayments();
+  } else if (tabName === 'comments') {
+    loadAdminComments();
+  } else if (tabName === 'charts') {
+    renderAdminChartsTable();
+  } else if (tabName === 'cms') {
+    populateCmsForm();
+  } else if (tabName === 'aws') {
+    loadAwsStatus();
   }
 }
 
@@ -3321,3 +3340,391 @@ function downloadActiveLightboxImage() {
 window.downloadChartImage = downloadChartImage;
 window.downloadActiveChartImage = downloadActiveChartImage;
 window.downloadActiveLightboxImage = downloadActiveLightboxImage;
+
+
+// ==================== ADVANCED ADMIN USER & PLATFORM CONTROLS ====================
+
+// Fetch Realtime Platform Stats
+async function loadAdminStats() {
+  try {
+    const res = await fetch('/api/admin/stats');
+    if (!res.ok) return;
+    const stats = await res.json();
+
+    const elTotal = document.getElementById('admin-stat-total-users');
+    const elPro = document.getElementById('admin-stat-pro-users');
+    const elFree = document.getElementById('admin-stat-free-users');
+    const elCharts = document.getElementById('admin-stat-charts');
+    const elComments = document.getElementById('admin-stat-comments');
+
+    if (elTotal) elTotal.textContent = stats.totalUsers || 0;
+    if (elPro) elPro.textContent = stats.proUsers || 0;
+    if (elFree) elFree.textContent = stats.freeUsers || 0;
+    if (elCharts) elCharts.textContent = stats.totalCharts || 0;
+    if (elComments) elComments.textContent = stats.totalComments || 0;
+  } catch (e) {
+    console.error('Error fetching admin stats:', e);
+  }
+}
+
+// Fetch All Registered Users
+async function loadAdminUsers() {
+  const tbody = document.getElementById('admin-users-table-body');
+  if (!tbody) return;
+
+  try {
+    const res = await fetch('/api/admin/users');
+    if (!res.ok) throw new Error('Failed to load users');
+    const users = await res.json();
+    state.adminUsersList = users || [];
+
+    // Update filter counts
+    const countAll = state.adminUsersList.length;
+    const countPro = state.adminUsersList.filter(u => u.hasPaid).length;
+    const countFree = countAll - countPro;
+
+    const elAll = document.getElementById('count-users-all');
+    const elPro = document.getElementById('count-users-pro');
+    const elFree = document.getElementById('count-users-free');
+    if (elAll) elAll.textContent = countAll;
+    if (elPro) elPro.textContent = countPro;
+    if (elFree) elFree.textContent = countFree;
+
+    renderAdminUsersTable();
+  } catch (e) {
+    console.error('Error loading admin users:', e);
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" style="text-align: center; color: var(--accent-red); padding: 24px;">
+          Failed to load users. Please refresh.
+        </td>
+      </tr>
+    `;
+  }
+}
+
+// Render User Accounts Table with Search & Filter
+function renderAdminUsersTable() {
+  const tbody = document.getElementById('admin-users-table-body');
+  if (!tbody) return;
+
+  let list = [...(state.adminUsersList || [])];
+
+  // Apply Filter Pill
+  if (state.adminUserFilter === 'pro') {
+    list = list.filter(u => u.hasPaid);
+  } else if (state.adminUserFilter === 'free') {
+    list = list.filter(u => !u.hasPaid);
+  }
+
+  // Apply Search
+  if (state.adminUserSearch.trim()) {
+    const q = state.adminUserSearch.toLowerCase().trim();
+    list = list.filter(u => 
+      (u.email && u.email.toLowerCase().includes(q)) ||
+      (u.name && u.name.toLowerCase().includes(q)) ||
+      (u.paymentId && u.paymentId.toLowerCase().includes(q))
+    );
+  }
+
+  if (list.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">
+          No trader accounts match your search or filter.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = list.map(u => {
+    const isOwner = u.email && u.email.toLowerCase() === 'abhisheknaidus093@gmail.com';
+    const initial = (u.name || u.email || 'T')[0].toUpperCase();
+    const joinedStr = u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '-';
+    
+    // Status Badge
+    let statusBadge = '';
+    if (isOwner) {
+      statusBadge = '<span class="user-badge-pro" style="background: rgba(255,184,0,0.2); color: var(--accent-gold); border-color: var(--accent-gold);">👑 OWNER</span>';
+    } else if (u.hasPaid) {
+      statusBadge = `<span class="user-badge-pro">💎 PRO LIFETIME</span>`;
+    } else {
+      statusBadge = '<span class="user-badge-free">🆓 FREE TRADER</span>';
+    }
+
+    const payRef = u.paymentId 
+      ? `<code style="background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; color: var(--accent-gold); font-size: 0.78rem;">${escapeHtml(u.paymentId)}</code>`
+      : '<span style="color: var(--text-muted); font-size: 0.8rem;">None</span>';
+
+    return `
+      <tr>
+        <td>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="user-table-avatar" style="${isOwner ? 'border-color: var(--accent-gold); color: var(--accent-gold);' : ''}">${initial}</div>
+            <div>
+              <strong style="color: #fff; font-size: 0.88rem;">${escapeHtml(u.name || 'Trader')}</strong>
+              <div style="font-size: 0.72rem; color: var(--text-muted);">Role: ${escapeHtml(u.role || 'member')}</div>
+            </div>
+          </div>
+        </td>
+        <td>
+          <span style="font-family: var(--font-mono); font-size: 0.82rem; color: var(--text-highlight);">${escapeHtml(u.email)}</span>
+        </td>
+        <td>${statusBadge}</td>
+        <td>${payRef}</td>
+        <td style="font-size: 0.8rem; color: var(--text-muted); white-space: nowrap;">${joinedStr}</td>
+        <td>
+          <div class="admin-action-btn-group">
+            ${!isOwner ? (u.hasPaid ? `
+              <button class="btn btn-sm btn-danger" style="padding: 4px 8px; font-size: 0.74rem; white-space: nowrap;" onclick="adminTogglePro('${u.id || u.email}', false, '${escapeHtml(u.email)}')" title="Revoke PRO Access immediately">
+                ⛔ Revoke PRO
+              </button>
+            ` : `
+              <button class="btn btn-sm btn-primary" style="padding: 4px 8px; font-size: 0.74rem; white-space: nowrap;" onclick="adminTogglePro('${u.id || u.email}', true, '${escapeHtml(u.email)}')" title="Grant Lifetime PRO Access">
+                💎 Grant PRO
+              </button>
+            `) : ''}
+
+            <button class="btn btn-sm btn-secondary" style="padding: 4px 8px; font-size: 0.74rem;" onclick="adminPromptResetPassword('${u.id || u.email}', '${escapeHtml(u.email)}')" title="Reset Password for this account">
+              🔑
+            </button>
+
+            ${!isOwner ? `
+              <button class="btn btn-sm btn-danger" style="padding: 4px 8px; font-size: 0.74rem;" onclick="adminDeleteUser('${u.id || u.email}', '${escapeHtml(u.email)}')" title="Permanently Remove / Delete this Gmail account">
+                🗑️
+              </button>
+            ` : ''}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+// Search Users
+function handleAdminUserSearch(query) {
+  state.adminUserSearch = query || '';
+  renderAdminUsersTable();
+}
+
+// Filter Users (all / pro / free)
+function filterAdminUsers(filter, btn) {
+  state.adminUserFilter = filter;
+  document.querySelectorAll('.admin-pill-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderAdminUsersTable();
+}
+
+// Revoke or Grant PRO Status
+async function adminTogglePro(userId, shouldBePro, email) {
+  const actionName = shouldBePro ? 'GRANT Lifetime PRO Access' : 'REVOKE PRO Access';
+  const warning = shouldBePro 
+    ? `Are you sure you want to GRANT Lifetime PRO Access to ${email}?`
+    : `⚠️ WARNING: Are you sure you want to REVOKE PRO Access for ${email}? They will immediately lose access to all drawn charts and videos.`;
+
+  if (!confirm(warning)) return;
+
+  try {
+    const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/toggle-pro`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hasPaid: shouldBePro })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to update PRO status');
+
+    showToast(data.message || `PRO status updated for ${email}`, 'success');
+
+    // Reload list and stats
+    await loadAdminUsers();
+    loadAdminStats();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// Delete User Account (Remove Gmail)
+async function adminDeleteUser(userId, email) {
+  const confirmMsg = `🚨 DANGER: Are you sure you want to PERMANENTLY REMOVE account '${email}' from the platform?\n\nThis will remove the user, clear their credentials, and delete any associated records. This cannot be undone.`;
+  if (!confirm(confirmMsg)) return;
+
+  try {
+    const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
+      method: 'DELETE'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to delete account');
+
+    showToast(data.message || `Account ${email} has been removed.`, 'success');
+
+    // Reload list and stats
+    await loadAdminUsers();
+    loadAdminStats();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// Reset User Password Prompt
+async function adminPromptResetPassword(userId, email) {
+  const newPass = prompt(`Enter a new password for ${email} (minimum 4 characters):`);
+  if (!newPass) return;
+  if (newPass.trim().length < 4) {
+    showToast('Password must be at least 4 characters.', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newPassword: newPass.trim() })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to reset password');
+
+    showToast(data.message || `Password updated for ${email}!`, 'success');
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// Modal: Create New Trader Account
+function openAdminCreateUserModal() {
+  const modal = document.getElementById('admin-create-user-modal');
+  if (modal) {
+    modal.classList.add('active');
+    const emailInput = document.getElementById('admin-new-user-email');
+    if (emailInput) emailInput.focus();
+  }
+}
+
+function closeAdminCreateUserModal() {
+  const modal = document.getElementById('admin-create-user-modal');
+  if (modal) modal.classList.remove('active');
+}
+
+async function handleAdminSubmitCreateUser(e) {
+  e.preventDefault();
+  const email = document.getElementById('admin-new-user-email').value.trim();
+  const name = document.getElementById('admin-new-user-name').value.trim();
+  const password = document.getElementById('admin-new-user-password').value.trim();
+  const isPro = document.getElementById('admin-new-user-is-pro').checked;
+
+  if (!email || !password) {
+    showToast('Email and password are required', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/admin/users/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, name, password, isPro })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to create account');
+
+    showToast(data.message || `Account created for ${email}`, 'success');
+    closeAdminCreateUserModal();
+    document.getElementById('admin-create-user-form').reset();
+
+    // Reload list and stats
+    await loadAdminUsers();
+    loadAdminStats();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// Fetch and Render Community Comments in Admin Tab
+async function loadAdminComments() {
+  const tbody = document.getElementById('admin-comments-table-body');
+  if (!tbody) return;
+
+  try {
+    const res = await fetch('/api/comments');
+    if (!res.ok) throw new Error('Failed to load comments');
+    const comments = await res.json();
+
+    if (!Array.isArray(comments) || comments.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">
+            No community comments posted yet.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = comments.map(c => {
+      const timeStr = c.timestamp ? new Date(c.timestamp).toLocaleString() : '-';
+      const roleBadge = c.role === 'admin' 
+        ? '<span class="user-badge-pro" style="background: rgba(255,184,0,0.2); color: var(--accent-gold);">OWNER</span>'
+        : (c.role === 'member' ? '<span class="user-badge-pro">PRO</span>' : '<span class="user-badge-free">TRADER</span>');
+
+      return `
+        <tr>
+          <td><strong style="color: #fff;">${escapeHtml(c.name || 'Anonymous')}</strong></td>
+          <td>${roleBadge}</td>
+          <td><span style="font-size: 0.8rem; color: var(--text-muted);">${escapeHtml(c.email || 'None')}</span></td>
+          <td style="max-width: 320px; font-size: 0.84rem; color: var(--text-secondary); line-height: 1.4;">
+            "${escapeHtml(c.text || '')}"
+          </td>
+          <td style="font-size: 0.8rem; color: var(--text-muted); white-space: nowrap;">${timeStr}</td>
+          <td style="text-align: right;">
+            <button class="btn btn-sm btn-danger" style="padding: 4px 8px; font-size: 0.74rem;" onclick="adminDeleteComment('${c.id}')" title="Delete Comment">
+              🗑️ Delete
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    console.error('Error loading admin comments:', err);
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" style="text-align: center; color: var(--accent-red); padding: 20px;">
+          Failed to load comments.
+        </td>
+      </tr>
+    `;
+  }
+}
+
+// Admin Delete Comment
+async function adminDeleteComment(commentId) {
+  if (!confirm('Are you sure you want to delete this comment?')) return;
+
+  try {
+    const res = await fetch(`/api/comments/${encodeURIComponent(commentId)}`, {
+      method: 'DELETE'
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to delete comment');
+
+    showToast(data.message || 'Comment deleted successfully', 'success');
+    loadAdminComments();
+    loadAdminStats();
+    renderComments(); // Refresh public section as well
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// Window globals
+window.loadAdminStats = loadAdminStats;
+window.loadAdminUsers = loadAdminUsers;
+window.renderAdminUsersTable = renderAdminUsersTable;
+window.handleAdminUserSearch = handleAdminUserSearch;
+window.filterAdminUsers = filterAdminUsers;
+window.adminTogglePro = adminTogglePro;
+window.adminDeleteUser = adminDeleteUser;
+window.adminPromptResetPassword = adminPromptResetPassword;
+window.openAdminCreateUserModal = openAdminCreateUserModal;
+window.closeAdminCreateUserModal = closeAdminCreateUserModal;
+window.handleAdminSubmitCreateUser = handleAdminSubmitCreateUser;
+window.loadAdminComments = loadAdminComments;
+window.adminDeleteComment = adminDeleteComment;

@@ -1548,6 +1548,226 @@ app.post('/api/auth/sync-client-account', (req, res) => {
   }
 });
 
+// ==================== ADMIN USER MANAGEMENT & PRO REVOCATION ENDPOINTS ====================
+
+// 1. Get All Registered Users with PRO and Payment Info
+app.get('/api/admin/users', (req, res) => {
+  try {
+    const users = readJson('users.json', []);
+    const payments = readJson('payments.json', []);
+
+    // Sanitize user list and attach payment reference if exists
+    const sanitized = users.map(u => {
+      const userPayment = payments.find(p => p.email && p.email.toLowerCase() === u.email.toLowerCase() && p.verified);
+      return {
+        id: u.id,
+        email: u.email,
+        name: u.name || u.email.split('@')[0],
+        role: u.role || 'member',
+        hasPaid: Boolean(u.hasPaid),
+        createdAt: u.createdAt || null,
+        paidAt: u.paidAt || (userPayment ? userPayment.submittedAt : null),
+        paymentId: u.paymentId || (userPayment ? userPayment.utrId : null),
+        revokedAt: u.revokedAt || null
+      };
+    });
+
+    res.json(sanitized.slice().reverse());
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// 2. Toggle PRO Status for a User (Revoke PRO or Grant PRO)
+app.post('/api/admin/users/:id/toggle-pro', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { hasPaid } = req.body;
+    let users = readJson('users.json', []);
+    const payments = readJson('payments.json', []);
+
+    const uIdx = users.findIndex(u => u.id === id || u.email.toLowerCase() === id.toLowerCase());
+    if (uIdx === -1) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    const shouldHavePro = Boolean(hasPaid);
+    users[uIdx].hasPaid = shouldHavePro;
+
+    if (shouldHavePro) {
+      users[uIdx].paidAt = new Date().toISOString();
+      users[uIdx].paymentId = users[uIdx].paymentId || 'PRO_ADMIN_GRANTED';
+      delete users[uIdx].revokedAt;
+    } else {
+      // Revoking PRO access:
+      users[uIdx].hasPaid = false;
+      users[uIdx].paymentId = null;
+      users[uIdx].revokedAt = new Date().toISOString();
+      // Invalidate active session so user immediately loses unlocked access on their device
+      users[uIdx].activeSessionToken = null;
+
+      // Also mark any payment records as revoked/unverified
+      payments.forEach(p => {
+        if (p.email && p.email.toLowerCase() === users[uIdx].email.toLowerCase()) {
+          p.verified = false;
+          p.error = 'PRO access revoked by Admin';
+        }
+      });
+      writeJson('payments.json', payments);
+    }
+
+    writeJson('users.json', users);
+    syncToCloud('users.json');
+
+    const actionText = shouldHavePro ? 'Lifetime PRO Access Granted' : 'PRO Access Revoked Successfully';
+    res.json({
+      success: true,
+      message: `${actionText} for ${users[uIdx].email}!`,
+      user: {
+        id: users[uIdx].id,
+        email: users[uIdx].email,
+        hasPaid: users[uIdx].hasPaid
+      }
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// 3. Delete / Remove User Account (Remove Gmail)
+app.delete('/api/admin/users/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    let users = readJson('users.json', []);
+    let payments = readJson('payments.json', []);
+
+    const uIdx = users.findIndex(u => u.id === id || u.email.toLowerCase() === id.toLowerCase());
+    if (uIdx === -1) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    const targetUser = users[uIdx];
+    const OWNER_EMAIL = 'abhisheknaidus093@gmail.com';
+    if (targetUser.email.toLowerCase() === OWNER_EMAIL) {
+      return res.status(403).json({ error: 'Cannot delete the Chief Mentor / Owner account.' });
+    }
+
+    // Remove user
+    users.splice(uIdx, 1);
+    writeJson('users.json', users);
+    syncToCloud('users.json');
+
+    // Remove any payment records for this user
+    payments = payments.filter(p => !p.email || p.email.toLowerCase() !== targetUser.email.toLowerCase());
+    writeJson('payments.json', payments);
+
+    res.json({
+      success: true,
+      message: `Account ${targetUser.email} has been permanently deleted.`
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// 4. Reset User Password
+app.post('/api/admin/users/:id/reset-password', (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newPassword } = req.body;
+    if (!newPassword || newPassword.trim().length < 4) {
+      return res.status(400).json({ error: 'New password must be at least 4 characters.' });
+    }
+
+    let users = readJson('users.json', []);
+    const uIdx = users.findIndex(u => u.id === id || u.email.toLowerCase() === id.toLowerCase());
+    if (uIdx === -1) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    users[uIdx].password = newPassword.trim();
+    users[uIdx].activeSessionToken = null; // Forces re-login with new password
+    writeJson('users.json', users);
+    syncToCloud('users.json');
+
+    res.json({
+      success: true,
+      message: `Password updated successfully for ${users[uIdx].email}.`
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// 5. Admin Manually Create Member / PRO User
+app.post('/api/admin/users/create', (req, res) => {
+  try {
+    const { email, password, name, isPro } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required.' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    let users = readJson('users.json', []);
+    if (users.some(u => u.email.toLowerCase() === cleanEmail)) {
+      return res.status(400).json({ error: 'A user with this email already exists.' });
+    }
+
+    const shouldBePro = Boolean(isPro);
+    const newUser = {
+      id: `user-${Date.now()}`,
+      email: cleanEmail,
+      password: password.trim(),
+      name: name ? name.trim() : cleanEmail.split('@')[0],
+      role: 'member',
+      hasPaid: shouldBePro,
+      paidAt: shouldBePro ? new Date().toISOString() : null,
+      paymentId: shouldBePro ? 'PRO_ADMIN_GRANTED' : null,
+      activeSessionToken: null,
+      createdAt: new Date().toISOString()
+    };
+
+    users.push(newUser);
+    writeJson('users.json', users);
+    syncToCloud('users.json');
+
+    const { password: _, ...userSafe } = newUser;
+    res.status(201).json({
+      success: true,
+      message: `User ${cleanEmail} created successfully!`,
+      user: userSafe
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// 6. Platform Overview & Realtime Stats
+app.get('/api/admin/stats', (req, res) => {
+  try {
+    const users = readJson('users.json', []);
+    const charts = readJson('charts.json', []);
+    const comments = readJson('comments.json', []);
+    const payments = readJson('payments.json', []);
+
+    const proCount = users.filter(u => u.hasPaid).length;
+    const freeCount = users.length - proCount;
+    const verifiedPayments = payments.filter(p => p.verified).length;
+
+    res.json({
+      totalUsers: users.length,
+      proUsers: proCount,
+      freeUsers: freeCount,
+      totalCharts: charts.length,
+      totalComments: comments.length,
+      verifiedPayments: verifiedPayments,
+      estimatedRevenue: proCount * 399
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Admin Payment Management Endpoints
 app.get('/api/admin/payments', (req, res) => {
   try {
