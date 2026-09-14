@@ -970,6 +970,7 @@ async function openChartModal(chartId) {
       imgEl.classList.add('locked');
     }
     if (lockOverlay) lockOverlay.style.display = 'flex';
+    const dlBtn = document.getElementById('modal-chart-download-btn'); if (dlBtn) dlBtn.style.display = 'none';
 
     if (sumEl) {
       sumEl.innerHTML = `<span style="filter: blur(4px); user-select: none; opacity: 0.5;">Institutional entry zones, order flow liquidity, and confirmation trigger levels.</span> <span style="font-size: 0.76rem; color: var(--accent-gold); font-weight: 700; margin-left: 6px;">[🔒 LOCKED]</span>`;
@@ -1003,6 +1004,8 @@ async function openChartModal(chartId) {
     if (imgEl) {
       imgEl.src = chart.chartImage || '/assets/charts/chart-1.svg';
       imgEl.classList.remove('locked');
+      const dlBtn = document.getElementById('modal-chart-download-btn');
+      if (dlBtn) dlBtn.style.display = 'inline-flex';
     }
     if (lockOverlay) lockOverlay.style.display = 'none';
     if (sumEl) sumEl.textContent = chart.summary || '';
@@ -1109,7 +1112,7 @@ function loadActiveModalVideo() {
     </div>
 
     <div class="video-container-box">
-      <video id="modal-video-element" class="video-player-elem" controls autoplay playsinline controlsList="nodownload">
+      <video id="modal-video-element" class="video-player-elem" controls autoplay playsinline controlsList="nodownload" oncontextmenu="return false;">
         <source src="${videoUrl}" type="video/mp4" />
         Your browser does not support HTML5 video playback.
       </video>
@@ -2875,6 +2878,7 @@ async function handleGalleryFileInput(files) {
 }
 
 function openGalleryLightbox(imageUrl, title) {
+  state.activeLightboxImage = { url: imageUrl, title: title || 'Institutional Chart Setup' };
   const isUnlocked = Boolean(state.currentUser?.hasPaid || state.currentUser?.role === 'admin');
   if (!isUnlocked) {
     handleUnpaidChartClick();
@@ -3254,3 +3258,66 @@ window.handleAdminPaymentAction = handleAdminPaymentAction;
 window.handlePaymentScreenshotSelect = handlePaymentScreenshotSelect;
 window.removePaymentScreenshot = removePaymentScreenshot;
 window.submitPaymentVerification = submitPaymentVerification;
+
+// ==================== CHART IMAGE DOWNLOAD (CHARTS ONLY) ====================
+async function downloadChartImage(url, title) {
+  if (!url) return;
+  const isUnlocked = Boolean(state.currentUser?.hasPaid || state.currentUser?.role === 'admin');
+  if (!isUnlocked) {
+    handleUnpaidChartClick();
+    return;
+  }
+
+  try {
+    showToast('Downloading high-resolution chart image...', 'info');
+
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Failed to fetch image file');
+    const blob = await res.blob();
+    const blobUrl = URL.createObjectURL(blob);
+
+    const safeTitle = (title || 'TradingHub_Chart')
+      .replace(/[^a-zA-Z0-9_-]/g, '_')
+      .replace(/_+/g, '_');
+
+    const isSvg = url.toLowerCase().includes('.svg');
+    const isPng = url.toLowerCase().includes('.png');
+    const ext = isSvg ? 'svg' : (isPng ? 'png' : 'jpg');
+    const filename = `${safeTitle}.${ext}`;
+
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1500);
+    showToast(`✅ Chart "${title || 'Setup'}" downloaded to device!`, 'success');
+  } catch (err) {
+    console.warn('Direct blob download failed, attempting direct link download:', err.message);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${(title || 'Trading_Chart').replace(/\s+/g, '_')}.png`;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+}
+
+function downloadActiveChartImage() {
+  if (state.activeModalChart) {
+    downloadChartImage(state.activeModalChart.chartImage, state.activeModalChart.title);
+  }
+}
+
+function downloadActiveLightboxImage() {
+  if (state.activeLightboxImage) {
+    downloadChartImage(state.activeLightboxImage.url, state.activeLightboxImage.title);
+  }
+}
+
+window.downloadChartImage = downloadChartImage;
+window.downloadActiveChartImage = downloadActiveChartImage;
+window.downloadActiveLightboxImage = downloadActiveLightboxImage;

@@ -545,7 +545,11 @@
           <!-- Left: Drawn High-Res Chart -->
           <div class="chart-view-panel">
             <div class="chart-display-container">
-              <img id="modal-chart-image" src="" alt="Drawn Trading Chart" />
+              <img id="modal-chart-image" src="" alt="Drawn Trading Chart" onclick="downloadActiveChartImage()" title="Click to download high-resolution chart image" />
+              <button type="button" id="modal-chart-download-btn" class="btn-download-chart" onclick="downloadActiveChartImage()" title="Download Chart Image (HD)" style="display: none;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span>Download Chart</span>
+              </button>
               <div id="modal-chart-lock-overlay" class="chart-locked-overlay" style="display: none;">
                 <div class="chart-lock-icon-circle">
                   <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -804,7 +808,12 @@
     <div class="modal-card lightbox-card" style="max-width: 900px;" onclick="event.stopPropagation()">
       <div class="modal-header">
         <h3 id="lightbox-title" style="color: #fff; font-size: 1.1rem; margin: 0;">Chart Inspection</h3>
-        <button class="btn-close-modal" onclick="closeGalleryLightbox()">✕</button>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button type="button" id="lightbox-download-btn" class="btn btn-sm btn-primary" onclick="downloadActiveLightboxImage()" title="Download High-Res Chart Image">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Download Chart</span>
+          </button>
+          <button class="btn-close-modal" onclick="closeGalleryLightbox()">✕</button>
       </div>
       <div class="modal-body" style="padding: 16px; display: flex; justify-content: center; background: #060910;">
         <img id="lightbox-image" src="" alt="High Resolution Chart" style="max-width: 100%; max-height: 78vh; object-fit: contain; border-radius: var(--radius-sm);" />
