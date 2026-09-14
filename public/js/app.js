@@ -31,7 +31,9 @@ function _setCookie(name, val, days = 365) {
     const d = new Date();
     d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
     const expires = 'expires=' + d.toUTCString();
-    document.cookie = name + '=' + encodeURIComponent(val) + ';' + expires + ';path=/;SameSite=Lax';
+    const isHttps = typeof window !== 'undefined' && window.location && window.location.protocol === 'https:';
+    const secureFlag = isHttps ? ';Secure' : '';
+    document.cookie = name + '=' + encodeURIComponent(val) + ';' + expires + ';path=/;SameSite=Lax' + secureFlag;
   } catch (_) {}
 }
 
@@ -48,7 +50,7 @@ const safeStorage = {
       if (val !== null && val !== undefined) return val;
     } catch (_) {}
     if (_inMemoryStorage[key] !== undefined) return _inMemoryStorage[key];
-    if (key === 'tradinghub_user' || key === 'tradinghub_session_token' || key === 'tradinghub_admin_pin_verified') {
+    if (key === 'tradinghub_user' || key === 'tradinghub_session_token' || key === 'tradinghub_admin_pin_verified' || key === 'tradinghub_last_active') {
       const cookieVal = _getCookie('th_' + key);
       if (cookieVal) {
         _inMemoryStorage[key] = cookieVal;
@@ -63,7 +65,7 @@ const safeStorage = {
     try {
       window.localStorage.setItem(key, strVal);
     } catch (_) {}
-    if (key === 'tradinghub_user' || key === 'tradinghub_session_token' || key === 'tradinghub_admin_pin_verified') {
+    if (key === 'tradinghub_user' || key === 'tradinghub_session_token' || key === 'tradinghub_admin_pin_verified' || key === 'tradinghub_last_active') {
       _setCookie('th_' + key, strVal, 365);
     }
   },
@@ -72,7 +74,7 @@ const safeStorage = {
     try {
       window.localStorage.removeItem(key);
     } catch (_) {}
-    if (key === 'tradinghub_user' || key === 'tradinghub_session_token' || key === 'tradinghub_admin_pin_verified') {
+    if (key === 'tradinghub_user' || key === 'tradinghub_session_token' || key === 'tradinghub_admin_pin_verified' || key === 'tradinghub_last_active') {
       _deleteCookie('th_' + key);
     }
   },
@@ -122,20 +124,55 @@ window.safeSessionStorage = safeSessionStorage;
 const INACTIVITY_TIMEOUT_MS = 24 * 60 * 60 * 1000; // 24 hours
 let _lastActivityRecord = 0;
 
-function markUserActive() {
+function markUserActive(force = false) {
   const now = Date.now();
-  if (now - _lastActivityRecord > 15000) { // throttled to once every 15 seconds
+  if (force || (now - _lastActivityRecord > 10000)) { // throttled to once every 10 seconds
     _lastActivityRecord = now;
     if (state.currentUser) {
       safeStorage.setItem('tradinghub_last_active', String(now));
+      safeSessionStorage.setItem('tradinghub_last_active', String(now));
     }
   }
 }
 
+function checkInactivityOnResume() {
+  if (!state.currentUser) return;
+  const lastActiveStr = safeStorage.getItem('tradinghub_last_active') || safeSessionStorage.getItem('tradinghub_last_active');
+  if (lastActiveStr) {
+    const lastActive = parseInt(lastActiveStr, 10);
+    if (!isNaN(lastActive) && (Date.now() - lastActive > INACTIVITY_TIMEOUT_MS)) {
+      console.log('[AUTH] Confirmed user inactive for > 24h. Auto-logging out on resume.');
+      handleLogout(true);
+      return;
+    }
+  }
+  markUserActive(true);
+}
+
 if (typeof window !== 'undefined') {
-  ['touchstart', 'touchmove', 'click', 'keydown', 'scroll', 'pointerdown'].forEach(evt => {
-    window.addEventListener(evt, markUserActive, { passive: true });
+  ['touchstart', 'touchmove', 'click', 'keydown', 'scroll', 'pointerdown', 'mousemove', 'wheel'].forEach(evt => {
+    window.addEventListener(evt, () => markUserActive(false), { passive: true });
   });
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      checkInactivityOnResume();
+    }
+  });
+  window.addEventListener('focus', checkInactivityOnResume);
+
+  // Periodic background check every 60s while page remains open
+  setInterval(() => {
+    if (!state.currentUser) return;
+    const lastActiveStr = safeStorage.getItem('tradinghub_last_active') || safeSessionStorage.getItem('tradinghub_last_active');
+    if (lastActiveStr) {
+      const lastActive = parseInt(lastActiveStr, 10);
+      if (!isNaN(lastActive) && (Date.now() - lastActive > INACTIVITY_TIMEOUT_MS)) {
+        console.log('[AUTH] Idle interval timeout reached (>24h). Auto-logging out.');
+        handleLogout(true);
+      }
+    }
+  }, 60000);
 }
 
 // Fallback safety: If old quickLoginAsAdmin is somehow triggered, force security modal instead
@@ -270,7 +307,7 @@ async function syncAllLocalAccountsToServer() {
 function initAuthState() {
   try {
     // 1. Inactivity check: Only log out if confirmed inactive for > 24 hours
-    const lastActiveStr = safeStorage.getItem('tradinghub_last_active');
+    const lastActiveStr = safeStorage.getItem('tradinghub_last_active') || safeSessionStorage.getItem('tradinghub_last_active');
     if (lastActiveStr) {
       const lastActive = parseInt(lastActiveStr, 10);
       if (!isNaN(lastActive) && (Date.now() - lastActive > INACTIVITY_TIMEOUT_MS)) {
@@ -292,8 +329,32 @@ function initAuthState() {
       }
     }
 
-    // 2. Read user session from resilient dual-layer storage
-    const raw = safeSessionStorage.getItem('tradinghub_user') || safeStorage.getItem('tradinghub_user');
+    // 2. Read user session from resilient quad-layer storage
+    // Fallback: sessionStorage -> localStorage -> Persistent Cookie -> Device Account Vault
+    let raw = safeSessionStorage.getItem('tradinghub_user') || safeStorage.getItem('tradinghub_user') || _getCookie('th_tradinghub_user');
+
+    if (!raw) {
+      const savedDev = safeStorage.getItem('tradinghub_device_saved_login');
+      if (savedDev) {
+        try {
+          const devObj = JSON.parse(savedDev);
+          if (devObj && devObj.email) {
+            const vaultAcc = getLocalAccountVault(devObj.email);
+            if (vaultAcc) {
+              raw = JSON.stringify({
+                id: `user-${vaultAcc.savedAt || Date.now()}`,
+                email: vaultAcc.email,
+                name: vaultAcc.name,
+                role: vaultAcc.role || 'member',
+                hasPaid: Boolean(vaultAcc.hasPaid),
+                paymentId: vaultAcc.paymentId || null
+              });
+            }
+          }
+        } catch (_) {}
+      }
+    }
+
     if (raw) {
       const parsed = JSON.parse(raw);
 
@@ -301,7 +362,7 @@ function initAuthState() {
       if (parsed.role === 'admin') {
         document.documentElement.classList.add('is-admin');
         document.body.classList.add('is-admin');
-        const pinVerified = safeSessionStorage.getItem('tradinghub_admin_pin_verified') || safeStorage.getItem('tradinghub_admin_pin_verified');
+        const pinVerified = safeSessionStorage.getItem('tradinghub_admin_pin_verified') || safeStorage.getItem('tradinghub_admin_pin_verified') || _getCookie('th_tradinghub_admin_pin_verified');
         if (pinVerified === ADMIN_PIN) {
           document.body.classList.remove('admin-home-blurred');
         } else {
@@ -311,27 +372,11 @@ function initAuthState() {
         }
       }
 
-      // Explicitly revoke unverified flagged test accounts
-      if (parsed.email && parsed.email.toLowerCase().trim() === 'abhisheknaidu2005@gmail.com') {
-        safeStorage.removeItem('tradinghub_user');
-        safeSessionStorage.removeItem('tradinghub_user');
-        safeStorage.removeItem('tradinghub_session_token');
-        try {
-          let vault = JSON.parse(safeStorage.getItem('tradinghub_account_vault') || '{}');
-          if (vault['abhisheknaidu2005@gmail.com']) {
-            vault['abhisheknaidu2005@gmail.com'].hasPaid = false;
-            vault['abhisheknaidu2005@gmail.com'].paymentId = null;
-            safeStorage.setItem('tradinghub_account_vault', JSON.stringify(vault));
-          }
-        } catch (_) {}
-        state.currentUser = null;
-        return;
-      }
-
       state.currentUser = parsed;
-      markUserActive();
+      // User visiting/refreshing the page counts as active interaction: refresh timestamp immediately
+      markUserActive(true);
 
-      // Check with server if account is active or was deleted by admin
+      // Check with server if account is active or was updated by admin
       fetch('/api/auth/sync-client-account', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -352,6 +397,14 @@ function initAuthState() {
           document.body.classList.remove('admin-home-blurred');
           renderApp();
           showToast('This account has been removed by administrator.', 'info');
+        } else if (d && d.user && state.currentUser) {
+          // If server updated payment/role status, seamlessly keep client in sync
+          if (Boolean(d.user.hasPaid) !== Boolean(state.currentUser.hasPaid)) {
+            state.currentUser.hasPaid = Boolean(d.user.hasPaid);
+            safeStorage.setItem('tradinghub_user', JSON.stringify(state.currentUser));
+            safeSessionStorage.setItem('tradinghub_user', JSON.stringify(state.currentUser));
+            renderNavbar();
+          }
         }
       })
       .catch(() => {});
@@ -492,12 +545,27 @@ function checkUrlPaymentCallback() {
 // Check for direct ?admin=true entry
 function checkAdminUrlParam() {
   const urlParams = new URLSearchParams(window.location.search);
-  if (urlParams.get('admin') === 'true' || window.location.hash === '#admin') {
+  const hasAdminQuery = urlParams.get('admin') === 'true';
+  const hasAdminHash = window.location.hash === '#admin';
+
+  if (hasAdminQuery || hasAdminHash) {
+    // Immediately sanitize address bar so swipe-down refresh never re-triggers the prompt
+    try {
+      urlParams.delete('admin');
+      const newSearch = urlParams.toString() ? '?' + urlParams.toString() : '';
+      const cleanUrl = window.location.pathname + newSearch;
+      window.history.replaceState({}, document.title, cleanUrl);
+    } catch (_) {}
+
     setTimeout(() => {
       if (state.currentUser?.role === 'admin') {
         openAdminModal();
-      } else {
+      } else if (!state.currentUser) {
+        // Only open login modal if user is not signed in at all
         openAuthModal('login');
+      } else {
+        // User is already signed in as a member
+        showToast('Admin CMS is reserved for platform administrator.', 'info');
       }
     }, 600);
   }
@@ -2360,7 +2428,8 @@ function closeAdminPinModal() {
   document.body.style.overflow = '';
 
   // If closed without verifying PIN, log out admin for security
-  if (state.currentUser && state.currentUser.role === 'admin' && safeSessionStorage.getItem('tradinghub_admin_pin_verified') !== ADMIN_PIN) {
+  const isPinVerified = (safeSessionStorage.getItem('tradinghub_admin_pin_verified') === ADMIN_PIN || safeStorage.getItem('tradinghub_admin_pin_verified') === ADMIN_PIN);
+  if (state.currentUser && state.currentUser.role === 'admin' && !isPinVerified) {
     handleLogout();
     showToast('Admin verification cancelled. Logged out.', 'info');
     return;
@@ -2379,6 +2448,7 @@ function handleAdminPinSubmit(event) {
 
   if (pin === ADMIN_PIN) {
     safeSessionStorage.setItem('tradinghub_admin_pin_verified', ADMIN_PIN);
+    safeStorage.setItem('tradinghub_admin_pin_verified', ADMIN_PIN);
     document.body.classList.remove('admin-home-blurred');
     closeAdminPinModal();
     showToast('👑 Admin Security Code Verified! Full controls unlocked.', 'success');

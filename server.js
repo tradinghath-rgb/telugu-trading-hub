@@ -269,7 +269,7 @@ const uploadPaymentProof = multer({
 });
 
 // Blacklist of revoked unverified accounts
-const REVOKED_EMAILS = ['abhisheknaidu2005@gmail.com'];
+const REVOKED_EMAILS = [];
 
 // High-Speed In-Memory Cache for Database JSON read/write (zero disk latency for repeated requests)
 const _memCache = {};
