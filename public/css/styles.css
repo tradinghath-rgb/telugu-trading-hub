@@ -4073,3 +4073,52 @@ body:not(.dedicated-view) #gallery-grid-container:not(.expanded) > .gallery-card
     white-space: nowrap !important;
   }
 }
+
+/* ==================== BLURRED HOME SCREEN FOR ADMIN PIN VERIFICATION (v20) ==================== */
+body.admin-home-blurred > *:not(#admin-pin-modal):not(#toast-container) {
+  filter: blur(14px) brightness(0.65) !important;
+  pointer-events: none !important;
+  user-select: none !important;
+  transition: filter 0.3s ease;
+}
+
+#admin-pin-modal {
+  z-index: 100050 !important;
+}
+
+/* ==================== AUTH SAVED ACCOUNT SUGGESTION DROPDOWN ==================== */
+.auth-saved-suggestion-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #0d1424;
+  border: 1px solid var(--accent-green);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 16px rgba(0, 242, 152, 0.25);
+  z-index: 1000;
+  padding: 6px;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.auth-saved-suggestion-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  color: #fff;
+  font-size: 0.86rem;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.auth-saved-suggestion-item:hover,
+.auth-saved-suggestion-item:active {
+  background: rgba(0, 242, 152, 0.12);
+  border-color: rgba(0, 242, 152, 0.4);
+  color: var(--accent-green);
+}

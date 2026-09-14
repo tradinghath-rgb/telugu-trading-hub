@@ -985,18 +985,9 @@ app.post('/api/auth/login', async (req, res) => {
     // Generate fresh session token for this device (supersedes any other device)
     const sessionToken = crypto.randomBytes(16).toString('hex');
 
-    // Exclusive Owner / Admin Check (Ultra Privacy: 6-digit PIN 200514 Enforced)
+    // Exclusive Owner / Admin Check (Ultra Privacy: 2-Step verification - Email & Password first, then PIN on blurred screen)
     const ADMIN_PIN = process.env.ADMIN_PIN || '200514';
     if (cleanEmail === OWNER_EMAIL) {
-      const { pincode } = req.body;
-      if (!pincode || String(pincode).trim() !== ADMIN_PIN) {
-        console.log(`[AUTH] Admin login attempt for ${cleanEmail} rejected: Missing or invalid PIN code`);
-        return res.status(401).json({
-          error: '🔒 Ultra Privacy: 6-Digit Admin Security PIN (200514) required. Access Denied.',
-          requirePin: true
-        });
-      }
-
       let adminIndex = users.findIndex(u => u.email.toLowerCase() === OWNER_EMAIL && u.role === 'admin');
       if (adminIndex === -1) {
         await syncFromCloud('users.json');
@@ -1004,12 +995,25 @@ app.post('/api/auth/login', async (req, res) => {
         adminIndex = users.findIndex(u => u.email.toLowerCase() === OWNER_EMAIL && u.role === 'admin');
       }
       if (adminIndex !== -1 && users[adminIndex].password === password) {
+        const { pincode } = req.body;
+        if (pincode && String(pincode).trim() !== ADMIN_PIN) {
+          return res.status(401).json({
+            error: '🔒 Ultra Privacy: 6-Digit Admin Security PIN (200514) required. Access Denied.',
+            requirePin: true
+          });
+        }
         users[adminIndex].activeSessionToken = sessionToken;
         writeJson('users.json', users);
         const { password: _, ...userSafe } = users[adminIndex];
-        return res.json({ success: true, message: 'Owner authenticated successfully with Ultra Privacy PIN!', user: userSafe, sessionToken });
+        return res.json({
+          success: true,
+          message: 'Owner credentials verified! PIN verification required on home screen.',
+          user: userSafe,
+          sessionToken,
+          requireAdminPinOnHome: true
+        });
       }
-      return res.status(401).json({ error: 'Invalid owner credentials' });
+      return res.status(401).json({ error: 'Invalid owner email or password' });
     }
 
     // Standard Member Login - Check local list first
@@ -1082,9 +1086,19 @@ app.post('/api/auth/validate-session', (req, res) => {
   }
 });
 
-// Helper for sending 100% Free Password Reset Email via Gmail SMTP
+// Dedicated Admin Security PIN Verification endpoint
+app.post('/api/auth/verify-admin-pin', (req, res) => {
+  const { pincode } = req.body;
+  const ADMIN_PIN = process.env.ADMIN_PIN || '200514';
+  if (pincode && String(pincode).trim() === ADMIN_PIN) {
+    return res.json({ success: true, message: 'Admin PIN verified successfully. Full controls unlocked.' });
+  }
+  return res.status(401).json({ error: '❌ Invalid 6-digit Admin Security PIN Code. Ultra Privacy Access Denied.' });
+});
+
+// Helper for sending 100% Free Password Reset Email via Gmail SMTP (from tradinghath@gmail.com)
 async function sendPasswordResetEmail(email, resetUrl, userName = 'Trader') {
-  const GMAIL_USER = process.env.GMAIL_USER || process.env.EMAIL_USER;
+  const GMAIL_USER = process.env.GMAIL_USER || process.env.EMAIL_USER || 'tradinghath@gmail.com';
   const GMAIL_PASS = process.env.GMAIL_APP_PASS || process.env.GMAIL_PASS || process.env.EMAIL_PASS;
 
   if (nodemailer && GMAIL_USER && GMAIL_PASS) {

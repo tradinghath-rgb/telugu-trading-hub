@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/css/styles.css?v=20260914_v19" />
+  <link rel="stylesheet" href="/css/styles.css?v=20260914_v20" />
   <link rel="icon" type="image/png" href="/brand-logo" />
 </head>
 <body>
@@ -220,12 +220,13 @@
             <input type="text" id="auth-name-input" class="form-input" placeholder="e.g. Ramesh Reddy" autocomplete="name" />
           </div>
 
-          <div class="form-group" id="auth-email-group">
+          <div class="form-group" id="auth-email-group" style="position: relative;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
               <label class="form-label" for="auth-email-input" style="margin-bottom: 0;">Gmail / Email Address</label>
-              <span id="auth-saved-hint" style="display: none; font-size: 0.78rem; color: var(--accent-green); cursor: pointer; text-decoration: underline;" onclick="fillDeviceSavedAccount()">🔑 Fill saved login</span>
+              <span id="auth-saved-hint" style="display: none; font-size: 0.78rem; color: var(--accent-green); cursor: pointer; text-decoration: underline;" onclick="fillDeviceSavedAccount()">🔑 Use saved login</span>
             </div>
-            <input type="email" id="auth-email-input" class="form-input" placeholder="you@gmail.com" required autocomplete="email" oninput="handleAuthEmailInput(this.value)" />
+            <input type="email" id="auth-email-input" class="form-input" placeholder="you@gmail.com" required autocomplete="email" onfocus="handleAuthEmailFocus()" oninput="handleAuthEmailInput(this.value)" />
+            <div id="auth-saved-suggestion-box" class="auth-saved-suggestion-dropdown" style="display: none;"></div>
           </div>
 
           <div class="form-group" id="auth-password-group">
@@ -251,7 +252,7 @@
           <!-- Remember Me Checkbox -->
           <div class="form-group-checkbox" id="auth-remember-group" style="margin-top: 10px; margin-bottom: 14px;">
             <label class="custom-checkbox-label">
-              <input type="checkbox" id="auth-remember-me" checked style="accent-color: var(--accent-green); width: 16px; height: 16px; cursor: pointer;" />
+              <input type="checkbox" id="auth-remember-me" style="accent-color: var(--accent-green); width: 16px; height: 16px; cursor: pointer;" />
               <span>Save Password &amp; Gmail for fast login</span>
             </label>
           </div>
@@ -342,6 +343,6 @@
   <div id="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="/js/app.js?v=20260914_v19"></script>
+  <script src="/js/app.js?v=20260914_v20"></script>
 </body>
 </html>

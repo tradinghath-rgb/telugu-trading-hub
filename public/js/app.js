@@ -122,6 +122,11 @@ function initAuthState() {
           state.currentUser = null;
           return;
         }
+        // Ultra Privacy: If PIN is not verified for this session, blur home and prompt PIN code
+        if (sessionStorage.getItem('tradinghub_admin_pin_verified') !== ADMIN_PIN) {
+          document.body.classList.add('admin-home-blurred');
+          setTimeout(() => openAdminPinModal(), 300);
+        }
       }
       // Explicitly revoke unverified flagged test accounts
       if (parsed.email && parsed.email.toLowerCase().trim() === 'abhisheknaidu2005@gmail.com') {
@@ -1386,6 +1391,12 @@ function openAuthModal(mode = 'login') {
 
   resetPasswordToggle('auth-password-input');
   resetPasswordToggle('auth-admin-pin-input');
+  
+  // Requirement: Checkbox remains unchecked by default until user manually clicks it
+  const rememberCheckbox = document.getElementById('auth-remember-me');
+  if (rememberCheckbox) rememberCheckbox.checked = false;
+
+  hideAuthSuggestionDropdown();
   setAuthModalMode(mode);
   modal.classList.add('active');
   document.body.style.overflow = 'hidden';
@@ -1444,18 +1455,7 @@ function setAuthModalMode(mode) {
   resetPasswordToggle('auth-password-input');
   resetPasswordToggle('auth-admin-pin-input');
 
-  const adminPinGroup = document.getElementById('auth-admin-pin-group');
-  const adminPinInput = document.getElementById('auth-admin-pin-input');
-  if (adminPinInput) adminPinInput.value = '';
 
-  if (adminPinGroup) {
-    const emailVal = document.getElementById('auth-email-input')?.value?.trim()?.toLowerCase();
-    if (mode === 'login' && emailVal === 'abhisheknaidus093@gmail.com') {
-      adminPinGroup.style.display = 'block';
-    } else {
-      adminPinGroup.style.display = 'none';
-    }
-  }
 
   if (mode === 'forgot') {
     if (tabsNav) tabsNav.style.display = 'none';
@@ -1577,32 +1577,11 @@ async function handleAuthSubmit(e) {
     return;
   }
 
-  // Ultra Privacy: Enforce 6-Digit Admin PIN for Owner account
-  const cleanEmail = email.toLowerCase();
+  const cleanEmail = email.toLowerCase().trim();
   const isAdminEmail = (cleanEmail === 'abhisheknaidus093@gmail.com');
-  const adminPinInput = document.getElementById('auth-admin-pin-input');
-  const pincode = adminPinInput?.value?.trim();
-
-  if (mode === 'login' && isAdminEmail) {
-    if (!pincode) {
-      const pinGroup = document.getElementById('auth-admin-pin-group');
-      if (pinGroup) pinGroup.style.display = 'block';
-      adminPinInput?.focus();
-      showToast('🔒 Ultra Privacy: 6-Digit Admin Security PIN (200514) required for Owner login.', 'error');
-      return;
-    }
-    if (pincode !== ADMIN_PIN) {
-      showToast('❌ Invalid Admin Security PIN Code. Ultra Privacy Access Denied.', 'error');
-      if (adminPinInput) {
-        adminPinInput.value = '';
-        adminPinInput.focus();
-      }
-      return;
-    }
-  }
 
   const endpoint = mode === 'register' ? '/api/auth/register' : '/api/auth/login';
-  const payload = mode === 'register' ? { email, password, name } : { email, password, pincode };
+  const payload = mode === 'register' ? { email, password, name } : { email, password };
 
   try {
     const res = await fetch(endpoint, {
@@ -1639,13 +1618,12 @@ async function handleAuthSubmit(e) {
           localStorage.setItem('tradinghub_session_token', data.sessionToken);
         }
       }
-      if (data.user.role === 'admin' || isAdminEmail) {
-        sessionStorage.setItem('tradinghub_admin_pin_verified', ADMIN_PIN);
-      }
       saveAuthState(data.user);
 
+      // Requirement: Checkbox remains unchecked by default until user manually clicks it.
+      // Only if the user MANUALLY checked the box is the password saved for next time.
       const rememberCheckbox = document.getElementById('auth-remember-me');
-      const shouldRemember = rememberCheckbox ? rememberCheckbox.checked : true;
+      const shouldRemember = Boolean(rememberCheckbox && rememberCheckbox.checked);
 
       if (shouldRemember) {
         saveToLocalAccountVault({
@@ -1655,14 +1633,17 @@ async function handleAuthSubmit(e) {
           role: data.user.role,
           hasPaid: data.user.hasPaid,
           paymentId: data.user.paymentId,
-          savedAt: Date.now()
+          savedAt: Date.now(),
+          remembered: true
         });
       } else {
+        // If user did not check the box, wipe any saved password so they must enter manually next time
         try {
           let vault = JSON.parse(localStorage.getItem('tradinghub_account_vault') || '{}');
           const key = email.toLowerCase().trim();
           if (vault[key]) {
             vault[key].password = '';
+            vault[key].remembered = false;
             localStorage.setItem('tradinghub_account_vault', JSON.stringify(vault));
           }
         } catch (_) {}
@@ -1670,22 +1651,25 @@ async function handleAuthSubmit(e) {
 
       closeAuthModal();
       localStorage.setItem('tradinghub_has_registered', 'true');
+
+      // Requirement: Admin login gives email and password -> home screen blurs and asks code (PIN).
+      // Only after admin enters the code can he control everything.
+      if (data.user.role === 'admin' || isAdminEmail) {
+        sessionStorage.removeItem('tradinghub_admin_pin_verified');
+        document.body.classList.add('admin-home-blurred');
+        showToast('👋 Admin credentials verified! Please enter your Security Code to unlock controls.', 'info');
+        openAdminPinModal();
+        return;
+      }
+
       renderApp(); // Immediately update all UI, navbar, and card bindings for active session
 
-      if (data.user.role === 'admin') {
-        showToast('👑 Admin Login Successful! Welcome Owner.', 'success');
-        openAdminModal();
-      } else if (mode === 'register') {
+      if (mode === 'register') {
         showToast('🎉 Sign Up Successful! Welcome to Trading Hub.', 'success');
       } else {
         showToast('✅ Login Successful! Welcome back.', 'success');
       }
     } else {
-      if (data.requirePin) {
-        const pinGroup = document.getElementById('auth-admin-pin-group');
-        if (pinGroup) pinGroup.style.display = 'block';
-        adminPinInput?.focus();
-      }
       showToast(data.error || 'Authentication error', 'error');
     }
   } catch (err) {
@@ -2074,6 +2058,15 @@ function closeAdminPinModal() {
   if (modal) modal.classList.remove('active');
   const input = document.getElementById('cms-security-pin-input');
   if (input) input.value = '';
+
+  // If closed without verifying PIN, log out admin and remove blur for security
+  if (state.currentUser && state.currentUser.role === 'admin' && sessionStorage.getItem('tradinghub_admin_pin_verified') !== ADMIN_PIN) {
+    document.body.classList.remove('admin-home-blurred');
+    handleLogout();
+    showToast('Admin verification cancelled. Logged out.', 'info');
+    return;
+  }
+
   const otherActive = document.querySelector('.modal-overlay.active');
   if (!otherActive) {
     document.body.style.overflow = '';
@@ -2087,11 +2080,13 @@ function handleAdminPinSubmit(event) {
 
   if (pin === ADMIN_PIN) {
     sessionStorage.setItem('tradinghub_admin_pin_verified', ADMIN_PIN);
+    document.body.classList.remove('admin-home-blurred');
     closeAdminPinModal();
-    showToast('👑 Ultra Privacy Admin PIN Verified! Opening CMS...', 'success');
-    openAdminModal();
+    showToast('👑 Admin Security Code Verified! Full controls unlocked.', 'success');
+    renderNavbar();
+    renderApp();
   } else {
-    showToast('❌ Invalid Admin Security PIN Code. Ultra Privacy Access Denied.', 'error');
+    showToast('❌ Invalid Admin Security Code. Home remains locked.', 'error');
     if (input) {
       input.value = '';
       input.focus();
@@ -4085,47 +4080,66 @@ function selectSavedAccount(email) {
 let _lastAutofilledAccount = '';
 
 function handleAuthEmailInput(val) {
-  const q = (val || '').trim().toLowerCase();
-  const passInput = document.getElementById('auth-password-input');
-  const adminPinGroup = document.getElementById('auth-admin-pin-group');
+  // Requirement: Do NOT give password automatically when user types email.
+  // Password is only populated if the user explicitly clicked the suggestion on focus.
+  hideAuthSuggestionDropdown();
+}
+
+function handleAuthEmailFocus() {
   const submitBtn = document.getElementById('auth-submit-btn');
   const mode = submitBtn?.dataset?.mode || 'login';
+  if (mode !== 'login') return;
 
-  // Ultra Privacy: Toggle Admin Security PIN group if owner email is typed in login mode
-  if (adminPinGroup) {
-    if (mode === 'login' && q === 'abhisheknaidus093@gmail.com') {
-      adminPinGroup.style.display = 'block';
-    } else {
-      adminPinGroup.style.display = 'none';
-    }
-  }
+  const box = document.getElementById('auth-saved-suggestion-box');
+  if (!box) return;
 
-  if (!q) {
-    document.querySelectorAll('.saved-account-pill').forEach(pill => pill.classList.remove('selected'));
-    if (passInput) passInput.value = '';
-    _lastAutofilledAccount = '';
+  let vault = {};
+  try {
+    vault = JSON.parse(localStorage.getItem('tradinghub_account_vault') || '{}');
+  } catch (_) {}
+
+  // Only suggest accounts where the user previously checked the "Save Password & Gmail" box
+  const savedList = Object.values(vault).filter(acc => acc && acc.email && acc.password && acc.remembered);
+  if (savedList.length === 0) {
+    box.style.display = 'none';
     return;
   }
 
-  const acc = getLocalAccountVault(q);
-  if (acc && acc.password) {
-    if (passInput) passInput.value = acc.password;
-    _lastAutofilledAccount = q;
-    document.querySelectorAll('.saved-account-pill').forEach(pill => {
-      const pillEmail = pill.querySelector('.saved-pill-email')?.textContent?.trim()?.toLowerCase();
-      if (pillEmail === q) {
-        pill.classList.add('selected');
-      } else {
-        pill.classList.remove('selected');
-      }
-    });
-  } else {
-    if (_lastAutofilledAccount && _lastAutofilledAccount !== q) {
-      if (passInput) passInput.value = '';
-      _lastAutofilledAccount = '';
-    }
-    document.querySelectorAll('.saved-account-pill').forEach(pill => pill.classList.remove('selected'));
-  }
+  savedList.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+  const recent = savedList[0];
+
+  box.innerHTML = `
+    <div class="auth-saved-suggestion-item" onmousedown="fillSuggestedAccount('${recent.email}')">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 1.1rem;">🔑</span>
+        <div>
+          <strong style="display: block; color: #fff; font-size: 0.88rem;">${recent.email}</strong>
+          <span style="font-size: 0.74rem; color: var(--accent-green);">Saved login for this device</span>
+        </div>
+      </div>
+      <span style="font-size: 0.78rem; color: var(--accent-green); font-weight: 700;">Use Login &rarr;</span>
+    </div>
+  `;
+  box.style.display = 'block';
+}
+
+function hideAuthSuggestionDropdown() {
+  const box = document.getElementById('auth-saved-suggestion-box');
+  if (box) box.style.display = 'none';
+}
+
+function fillSuggestedAccount(targetEmail) {
+  if (!targetEmail) return;
+  const acc = getLocalAccountVault(targetEmail);
+  if (!acc || !acc.password) return;
+
+  const emailInput = document.getElementById('auth-email-input');
+  const passInput = document.getElementById('auth-password-input');
+  if (emailInput) emailInput.value = acc.email;
+  if (passInput) passInput.value = acc.password;
+
+  hideAuthSuggestionDropdown();
+  showToast(`Filled saved login for ${acc.email}`, 'info');
 }
 
 window.togglePasswordVisibility = togglePasswordVisibility;
@@ -4136,3 +4150,7 @@ window.renderSavedAccountsPills = renderSavedAccountsPills;
 window.selectSavedAccount = selectSavedAccount;
 window.removeSavedAccount = removeSavedAccount;
 window.handleAuthEmailInput = handleAuthEmailInput;
+
+window.handleAuthEmailFocus = handleAuthEmailFocus;
+window.hideAuthSuggestionDropdown = hideAuthSuggestionDropdown;
+window.fillSuggestedAccount = fillSuggestedAccount;
