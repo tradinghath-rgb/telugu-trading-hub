@@ -2047,6 +2047,40 @@ app.delete('/api/admin/payment-attempts/:id', (req, res) => {
   }
 });
 
+
+// ==================== HD ATTACHMENT DOWNLOAD ENDPOINT ====================
+app.get('/api/charts/download-attachment', (req, res) => {
+  try {
+    const { url, title } = req.query;
+    if (!url) return res.status(400).send('Missing chart URL');
+
+    const cleanTitle = (title || 'TeluguTradingHub_Chart')
+      .replace(/[^a-zA-Z0-9_-]/g, '_')
+      .replace(/_+/g, '_');
+    const filename = `TeluguTradingHub_${cleanTitle}.png`;
+
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Type', 'image/png');
+
+    // Local asset or uploads
+    if (url.startsWith('/assets/') || url.startsWith('/uploads/')) {
+      const localPath = path.join(__dirname, url.startsWith('/assets/') ? 'public' : '', url);
+      if (fs.existsSync(localPath)) {
+        return fs.createReadStream(localPath).pipe(res);
+      }
+    }
+
+    // Remote URL redirect / fetch fallback
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return res.redirect(url);
+    }
+
+    res.status(404).send('Chart file not found');
+  } catch (err) {
+    res.status(500).send('Download error: ' + err.message);
+  }
+});
+
 // Fallback SPA routing
 app.get('*', (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, 'index.html'));

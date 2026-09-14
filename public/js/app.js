@@ -588,9 +588,14 @@ function renderCharts() {
       const clickAction = isUnlocked 
         ? `openGalleryLightbox('${item.imageUrl}', '${escapedTitle}')`
         : `handleUnpaidChartClick()`;
+      const isSelected = state.selectedCharts && state.selectedCharts.has(item.id);
 
       return `
-        <div class="chart-card">
+        <div class="chart-card ${isSelected ? 'is-selected' : ''}" data-chart-id="${item.id}" data-chart-url="${item.imageUrl}" data-chart-title="${escapedTitle}">
+          <div class="chart-select-box ${isSelected ? 'selected' : ''}" onclick="toggleChartSelection(event, '${item.id}', '${item.imageUrl}', '${escapedTitle}')" title="Select chart for batch download">
+            <input type="checkbox" class="chart-checkbox" id="chk-chart-${item.id}" ${isSelected ? 'checked' : ''} style="display: none;" />
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#060b14" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
           <div class="chart-thumbnail-wrap ${isUnlocked ? '' : 'locked'}" onclick="${clickAction}" style="cursor: pointer;" title="${isUnlocked ? 'Click to view full screen chart' : '🔒 Locked Chart - Click to Unlock'}">
             <img src="${item.imageUrl}" alt="${item.title}" loading="lazy" decoding="async" style="${isUnlocked ? '' : 'filter: blur(10px) brightness(0.55); pointer-events: none;'}" />
             ${!isUnlocked ? `
@@ -2634,13 +2639,18 @@ function showToast(message, type = 'success') {
   const container = document.getElementById('toast-container') || createToastContainer();
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  toast.innerHTML = `
-    ${type === 'success' 
-      ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-green)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>'
-      : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-red)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
-    }
-    <span>${message}</span>
-  `;
+
+  let iconSvg = '';
+  if (type === 'success') {
+    iconSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-green)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
+  } else if (type === 'info') {
+    // Vibrant green download/check circle icon (never red circle)
+    iconSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-green)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="8 12 12 16 16 12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>';
+  } else {
+    iconSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-red)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+  }
+
+  toast.innerHTML = `${iconSvg}<span>${message}</span>`;
   container.appendChild(toast);
 
   setTimeout(() => {
@@ -2851,9 +2861,14 @@ function renderChartGallery() {
     const clickAction = isUnlocked
       ? `openGalleryLightbox('${item.imageUrl}', '${escapedTitle}')`
       : `handleUnpaidChartClick()`;
+    const isSelected = state.selectedCharts && state.selectedCharts.has(item.id);
 
     return `
-      <div class="gallery-card">
+      <div class="gallery-card ${isSelected ? 'is-selected' : ''}" data-chart-id="${item.id}" data-chart-url="${item.imageUrl}" data-chart-title="${escapedTitle}">
+        <div class="chart-select-box ${isSelected ? 'selected' : ''}" onclick="toggleChartSelection(event, '${item.id}', '${item.imageUrl}', '${escapedTitle}')" title="Select chart for batch download">
+          <input type="checkbox" class="chart-checkbox" id="chk-chart-${item.id}" ${isSelected ? 'checked' : ''} style="display: none;" />
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#060b14" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
         <div class="gallery-thumb-wrap ${isUnlocked ? '' : 'locked'}" onclick="${clickAction}" title="${isUnlocked ? 'Click to view full screen' : '🔒 Locked Chart - Click to Unlock'}" style="cursor: pointer;">
           <img src="${item.imageUrl}" alt="${item.title}" loading="lazy" decoding="async" />
           ${!isUnlocked ? `
@@ -3461,6 +3476,62 @@ window.removePaymentScreenshot = removePaymentScreenshot;
 window.submitPaymentVerification = submitPaymentVerification;
 
 // ==================== CHART IMAGE DOWNLOAD (CHARTS ONLY) ====================
+// Ultra-HD Canvas Converter: Renders SVGs to crisp 2400px+ PNGs for Phone Gallery compatibility
+async function convertSvgToPngBlob(svgUrl, scale = 2) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const res = await fetch(svgUrl);
+      if (!res.ok) throw new Error('Fetch failed: ' + res.status);
+      const svgText = await res.text();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(svgText, 'image/svg+xml');
+      const svgEl = doc.querySelector('svg');
+
+      let width = parseFloat(svgEl?.getAttribute('width') || '1200');
+      let height = parseFloat(svgEl?.getAttribute('height') || '700');
+      if (isNaN(width) || width <= 0) width = 1200;
+      if (isNaN(height) || height <= 0) height = 700;
+
+      const targetWidth = Math.max(width * scale, 2400);
+      const targetHeight = Math.round((height / width) * targetWidth);
+
+      const img = new Image();
+      const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+      const blobUrl = URL.createObjectURL(svgBlob);
+
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = targetWidth;
+          canvas.height = targetHeight;
+          const ctx = canvas.getContext('2d');
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.fillStyle = '#0a0e17';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+          URL.revokeObjectURL(blobUrl);
+
+          canvas.toBlob(pngBlob => {
+            if (pngBlob) resolve(pngBlob);
+            else reject(new Error('Canvas export failed'));
+          }, 'image/png');
+        } catch (canvasErr) {
+          URL.revokeObjectURL(blobUrl);
+          reject(canvasErr);
+        }
+      };
+      img.onerror = (e) => {
+        URL.revokeObjectURL(blobUrl);
+        reject(e);
+      };
+      img.src = blobUrl;
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
 async function downloadChartImage(url, title) {
   if (!url) return;
   const isUnlocked = Boolean(state.currentUser?.hasPaid || state.currentUser?.role === 'admin');
@@ -3469,23 +3540,30 @@ async function downloadChartImage(url, title) {
     return;
   }
 
+  const safeTitle = (title || 'TradingHub_Chart')
+    .replace(/[^a-zA-Z0-9_-]/g, '_')
+    .replace(/_+/g, '_');
+  const filename = `TeluguTradingHub_${safeTitle}.png`;
+
   try {
-    showToast('Downloading high-resolution chart image...', 'info');
+    showToast('⏳ Downloading high-resolution chart to your Gallery...', 'info');
 
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('Failed to fetch image file');
-    const blob = await res.blob();
-    const blobUrl = URL.createObjectURL(blob);
-
-    const safeTitle = (title || 'TradingHub_Chart')
-      .replace(/[^a-zA-Z0-9_-]/g, '_')
-      .replace(/_+/g, '_');
-
+    let blob;
     const isSvg = url.toLowerCase().includes('.svg');
-    const isPng = url.toLowerCase().includes('.png');
-    const ext = isSvg ? 'svg' : (isPng ? 'png' : 'jpg');
-    const filename = `${safeTitle}.${ext}`;
+    if (isSvg) {
+      blob = await convertSvgToPngBlob(url).catch(() => null);
+    }
 
+    if (!blob) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Direct fetch failed');
+      blob = await res.blob();
+      if (!blob.type.includes('png') && !blob.type.includes('jpeg')) {
+        blob = new Blob([blob], { type: 'image/png' });
+      }
+    }
+
+    const blobUrl = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = blobUrl;
     link.download = filename;
@@ -3493,17 +3571,18 @@ async function downloadChartImage(url, title) {
     link.click();
     document.body.removeChild(link);
 
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 1500);
-    showToast(`✅ Chart "${title || 'Setup'}" downloaded to device!`, 'success');
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 2000);
+    showToast(`✅ Chart saved to your Phone Gallery / Downloads!`, 'success');
   } catch (err) {
-    console.warn('Direct blob download failed, attempting direct link download:', err.message);
+    console.warn('Direct blob download failed, utilizing server attachment fallback:', err.message);
+    const serverUrl = `/api/charts/download-attachment?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title || 'Chart')}`;
     const link = document.createElement('a');
-    link.href = url;
-    link.download = `${(title || 'Trading_Chart').replace(/\s+/g, '_')}.png`;
-    link.target = '_blank';
+    link.href = serverUrl;
+    link.download = filename;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    showToast('✅ Chart download initiated! Check your Phone Gallery / Downloads.', 'success');
   }
 }
 
@@ -4333,3 +4412,258 @@ window.loadAdminPaymentAttempts = loadAdminPaymentAttempts;
 window.filterAdminDropoffs = filterAdminDropoffs;
 window.adminDeleteDropoff = adminDeleteDropoff;
 window.trackPaymentAttempt = trackPaymentAttempt;
+
+
+// ==================== SUPPORT EMAIL DIRECT GMAIL APP REDIRECT (v22) ====================
+function redirectToGmailSupport(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  const email = 'tradinghath@gmail.com';
+  const subject = encodeURIComponent('Telugu Trading Hub - Support / Query');
+  const body = encodeURIComponent('Hello Telugu Trading Hub Support Team,\n\nI have a query regarding:\n\n[Write your query here]\n\nMy Registered Email: ' + (state.currentUser?.email || 'Not logged in') + '\nDevice: ' + navigator.userAgent);
+
+  const gmailWebCompose = `https://mail.google.com/mail/?view=cm&fs=1&to=${email}&su=${subject}&body=${body}`;
+  const mailtoFallback = `mailto:${email}?subject=${subject}&body=${body}`;
+
+  const isMobile = /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+  if (isMobile) {
+    if (/android/i.test(navigator.userAgent)) {
+      window.location.href = `intent://co?to=${email}&subject=${subject}&body=${body}#Intent;scheme=googlegmail;package=com.google.android.gm;end`;
+      setTimeout(() => {
+        window.open(gmailWebCompose, '_blank') || (window.location.href = mailtoFallback);
+      }, 600);
+    } else {
+      window.location.href = `googlegmail:///co?to=${email}&subject=${subject}&body=${body}`;
+      setTimeout(() => {
+        window.open(gmailWebCompose, '_blank') || (window.location.href = mailtoFallback);
+      }, 600);
+    }
+  } else {
+    const win = window.open(gmailWebCompose, '_blank');
+    if (!win) window.location.href = mailtoFallback;
+  }
+}
+window.redirectToGmailSupport = redirectToGmailSupport;
+
+// ==================== MULTI-SELECT BATCH CHART DOWNLOAD (v22) ====================
+state.selectedCharts = new Map();
+
+function toggleChartSelection(e, id, url, title) {
+  if (e) {
+    e.stopPropagation();
+  }
+
+  const isSelected = state.selectedCharts.has(id);
+  const card = document.querySelector(`[data-chart-id="${id}"]`);
+
+  if (!isSelected) {
+    state.selectedCharts.set(id, { id, url, title: title || 'Chart Setup' });
+    if (card) {
+      card.classList.add('is-selected');
+      const box = card.querySelector('.chart-select-box');
+      if (box) box.classList.add('selected');
+      const chk = card.querySelector('.chart-checkbox');
+      if (chk) chk.checked = true;
+    }
+  } else {
+    state.selectedCharts.delete(id);
+    if (card) {
+      card.classList.remove('is-selected');
+      const box = card.querySelector('.chart-select-box');
+      if (box) box.classList.remove('selected');
+      const chk = card.querySelector('.chart-checkbox');
+      if (chk) chk.checked = false;
+    }
+  }
+
+  updateBatchToolbar();
+}
+window.toggleChartSelection = toggleChartSelection;
+
+function updateBatchToolbar() {
+  const toolbar = document.getElementById('batch-download-toolbar');
+  if (!toolbar) return;
+
+  const count = state.selectedCharts.size;
+  if (count > 0) {
+    toolbar.classList.add('active');
+    const badge = document.getElementById('batch-selected-count');
+    if (badge) badge.textContent = `${count} Chart${count > 1 ? 's' : ''} Selected`;
+    const btn = document.getElementById('batch-download-action-btn');
+    if (btn) btn.innerHTML = `📥 Download ${count} Selected Chart${count > 1 ? 's' : ''} (HD PNG)`;
+  } else {
+    toolbar.classList.remove('active');
+  }
+}
+window.updateBatchToolbar = updateBatchToolbar;
+
+function selectAllCharts(selectAll = true) {
+  const isUnlocked = Boolean(state.currentUser?.hasPaid || state.currentUser?.role === 'admin');
+  if (!isUnlocked && selectAll) {
+    handleUnpaidChartClick();
+    return;
+  }
+
+  const allCards = document.querySelectorAll('.chart-card, .gallery-card');
+  if (!selectAll) {
+    state.selectedCharts.clear();
+    allCards.forEach(card => {
+      card.classList.remove('is-selected');
+      const box = card.querySelector('.chart-select-box');
+      if (box) box.classList.remove('selected');
+      const chk = card.querySelector('.chart-checkbox');
+      if (chk) chk.checked = false;
+    });
+    updateBatchToolbar();
+    return;
+  }
+
+  allCards.forEach(card => {
+    const id = card.dataset.chartId;
+    const url = card.dataset.chartUrl;
+    const title = card.dataset.chartTitle || 'Chart Setup';
+    if (id && url) {
+      state.selectedCharts.set(id, { id, url, title });
+      card.classList.add('is-selected');
+      const box = card.querySelector('.chart-select-box');
+      if (box) box.classList.add('selected');
+      const chk = card.querySelector('.chart-checkbox');
+      if (chk) chk.checked = true;
+    }
+  });
+
+  updateBatchToolbar();
+  showToast(`✅ Selected all ${state.selectedCharts.size} charts!`, 'info');
+}
+window.selectAllCharts = selectAllCharts;
+
+async function downloadSelectedCharts() {
+  const isUnlocked = Boolean(state.currentUser?.hasPaid || state.currentUser?.role === 'admin');
+  if (!isUnlocked) {
+    handleUnpaidChartClick();
+    return;
+  }
+
+  const items = Array.from(state.selectedCharts.values());
+  if (items.length === 0) {
+    showToast('Please select at least 1 chart to download.', 'error');
+    return;
+  }
+
+  const total = items.length;
+  showToast(`⏳ Starting batch download of ${total} chart${total > 1 ? 's' : ''}...`, 'info');
+
+  for (let i = 0; i < total; i++) {
+    const item = items[i];
+    showToast(`📥 Saving chart ${i + 1} of ${total}: "${item.title}" to gallery...`, 'info');
+    try {
+      await downloadChartImage(item.url, item.title);
+    } catch (_) {}
+    if (i < total - 1) {
+      await new Promise(r => setTimeout(r, 450));
+    }
+  }
+
+  showToast(`🎉 Successfully saved all ${total} chart${total > 1 ? 's' : ''} to your device gallery!`, 'success');
+  selectAllCharts(false);
+}
+window.downloadSelectedCharts = downloadSelectedCharts;
+
+// ==================== SHARE PAYMENT LINK (PAY FROM OTHER DEVICE) ====================
+function openSharePaymentModal() {
+  const modal = document.getElementById('share-payment-modal');
+  if (!modal) return;
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+window.openSharePaymentModal = openSharePaymentModal;
+
+function closeSharePaymentModal() {
+  const modal = document.getElementById('share-payment-modal');
+  if (modal) modal.classList.remove('active');
+  const otherActive = document.querySelector('.modal-overlay.active');
+  if (!otherActive) document.body.style.overflow = '';
+}
+window.closeSharePaymentModal = closeSharePaymentModal;
+
+function copyPaymentLink() {
+  const url = 'https://rzp.io/rzp/2a3h6cU';
+  navigator.clipboard.writeText(url).then(() => {
+    showToast('📋 ₹399 Payment link copied to clipboard! Send to WhatsApp or pay from another phone.', 'success');
+  }).catch(() => {
+    prompt('Copy this payment link to pay from another device:', url);
+  });
+}
+window.copyPaymentLink = copyPaymentLink;
+
+function sharePaymentViaWhatsApp() {
+  const url = 'https://rzp.io/rzp/2a3h6cU';
+  const text = encodeURIComponent('Pay ₹399 to unlock Lifetime PRO Membership on Telugu Trading Hub (24 Hand-Drawn Daily Setups + Video Library):\n' + url);
+  window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+}
+window.sharePaymentViaWhatsApp = sharePaymentViaWhatsApp;
+
+// ==================== HIGH-VISIBILITY WEBSITE SOCIAL SHARING (v22) ====================
+function openWebsiteShareModal() {
+  const modal = document.getElementById('share-website-modal');
+  if (!modal) return;
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+window.openWebsiteShareModal = openWebsiteShareModal;
+
+function closeWebsiteShareModal() {
+  const modal = document.getElementById('share-website-modal');
+  if (modal) modal.classList.remove('active');
+  const otherActive = document.querySelector('.modal-overlay.active');
+  if (!otherActive) document.body.style.overflow = '';
+}
+window.closeWebsiteShareModal = closeWebsiteShareModal;
+
+function copyWebsiteShareLink() {
+  const shareUrl = window.location.origin;
+  navigator.clipboard.writeText(shareUrl).then(() => {
+    showToast('📋 Website link copied to clipboard! Share with your trader friends.', 'success');
+  }).catch(() => {
+    prompt('Copy website link:', shareUrl);
+  });
+}
+window.copyWebsiteShareLink = copyWebsiteShareLink;
+
+function shareToSocial(platform) {
+  const shareUrl = encodeURIComponent(window.location.origin);
+  const shareText = encodeURIComponent('🚀 Learn Institutional Price Action Trading with 24 Hand-Drawn Daily Setups on Telugu Trading Hub! Check it out:');
+
+  switch (platform) {
+    case 'whatsapp':
+      window.open(`https://api.whatsapp.com/send?text=${shareText}%20${shareUrl}`, '_blank');
+      break;
+    case 'telegram':
+      window.open(`https://t.me/share/url?url=${shareUrl}&text=${shareText}`, '_blank');
+      break;
+    case 'instagram':
+      copyWebsiteShareLink();
+      showToast('📸 Website link copied! Open Instagram and paste in your DM or Bio.', 'info');
+      break;
+    case 'twitter':
+      window.open(`https://twitter.com/intent/tweet?text=${shareText}&url=${shareUrl}&hashtags=Trading,PriceAction,TeluguTrading`, '_blank');
+      break;
+    case 'facebook':
+      window.open(`https://www.facebook.com/sharer/sharer.php?u=${shareUrl}`, '_blank');
+      break;
+    case 'linkedin':
+      window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${shareUrl}`, '_blank');
+      break;
+    case 'native':
+      if (navigator.share) {
+        navigator.share({
+          title: 'Telugu Trading Hub - Institutional Price Action',
+          text: 'Learn Institutional Price Action Trading with 24 Hand-Drawn Daily Setups on Telugu Trading Hub!',
+          url: window.location.origin
+        }).catch(() => {});
+      } else {
+        copyWebsiteShareLink();
+      }
+      break;
+  }
+}
+window.shareToSocial = shareToSocial;

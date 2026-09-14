@@ -4198,3 +4198,289 @@ body.admin-home-blurred > *:not(#admin-pin-modal):not(#toast-container) {
     height: 14px !important;
   }
 }
+
+
+/* ==================== V22 ENHANCEMENTS: SHARING & BATCH DOWNLOAD ==================== */
+
+/* Info Toast Green Theme (Replacing Red Circle) */
+.toast.info {
+  border-left: 4px solid var(--accent-green) !important;
+  background: rgba(10, 20, 30, 0.96) !important;
+  border-color: rgba(0, 242, 152, 0.3) !important;
+  box-shadow: 0 4px 20px rgba(0, 242, 152, 0.15) !important;
+}
+.toast.info svg {
+  stroke: var(--accent-green) !important;
+}
+
+/* Eye-Catching Navbar Share Button */
+.nav-share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0, 242, 152, 0.08);
+  border: 1px solid rgba(0, 242, 152, 0.35);
+  color: #00f298;
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+.nav-share-btn:hover {
+  background: rgba(0, 242, 152, 0.18);
+  border-color: #00f298;
+  transform: translateY(-1px);
+  box-shadow: 0 0 14px rgba(0, 242, 152, 0.35);
+  color: #fff;
+}
+.share-pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #00f298;
+  box-shadow: 0 0 8px #00f298;
+  animation: sharePulse 1.8s infinite;
+  display: inline-block;
+}
+@keyframes sharePulse {
+  0% { transform: scale(0.9); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.6; }
+  100% { transform: scale(0.9); opacity: 1; }
+}
+
+/* Floating Corner Share Pill */
+.floating-share-trigger {
+  position: fixed;
+  bottom: 24px;
+  right: 20px;
+  z-index: 999;
+  background: linear-gradient(135deg, rgba(14, 23, 42, 0.95), rgba(10, 30, 48, 0.95));
+  border: 1.5px solid rgba(0, 242, 152, 0.45);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 0.84rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 242, 152, 0.22);
+  transition: all 0.25s ease;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.floating-share-trigger:hover {
+  transform: translateY(-2px) scale(1.04);
+  border-color: #00f298;
+  box-shadow: 0 12px 30px rgba(0, 242, 152, 0.35);
+  color: #00f298;
+}
+
+/* Social Media Share Grid & Buttons */
+.social-share-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+  margin: 18px 0;
+}
+.social-share-btn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 11px 14px;
+  border-radius: var(--radius-md);
+  font-size: 0.86rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+  justify-content: center;
+}
+.social-share-btn.btn-wa {
+  background: rgba(37, 211, 102, 0.12);
+  color: #25D366;
+  border-color: rgba(37, 211, 102, 0.3);
+}
+.social-share-btn.btn-wa:hover {
+  background: #25D366;
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(37, 211, 102, 0.35);
+}
+.social-share-btn.btn-tg {
+  background: rgba(0, 136, 204, 0.12);
+  color: #0088cc;
+  border-color: rgba(0, 136, 204, 0.3);
+}
+.social-share-btn.btn-tg:hover {
+  background: #0088cc;
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(0, 136, 204, 0.35);
+}
+.social-share-btn.btn-ig {
+  background: rgba(225, 48, 108, 0.12);
+  color: #e1306c;
+  border-color: rgba(225, 48, 108, 0.3);
+}
+.social-share-btn.btn-ig:hover {
+  background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(225, 48, 108, 0.35);
+}
+.social-share-btn.btn-x {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.social-share-btn.btn-x:hover {
+  background: #ffffff;
+  color: #000;
+  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.25);
+}
+.social-share-btn.btn-fb {
+  background: rgba(24, 119, 242, 0.12);
+  color: #1877f2;
+  border-color: rgba(24, 119, 242, 0.3);
+}
+.social-share-btn.btn-fb:hover {
+  background: #1877f2;
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(24, 119, 242, 0.35);
+}
+.social-share-btn.btn-in {
+  background: rgba(10, 102, 194, 0.12);
+  color: #0a66c2;
+  border-color: rgba(10, 102, 194, 0.3);
+}
+.social-share-btn.btn-in:hover {
+  background: #0a66c2;
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(10, 102, 194, 0.35);
+}
+.social-share-btn.btn-native {
+  background: rgba(0, 242, 152, 0.12);
+  color: #00f298;
+  border-color: rgba(0, 242, 152, 0.3);
+}
+.social-share-btn.btn-native:hover {
+  background: #00f298;
+  color: #060b14;
+  box-shadow: 0 4px 16px rgba(0, 242, 152, 0.35);
+}
+
+/* Multi-Select Chart Card Checkbox */
+.chart-select-box {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 25;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: rgba(6, 11, 20, 0.8);
+  backdrop-filter: blur(8px);
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+.chart-select-box:hover {
+  border-color: var(--accent-green);
+  background: rgba(0, 242, 152, 0.2);
+  transform: scale(1.08);
+}
+.chart-select-box.selected {
+  background: var(--accent-green);
+  border-color: var(--accent-green);
+  box-shadow: 0 0 10px rgba(0, 242, 152, 0.6);
+}
+.chart-select-box svg {
+  display: none;
+  stroke: #060b14;
+}
+.chart-select-box.selected svg {
+  display: block;
+}
+.chart-card.is-selected,
+.gallery-card.is-selected {
+  border-color: var(--accent-green) !important;
+  box-shadow: 0 0 18px rgba(0, 242, 152, 0.28) !important;
+}
+
+/* Multi-Select Batch Download Floating Toolbar */
+.batch-download-toolbar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(140%);
+  z-index: 9998;
+  background: rgba(11, 18, 32, 0.96);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1.5px solid rgba(0, 242, 152, 0.45);
+  border-radius: 50px;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.7), 0 0 25px rgba(0, 242, 152, 0.25);
+  transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+  max-width: 95vw;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.batch-download-toolbar.active {
+  transform: translateX(-50%) translateY(0);
+}
+.batch-count-badge {
+  background: rgba(0, 242, 152, 0.15);
+  border: 1px solid rgba(0, 242, 152, 0.35);
+  color: #00f298;
+  font-weight: 800;
+  font-size: 0.85rem;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.batch-btn-download {
+  background: linear-gradient(135deg, #00f298, #00d2ff);
+  color: #060b14;
+  font-weight: 800;
+  border: none;
+  padding: 8px 18px;
+  border-radius: var(--radius-full);
+  font-size: 0.88rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: all 0.2s ease;
+}
+.batch-btn-download:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 18px rgba(0, 242, 152, 0.45);
+}
+.batch-btn-link {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: color 0.2s ease;
+}
+.batch-btn-link:hover {
+  color: #fff;
+}
