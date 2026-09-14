@@ -300,101 +300,10 @@ function checkAdminUrlParam() {
 function initIntroVideo() {
   const overlay = document.getElementById('intro-overlay');
   const video = document.getElementById('intro-video-element');
-  const skipBtn = document.getElementById('intro-skip-btn');
-  const muteBtn = document.getElementById('intro-mute-btn');
-  const progressBar = document.getElementById('intro-progress-line');
-
-  if (!overlay || !video) return;
-
-  const introSeen = sessionStorage.getItem('tradinghub_intro_seen');
-  if (introSeen) {
+  if (video) video.pause();
+  if (overlay) {
     overlay.classList.add('hidden');
-    return;
-  }
-
-  // Gracefully dismiss if video errors or stalls
-  video.addEventListener('error', () => {
-    console.warn('Intro video error, dismissing overlay.');
-    closeIntroVideo();
-  });
-
-  // Tap anywhere on overlay background to enter website immediately
-  overlay.addEventListener('click', (e) => {
-    if (!e.target.closest('#intro-mute-btn')) {
-      closeIntroVideo();
-    }
-  });
-
-  // Set video source
-  const introSrc = state.siteConfig?.introVideo || '/intro-video';
-  video.src = introSrc;
-
-  // Browser Autoplay handling (requires muted initially)
-  video.muted = true;
-  const playPromise = video.play();
-
-  if (playPromise !== undefined) {
-    playPromise.then(() => {
-      if (muteBtn) {
-        muteBtn.innerHTML = `
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
-          <span>Tap for Sound</span>
-        `;
-      }
-    }).catch(err => {
-      console.log('Autoplay waiting for user gesture:', err.message);
-      if (muteBtn) {
-        muteBtn.innerHTML = `
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          <span>Play Intro</span>
-        `;
-      }
-    });
-  }
-
-  // Mobile safety fallback: if paused or buffering, keep skip button pulsing
-  setTimeout(() => {
-    if (video.paused && !sessionStorage.getItem('tradinghub_intro_seen')) {
-      const skipPrompt = document.getElementById('intro-skip-btn');
-      if (skipPrompt) skipPrompt.style.boxShadow = '0 0 15px rgba(0, 242, 152, 0.7)';
-    }
-  }, 2500);
-
-  video.addEventListener('timeupdate', () => {
-    if (video.duration && progressBar) {
-      const pct = (video.currentTime / video.duration) * 100;
-      progressBar.style.width = `${pct}%`;
-    }
-  });
-
-  video.addEventListener('ended', () => {
-    closeIntroVideo();
-  });
-
-  if (skipBtn) {
-    skipBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      closeIntroVideo();
-    });
-  }
-
-  if (muteBtn) {
-    muteBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (video.paused) {
-        video.play();
-        video.muted = false;
-        muteBtn.innerHTML = `
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-          <span>Mute Audio</span>
-        `;
-      } else {
-        video.muted = !video.muted;
-        muteBtn.innerHTML = video.muted
-          ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg><span>Unmute Audio</span>`
-          : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg><span>Mute Audio</span>`;
-      }
-    });
+    overlay.style.display = 'none';
   }
 }
 
@@ -402,7 +311,10 @@ function closeIntroVideo() {
   const overlay = document.getElementById('intro-overlay');
   const video = document.getElementById('intro-video-element');
   if (video) video.pause();
-  if (overlay) overlay.classList.add('hidden');
+  if (overlay) {
+    overlay.classList.add('hidden');
+    overlay.style.display = 'none';
+  }
   sessionStorage.setItem('tradinghub_intro_seen', 'true');
 }
 
