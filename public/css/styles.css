@@ -3218,7 +3218,7 @@ body:not(.dedicated-view) #gallery-grid-container:not(.expanded) > .gallery-card
   border: 1px solid rgba(255, 255, 255, 0.4) !important;
   box-shadow: 0 2px 10px rgba(255, 215, 0, 0.3) !important;
   font-weight: 800 !important;
-  display: inline-flex !important;
+  display: inline-flex;
   align-items: center !important;
   gap: 5px !important;
   cursor: pointer;
@@ -5495,5 +5495,177 @@ body.batch-mode-active .floating-share-trigger {
     padding: 4px 6px !important;
     white-space: nowrap !important;
     flex-shrink: 0 !important;
+  }
+}
+
+
+/* ==================== V31: ADMIN TOP BAR SIDE-SCROLL ON MOBILE ==================== */
+/* 1. Strict removal of pricing badge for Admin and verified PRO members */
+html.is-admin .nav-pricing-btn,
+body.is-admin .nav-pricing-btn,
+html.is-pro-member .nav-pricing-btn,
+body.is-pro-member .nav-pricing-btn,
+.is-admin-nav .nav-pricing-btn {
+  display: none !important;
+}
+
+/* 2. Responsive Side-Scroll for Admin Navbar Action Cluster */
+@media (max-width: 768px) {
+  /* Prevent horizontal window blowout */
+  .nav-container {
+    overflow: hidden !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Keep brand logo crisp & fixed on the left */
+  .brand-group {
+    flex-shrink: 0 !important;
+    min-width: 0 !important;
+  }
+
+  /* Admin Navbar Action Cluster: Native smooth horizontal side-scrolling */
+  html.is-admin .nav-actions,
+  body.is-admin .nav-actions,
+  .nav-actions.is-admin-nav {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    max-width: calc(100vw - 110px) !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    white-space: nowrap !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-x !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+    padding: 3px 6px 3px 0 !important;
+    scroll-behavior: smooth !important;
+  }
+
+  html.is-admin .nav-actions::-webkit-scrollbar,
+  body.is-admin .nav-actions::-webkit-scrollbar,
+  .nav-actions.is-admin-nav::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  /* Admin User/Auth Cluster items in single non-wrapping row */
+  html.is-admin .nav-auth-group,
+  body.is-admin .nav-auth-group,
+  html.is-admin .nav-user-cluster,
+  body.is-admin .nav-user-cluster,
+  .admin-nav-cluster {
+    display: inline-flex !important;
+    align-items: center !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  /* Prevent individual action elements from shrinking */
+  html.is-admin .nav-actions > *,
+  body.is-admin .nav-actions > *,
+  .is-admin-nav > *,
+  .admin-nav-cluster > *,
+  .nav-profile-pill,
+  .nav-admin-btn,
+  .nav-signout-btn,
+  .nav-share-btn {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  /* Admin CMS Button styled for crisp tap in side-scroll bar */
+  html.is-admin .nav-admin-btn,
+  body.is-admin .nav-admin-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    padding: 5px 10px !important;
+    font-size: 0.76rem !important;
+    font-weight: 800 !important;
+    background: linear-gradient(135deg, #00d084, #009e60) !important;
+    color: #ffffff !important;
+    border-radius: var(--radius-full) !important;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    box-shadow: 0 2px 8px rgba(0, 208, 132, 0.3) !important;
+    cursor: pointer !important;
+  }
+
+  html.is-admin .nav-admin-btn .nav-btn-text,
+  body.is-admin .nav-admin-btn .nav-btn-text {
+    display: inline !important;
+  }
+
+  /* Sign Out Button in admin side-scroll bar */
+  html.is-admin .nav-signout-btn,
+  body.is-admin .nav-signout-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    padding: 5px 9px !important;
+    font-size: 0.74rem !important;
+    border-radius: var(--radius-full) !important;
+    cursor: pointer !important;
+  }
+
+  html.is-admin .nav-signout-btn .nav-btn-text,
+  body.is-admin .nav-signout-btn .nav-btn-text {
+    display: inline !important;
+  }
+
+  /* Admin Control Center Modal Tabs: Side-Scroll */
+  .admin-tabs-nav {
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    padding-bottom: 6px !important;
+  }
+
+  .admin-tabs-nav::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .admin-tab-btn {
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+  }
+
+  /* Admin KPI Bar: Horizontal swipeable on phones */
+  .admin-kpi-bar {
+    display: flex !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    flex-wrap: nowrap !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    padding-bottom: 6px !important;
+    gap: 8px !important;
+  }
+
+  .admin-kpi-bar::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  .admin-kpi-card {
+    flex-shrink: 0 !important;
+    min-width: 140px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  html.is-admin .nav-actions,
+  body.is-admin .nav-actions,
+  .nav-actions.is-admin-nav {
+    max-width: calc(100vw - 95px) !important;
+    flex-shrink: 1 !important;
   }
 }

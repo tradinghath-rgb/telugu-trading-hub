@@ -137,6 +137,8 @@ function initAuthState() {
       const parsed = JSON.parse(raw);
       // Only keep admin session if active in current browser session
       if (parsed.role === 'admin') {
+        document.documentElement.classList.add('is-admin');
+        document.body.classList.add('is-admin');
         const sessionAuth = sessionStorage.getItem('tradinghub_user');
         if (!sessionAuth) {
           localStorage.removeItem('tradinghub_user');
@@ -388,17 +390,28 @@ function renderNavbar() {
   if (!authNavGroup) return;
 
   const user = state.currentUser;
+  const isAdmin = Boolean(user && user.role === 'admin');
+  const isMember = Boolean(user && (user.hasPaid || isAdmin));
+
+  // Dynamically set admin/pro classes on html, body, and nav-actions
+  document.documentElement.classList.toggle('is-admin', isAdmin);
+  document.documentElement.classList.toggle('is-pro-member', isMember);
+  document.body.classList.toggle('is-admin', isAdmin);
+  document.body.classList.toggle('is-pro-member', isMember);
+
+  const navActions = document.querySelector('.nav-actions');
+  if (navActions) {
+    navActions.classList.toggle('is-admin-nav', isAdmin);
+  }
+
+  // Strictly hide pricing CTA in navbar for verified PRO members & Admin
+  const pricingBtns = document.querySelectorAll('.nav-pricing-btn, .nav-pricing-cta');
+  pricingBtns.forEach(btn => {
+    btn.style.setProperty('display', isMember ? 'none' : 'inline-flex', 'important');
+  });
 
   if (user) {
-    const isAdmin = user.role === 'admin';
-    const isMember = user.hasPaid || isAdmin;
     const shortName = (user.name || user.email.split('@')[0]).split(' ')[0];
-
-    // Hide pricing CTA in navbar for verified PRO members & Admin
-    const pricingBtns = document.querySelectorAll('.nav-pricing-btn, .nav-pricing-cta');
-    pricingBtns.forEach(btn => {
-      btn.style.display = isMember ? 'none' : 'inline-flex';
-    });
 
     // Hide hero login bar if already logged in
     const heroLoginBar = document.querySelector('.hero-member-login-bar');
@@ -407,8 +420,8 @@ function renderNavbar() {
     }
 
     authNavGroup.innerHTML = `
-      <div class="nav-user-cluster">
-        <div class="nav-profile-pill" onclick="openUserProfileModal()" title="View Profile & Provided Features">
+      <div class="nav-user-cluster ${isAdmin ? 'admin-nav-cluster' : ''}">
+        <div class="nav-profile-pill ${isAdmin ? 'admin-profile-pill' : ''}" onclick="openUserProfileModal()" title="View Profile & Provided Features">
           <svg class="nav-profile-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           <strong class="nav-user-name">${isAdmin ? 'Owner' : shortName}</strong>
           ${isAdmin ? '<span class="admin-badge-indicator nav-badge-micro">OWNER</span>' : (isMember ? '<span class="pricing-lifetime-pill nav-badge-micro">PRO</span>' : '')}
@@ -1778,6 +1791,12 @@ async function handleAuthSubmit(e) {
 }
 
 function handleLogout() {
+  document.documentElement.classList.remove('is-admin');
+  document.documentElement.classList.remove('is-pro-member');
+  document.body.classList.remove('is-admin');
+  document.body.classList.remove('is-pro-member');
+  const navActions = document.querySelector('.nav-actions');
+  if (navActions) navActions.classList.remove('is-admin-nav');
   sessionStorage.removeItem('tradinghub_admin_pin_verified');
   sessionStorage.removeItem('tradinghub_session_token');
   saveAuthState(null);
