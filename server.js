@@ -985,8 +985,18 @@ app.post('/api/auth/login', async (req, res) => {
     // Generate fresh session token for this device (supersedes any other device)
     const sessionToken = crypto.randomBytes(16).toString('hex');
 
-    // Exclusive Owner / Admin Check
+    // Exclusive Owner / Admin Check (Ultra Privacy: 6-digit PIN 200514 Enforced)
+    const ADMIN_PIN = process.env.ADMIN_PIN || '200514';
     if (cleanEmail === OWNER_EMAIL) {
+      const { pincode } = req.body;
+      if (!pincode || String(pincode).trim() !== ADMIN_PIN) {
+        console.log(`[AUTH] Admin login attempt for ${cleanEmail} rejected: Missing or invalid PIN code`);
+        return res.status(401).json({
+          error: '🔒 Ultra Privacy: 6-Digit Admin Security PIN (200514) required. Access Denied.',
+          requirePin: true
+        });
+      }
+
       let adminIndex = users.findIndex(u => u.email.toLowerCase() === OWNER_EMAIL && u.role === 'admin');
       if (adminIndex === -1) {
         await syncFromCloud('users.json');
@@ -997,7 +1007,7 @@ app.post('/api/auth/login', async (req, res) => {
         users[adminIndex].activeSessionToken = sessionToken;
         writeJson('users.json', users);
         const { password: _, ...userSafe } = users[adminIndex];
-        return res.json({ success: true, message: 'Owner authenticated successfully!', user: userSafe, sessionToken });
+        return res.json({ success: true, message: 'Owner authenticated successfully with Ultra Privacy PIN!', user: userSafe, sessionToken });
       }
       return res.status(401).json({ error: 'Invalid owner credentials' });
     }
@@ -1019,6 +1029,17 @@ app.post('/api/auth/login', async (req, res) => {
         return res.status(401).json({ error: 'Incorrect password. Use Forgot Password to reset it.' });
       }
       return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    // Ultra Privacy: If any account has admin role, enforce Admin PIN
+    if (users[userIndex].role === 'admin') {
+      const { pincode } = req.body;
+      if (!pincode || String(pincode).trim() !== ADMIN_PIN) {
+        return res.status(401).json({
+          error: '🔒 Ultra Privacy: 6-Digit Admin Security PIN (200514) required. Access Denied.',
+          requirePin: true
+        });
+      }
     }
 
     // Multi-device login: Allow multiple devices (phone, laptop, PC) at the same time
@@ -1213,6 +1234,20 @@ app.post('/api/auth/reset-password', (req, res) => {
       success: true,
       message: 'Password reset successful! You can now login with your new password.'
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Verify Admin Ultra Privacy PIN (200514)
+app.post('/api/admin/verify-pin', (req, res) => {
+  try {
+    const { pincode } = req.body;
+    const ADMIN_PIN = process.env.ADMIN_PIN || '200514';
+    if (!pincode || String(pincode).trim() !== ADMIN_PIN) {
+      return res.status(401).json({ success: false, error: '🔒 Invalid Admin Security PIN Code. Ultra Privacy enforced.' });
+    }
+    res.json({ success: true, message: 'Admin PIN verified successfully.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

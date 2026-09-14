@@ -22,6 +22,7 @@ window.quickLoginAsAdmin = function() {
 };
 
 // Global Application State
+const ADMIN_PIN = '200514';
 const state = {
   siteConfig: null,
   charts: [],
@@ -1354,7 +1355,7 @@ async function submitPaymentVerification() {
 
 // ==================== AUTH MODAL (SIGNUP / LOGIN) ====================
 function bindAuthEnterKey() {
-  ['auth-email-input', 'auth-password-input', 'auth-name-input'].forEach(id => {
+  ['auth-email-input', 'auth-password-input', 'auth-name-input', 'auth-admin-pin-input'].forEach(id => {
     const el = document.getElementById(id);
     if (el && !el._hasEnterListener) {
       el._hasEnterListener = true;
@@ -1374,10 +1375,15 @@ function openAuthModal(mode = 'login') {
 
   const emailInput = document.getElementById('auth-email-input');
   const passInput = document.getElementById('auth-password-input');
+  const pinInput = document.getElementById('auth-admin-pin-input');
+  const pinGroup = document.getElementById('auth-admin-pin-group');
   if (emailInput) emailInput.value = '';
   if (passInput) passInput.value = '';
+  if (pinInput) pinInput.value = '';
+  if (pinGroup) pinGroup.style.display = 'none';
 
   resetPasswordToggle('auth-password-input');
+  resetPasswordToggle('auth-admin-pin-input');
   setAuthModalMode(mode);
   modal.classList.add('active');
   bindAuthEnterKey();
@@ -1401,8 +1407,12 @@ function closeAuthModal() {
 
   const emailInput = document.getElementById('auth-email-input');
   const passInput = document.getElementById('auth-password-input');
+  const pinInput = document.getElementById('auth-admin-pin-input');
+  const pinGroup = document.getElementById('auth-admin-pin-group');
   if (emailInput) emailInput.value = '';
   if (passInput) passInput.value = '';
+  if (pinInput) pinInput.value = '';
+  if (pinGroup) pinGroup.style.display = 'none';
 }
 
 function setAuthModalMode(mode) {
@@ -1416,6 +1426,20 @@ function setAuthModalMode(mode) {
   const savedHint = document.getElementById('auth-saved-hint');
 
   resetPasswordToggle('auth-password-input');
+  resetPasswordToggle('auth-admin-pin-input');
+
+  const adminPinGroup = document.getElementById('auth-admin-pin-group');
+  const adminPinInput = document.getElementById('auth-admin-pin-input');
+  if (adminPinInput) adminPinInput.value = '';
+
+  if (adminPinGroup) {
+    const emailVal = document.getElementById('auth-email-input')?.value?.trim()?.toLowerCase();
+    if (mode === 'login' && emailVal === 'abhisheknaidus093@gmail.com') {
+      adminPinGroup.style.display = 'block';
+    } else {
+      adminPinGroup.style.display = 'none';
+    }
+  }
 
   if (mode === 'forgot') {
     title.textContent = 'Reset Your Password';
@@ -1530,8 +1554,32 @@ async function handleAuthSubmit(e) {
     return;
   }
 
+  // Ultra Privacy: Enforce 6-Digit Admin PIN for Owner account
+  const cleanEmail = email.toLowerCase();
+  const isAdminEmail = (cleanEmail === 'abhisheknaidus093@gmail.com');
+  const adminPinInput = document.getElementById('auth-admin-pin-input');
+  const pincode = adminPinInput?.value?.trim();
+
+  if (mode === 'login' && isAdminEmail) {
+    if (!pincode) {
+      const pinGroup = document.getElementById('auth-admin-pin-group');
+      if (pinGroup) pinGroup.style.display = 'block';
+      adminPinInput?.focus();
+      showToast('🔒 Ultra Privacy: 6-Digit Admin Security PIN (200514) required for Owner login.', 'error');
+      return;
+    }
+    if (pincode !== ADMIN_PIN) {
+      showToast('❌ Invalid Admin Security PIN Code. Ultra Privacy Access Denied.', 'error');
+      if (adminPinInput) {
+        adminPinInput.value = '';
+        adminPinInput.focus();
+      }
+      return;
+    }
+  }
+
   const endpoint = mode === 'register' ? '/api/auth/register' : '/api/auth/login';
-  const payload = mode === 'register' ? { email, password, name } : { email, password };
+  const payload = mode === 'register' ? { email, password, name } : { email, password, pincode };
 
   try {
     const res = await fetch(endpoint, {
@@ -1567,6 +1615,9 @@ async function handleAuthSubmit(e) {
         } else {
           localStorage.setItem('tradinghub_session_token', data.sessionToken);
         }
+      }
+      if (data.user.role === 'admin' || isAdminEmail) {
+        sessionStorage.setItem('tradinghub_admin_pin_verified', ADMIN_PIN);
       }
       saveAuthState(data.user);
 
@@ -1607,6 +1658,11 @@ async function handleAuthSubmit(e) {
         showToast('✅ Login Successful! Welcome back.', 'success');
       }
     } else {
+      if (data.requirePin) {
+        const pinGroup = document.getElementById('auth-admin-pin-group');
+        if (pinGroup) pinGroup.style.display = 'block';
+        adminPinInput?.focus();
+      }
       showToast(data.error || 'Authentication error', 'error');
     }
   } catch (err) {
@@ -1615,6 +1671,8 @@ async function handleAuthSubmit(e) {
 }
 
 function handleLogout() {
+  sessionStorage.removeItem('tradinghub_admin_pin_verified');
+  sessionStorage.removeItem('tradinghub_session_token');
   saveAuthState(null);
   showToast('Logged out successfully.', 'info');
 }
@@ -1964,11 +2022,71 @@ window.openResetPasswordModal = openResetPasswordModal;
 window.closeResetPasswordModal = closeResetPasswordModal;
 window.handleResetPasswordSubmit = handleResetPasswordSubmit;
 
+// ==================== ADMIN ULTRA PRIVACY PIN MODAL ====================
+function openAdminPinModal() {
+  const modal = document.getElementById('admin-pin-modal');
+  const input = document.getElementById('cms-security-pin-input');
+  if (input) input.value = '';
+  resetPasswordToggle('cms-security-pin-input');
+
+  if (modal) {
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => input?.focus(), 150);
+  }
+
+  if (input && !input._hasPinEnter) {
+    input._hasPinEnter = true;
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleAdminPinSubmit(e);
+      }
+    });
+  }
+}
+
+function closeAdminPinModal() {
+  const modal = document.getElementById('admin-pin-modal');
+  if (modal) modal.classList.remove('active');
+  const input = document.getElementById('cms-security-pin-input');
+  if (input) input.value = '';
+  const otherActive = document.querySelector('.modal-overlay.active');
+  if (!otherActive) {
+    document.body.style.overflow = '';
+  }
+}
+
+function handleAdminPinSubmit(event) {
+  if (event) event.preventDefault();
+  const input = document.getElementById('cms-security-pin-input');
+  const pin = input?.value?.trim();
+
+  if (pin === ADMIN_PIN) {
+    sessionStorage.setItem('tradinghub_admin_pin_verified', ADMIN_PIN);
+    closeAdminPinModal();
+    showToast('👑 Ultra Privacy Admin PIN Verified! Opening CMS...', 'success');
+    openAdminModal();
+  } else {
+    showToast('❌ Invalid Admin Security PIN Code. Ultra Privacy Access Denied.', 'error');
+    if (input) {
+      input.value = '';
+      input.focus();
+    }
+  }
+}
+
 // ==================== ADMIN PORTAL (UPLOAD, BULK DELETE, LIVE CMS) ====================
 function openAdminModal() {
   if (!state.currentUser || state.currentUser.role !== 'admin') {
-    openAuthModal('login');
-    showToast('Please login with your Admin credentials to enter.', 'info');
+    openDedicatedAdminLoginModal();
+    showToast('Please login with your Admin credentials and Security PIN to enter.', 'info');
+    return;
+  }
+
+  // ULTRA PRIVACY: Check if 6-digit PIN has been verified for this browser session
+  if (sessionStorage.getItem('tradinghub_admin_pin_verified') !== ADMIN_PIN) {
+    openAdminPinModal();
     return;
   }
 
@@ -2496,21 +2614,45 @@ function createToastContainer() {
 function openDedicatedAdminLoginModal() {
   const emailInput = document.getElementById('dedicated-admin-email');
   const passInput = document.getElementById('dedicated-admin-password');
+  const pinInput = document.getElementById('dedicated-admin-pin');
   if (emailInput) emailInput.value = '';
   if (passInput) passInput.value = '';
+  if (pinInput) pinInput.value = '';
+
+  resetPasswordToggle('dedicated-admin-password');
+  resetPasswordToggle('dedicated-admin-pin');
 
   const modal = document.getElementById('admin-login-modal');
   if (modal) {
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
+    setTimeout(() => {
+      if (emailInput) emailInput.focus();
+    }, 120);
   }
+
+  // Bind Enter key on all dedicated admin fields
+  ['dedicated-admin-email', 'dedicated-admin-password', 'dedicated-admin-pin'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el._hasAdminEnter) {
+      el._hasAdminEnter = true;
+      el.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleDedicatedAdminLoginSubmit(e);
+        }
+      });
+    }
+  });
 }
 
 function closeDedicatedAdminLoginModal() {
   const emailInput = document.getElementById('dedicated-admin-email');
   const passInput = document.getElementById('dedicated-admin-password');
+  const pinInput = document.getElementById('dedicated-admin-pin');
   if (emailInput) emailInput.value = '';
   if (passInput) passInput.value = '';
+  if (pinInput) pinInput.value = '';
 
   const modal = document.getElementById('admin-login-modal');
   if (modal) modal.classList.remove('active');
@@ -2526,25 +2668,42 @@ async function handleDedicatedAdminLoginSubmit(event) {
 
   const emailInput = document.getElementById('dedicated-admin-email');
   const passInput = document.getElementById('dedicated-admin-password');
+  const pinInput = document.getElementById('dedicated-admin-pin');
   const email = emailInput?.value?.trim();
   const password = passInput?.value;
+  const pincode = pinInput?.value?.trim();
 
   if (!email || !password) {
     showToast('Please enter both admin email and password.', 'error');
     return;
   }
 
+  if (!pincode) {
+    showToast('🔒 Please enter your 6-digit Admin Security PIN (Ultra Privacy).', 'error');
+    pinInput?.focus();
+    return;
+  }
+
+  if (pincode !== ADMIN_PIN) {
+    showToast('❌ Invalid Admin Security PIN Code. Ultra Privacy Access Denied.', 'error');
+    if (pinInput) {
+      pinInput.value = '';
+      pinInput.focus();
+    }
+    return;
+  }
+
   const btn = document.getElementById('dedicated-admin-submit-btn');
   if (btn) {
     btn.disabled = true;
-    btn.textContent = 'Verifying Credentials...';
+    btn.textContent = 'Verifying PIN & Credentials...';
   }
 
   try {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ email, password, pincode })
     });
     const data = await res.json();
 
@@ -2552,17 +2711,19 @@ async function handleDedicatedAdminLoginSubmit(event) {
       // Clear inputs from memory & DOM immediately
       if (emailInput) emailInput.value = '';
       if (passInput) passInput.value = '';
+      if (pinInput) pinInput.value = '';
 
       if (data.sessionToken) {
         data.user.sessionToken = data.sessionToken;
         sessionStorage.setItem('tradinghub_session_token', data.sessionToken);
       }
+      sessionStorage.setItem('tradinghub_admin_pin_verified', ADMIN_PIN);
       saveAuthState(data.user);
       closeDedicatedAdminLoginModal();
       renderApp();
 
       if (data.user.role === 'admin') {
-        showToast('👑 Admin Login Successful! Welcome Owner.', 'success');
+        showToast('👑 Admin Login Successful with Ultra Privacy PIN! Welcome Owner.', 'success');
         openAdminModal();
       } else {
         showToast('✅ Login Successful! Welcome back.', 'success');
@@ -2580,6 +2741,7 @@ async function handleDedicatedAdminLoginSubmit(event) {
     // Strict privacy: clean inputs again
     if (emailInput) emailInput.value = '';
     if (passInput) passInput.value = '';
+    if (pinInput) pinInput.value = '';
   }
 }
 
@@ -3704,6 +3866,9 @@ async function adminDeleteComment(commentId) {
 
 // ==================== GLOBAL WINDOW BINDINGS FOR ALL ONCLICK HANDLERS ====================
 window.openAdminModal = openAdminModal;
+window.openAdminPinModal = openAdminPinModal;
+window.closeAdminPinModal = closeAdminPinModal;
+window.handleAdminPinSubmit = handleAdminPinSubmit;
 window.closeAdminModal = closeAdminModal;
 window.switchAdminTab = switchAdminTab;
 window.openAddChartModal = openAddChartModal;
@@ -3899,6 +4064,18 @@ let _lastAutofilledAccount = '';
 function handleAuthEmailInput(val) {
   const q = (val || '').trim().toLowerCase();
   const passInput = document.getElementById('auth-password-input');
+  const adminPinGroup = document.getElementById('auth-admin-pin-group');
+  const submitBtn = document.getElementById('auth-submit-btn');
+  const mode = submitBtn?.dataset?.mode || 'login';
+
+  // Ultra Privacy: Toggle Admin Security PIN group if owner email is typed in login mode
+  if (adminPinGroup) {
+    if (mode === 'login' && q === 'abhisheknaidus093@gmail.com') {
+      adminPinGroup.style.display = 'block';
+    } else {
+      adminPinGroup.style.display = 'none';
+    }
+  }
 
   if (!q) {
     document.querySelectorAll('.saved-account-pill').forEach(pill => pill.classList.remove('selected'));
