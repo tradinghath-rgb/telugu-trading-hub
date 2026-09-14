@@ -1239,6 +1239,7 @@ window.openCheckoutAuthPromptModal = openCheckoutAuthPromptModal;
 window.closeCheckoutAuthPromptModal = closeCheckoutAuthPromptModal;
 window.relocateToAuthFromPrompt = relocateToAuthFromPrompt;
 window.proceedDirectlyToPaymentFromPrompt = proceedDirectlyToPaymentFromPrompt;
+window.proceedDirectlyToRazorpayFromPrompt = proceedDirectlyToPaymentFromPrompt;
 
 
 function openPaymentVerificationModal() {
