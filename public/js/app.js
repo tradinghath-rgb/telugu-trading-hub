@@ -288,6 +288,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // START REAL-TIME INSTANT SYNC (Immediate actions for Grant PRO, Revoke PRO, Chart/Video Renames, Delete, etc.)
   initRealtimeLiveSync();
+
+  // Restore Admin Control Center if page was refreshed while in admin panel
+  if (state.currentUser && state.currentUser.role === 'admin') {
+    const wasAdminOpen = safeSessionStorage.getItem('tradinghub_admin_modal_open') === 'true' ||
+                         safeStorage.getItem('tradinghub_admin_modal_open') === 'true' ||
+                         window.location.hash === '#admin';
+    if (wasAdminOpen) {
+      setTimeout(() => {
+        openAdminModal();
+      }, 250);
+    }
+  }
 });
 
 // ==================== BROWSER ACCOUNT VAULT (CROSS-DEPLOY PERMANENCE) ====================
@@ -2884,12 +2896,68 @@ function openAdminModal() {
 
   modal.classList.add('active');
   document.body.style.overflow = 'hidden';
+
+  // Persist admin modal state across page refresh (F5 / mobile pull-to-refresh)
+  safeSessionStorage.setItem('tradinghub_admin_modal_open', 'true');
+  safeStorage.setItem('tradinghub_admin_modal_open', 'true');
+  try {
+    if (window.location.hash !== '#admin') {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search + '#admin');
+    }
+  } catch (_) {}
 }
 
 function closeAdminModal() {
   const modal = document.getElementById('admin-modal');
   if (modal) modal.classList.remove('active');
+  document.body.style.overflow = '';
+
+  safeSessionStorage.removeItem('tradinghub_admin_modal_open');
+  safeStorage.removeItem('tradinghub_admin_modal_open');
+  try {
+    if (window.location.hash === '#admin') {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+  } catch (_) {}
 }
+
+// In-panel live refresh button handler: refreshes all live tables, stats, charts, and payments
+async function refreshAdminPanelData(event) {
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  const btn = document.getElementById('btn-admin-panel-refresh');
+  const icon = btn?.querySelector('.refresh-icon');
+  if (btn) btn.disabled = true;
+  if (icon) icon.classList.add('rotating');
+
+  showToast('🔄 Refreshing live admin data...', 'info', 1500);
+
+  try {
+    await Promise.allSettled([
+      loadAdminStats(),
+      loadAdminUsers(),
+      loadCharts(),
+      loadAdminPayments(),
+      loadAdminComments(),
+      typeof loadScheduledPosts === 'function' ? loadScheduledPosts() : Promise.resolve(),
+      typeof loadScheduledPostsCount === 'function' ? loadScheduledPostsCount() : Promise.resolve(),
+      loadAwsStatus()
+    ]);
+    renderAdminChartsTable();
+    showToast('✅ Admin Control Center data refreshed live!', 'success', 2500);
+  } catch (err) {
+    showToast('Admin data refreshed with latest server state', 'info', 2000);
+  } finally {
+    if (btn) btn.disabled = false;
+    if (icon) {
+      setTimeout(() => icon.classList.remove('rotating'), 500);
+    }
+  }
+}
+
+window.refreshAdminPanelData = refreshAdminPanelData;
 
 function switchAdminTab(tabName, btn) {
   document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
@@ -3033,50 +3101,84 @@ function renderAdminChartsTable() {
   setupVideosHeaderDropdownEvents();
 }
 
-// ==================== TABLE HEADER VIDEOS / CHARTS SEGMENTED SWITCHER ====================
-// "this switch videos charts and charts videos arrow also not working"
-function toggleVideosHeaderDropdown(event) {
+// ==================== TABLE HEADER SINGLE TEXT + ARROW MEDIA DROPDOWN ====================
+// "only single text will show and beside the small arrow will display then when i click on text videos or arrow the thr pop down text charts will come when i click charts then the charts display will appere like videos diosplay there same way for charts"
+function toggleThMediaDropdown(event) {
   if (event) {
     event.stopPropagation();
     event.preventDefault();
   }
-  // Toggle between videos and charts mode instantly
-  const newMode = (state.adminTableMediaView === 'charts') ? 'videos' : 'charts';
-  handleThMediaSelect(newMode, event);
+  const popdown = document.getElementById('th-media-popdown');
+  const arrow = document.getElementById('th-media-arrow');
+  if (!popdown) return;
+
+  const isVisible = (popdown.style.display === 'block');
+  if (isVisible) {
+    popdown.style.display = 'none';
+    if (arrow) arrow.classList.remove('open');
+  } else {
+    // Sync active item highlight
+    const currentMode = state.adminTableMediaView || 'videos';
+    const itemVid = document.getElementById('th-popdown-videos');
+    const itemChart = document.getElementById('th-popdown-charts');
+    if (itemVid) itemVid.classList.toggle('active', currentMode === 'videos');
+    if (itemChart) itemChart.classList.toggle('active', currentMode === 'charts');
+
+    popdown.style.display = 'block';
+    if (arrow) arrow.classList.add('open');
+  }
 }
 
-window.toggleVideosHeaderDropdown = toggleVideosHeaderDropdown;
+function closeThMediaDropdown() {
+  const popdown = document.getElementById('th-media-popdown');
+  const arrow = document.getElementById('th-media-arrow');
+  if (popdown) popdown.style.display = 'none';
+  if (arrow) arrow.classList.remove('open');
+}
 
-function handleThMediaSelect(mode, event) {
+function selectThMediaOption(mode, event) {
   if (event) {
     event.stopPropagation();
     event.preventDefault();
   }
+  closeThMediaDropdown();
   state.adminTableMediaView = mode;
 
-  // Sync active classes on segmented buttons
-  const btnVid = document.getElementById('btn-switch-col-videos');
-  const btnChart = document.getElementById('btn-switch-col-charts');
-  if (btnVid) btnVid.classList.toggle('active', mode === 'videos');
-  if (btnChart) btnChart.classList.toggle('active', mode === 'charts');
+  // Update header text to single text with small arrow beside it
+  const label = document.getElementById('th-media-current-text');
+  if (label) {
+    label.textContent = (mode === 'charts') ? 'Charts' : 'Videos';
+  }
 
-  // Re-render table with selected column mode
+  // Re-render table directly in the panel table without popping up any separate modal
   renderAdminChartsTable();
 
   if (mode === 'charts') {
-    showToast('📊 Table column switched to Charts view (Drawn Charts & Pairings).', 'success', 3000);
+    showToast('📊 Table column switched to Charts view directly in panel', 'success', 2500);
   } else {
-    showToast('🎬 Table column switched to Videos view (Telugu & English videos).', 'info', 3000);
+    showToast('🎬 Table column switched to Videos view directly in panel', 'info', 2500);
   }
 }
 
+function toggleVideosHeaderDropdown(event) {
+  toggleThMediaDropdown(event);
+}
+
+function handleThMediaSelect(mode, event) {
+  selectThMediaOption(mode, event);
+}
+
+window.toggleThMediaDropdown = toggleThMediaDropdown;
+window.closeThMediaDropdown = closeThMediaDropdown;
+window.selectThMediaOption = selectThMediaOption;
+window.toggleVideosHeaderDropdown = toggleVideosHeaderDropdown;
 window.handleThMediaSelect = handleThMediaSelect;
 
 function setupVideosHeaderDropdownEvents() {
-  const btnVid = document.getElementById('btn-switch-col-videos');
-  const btnChart = document.getElementById('btn-switch-col-charts');
-  if (btnVid) btnVid.classList.toggle('active', state.adminTableMediaView !== 'charts');
-  if (btnChart) btnChart.classList.toggle('active', state.adminTableMediaView === 'charts');
+  const label = document.getElementById('th-media-current-text');
+  if (label) {
+    label.textContent = (state.adminTableMediaView === 'charts') ? 'Charts' : 'Videos';
+  }
 }
 
 // ==================== ALL CHARTS CONTROL CENTER MODAL ====================
@@ -7900,12 +8002,22 @@ document.addEventListener('click', function(e) {
       adminBox.style.display = 'none';
     }
   }
+
+  // Close table media dropdown (Videos/Charts) if clicked outside
+  const thPopdown = document.getElementById('th-media-popdown');
+  const thBtn = document.getElementById('th-media-toggle-btn');
+  if (thPopdown && thPopdown.style.display !== 'none') {
+    if (!thPopdown.contains(e.target) && !thBtn?.contains(e.target)) {
+      if (typeof closeThMediaDropdown === 'function') closeThMediaDropdown();
+    }
+  }
 });
 
 document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') {
     hideAuthSuggestionDropdown();
     hideAdminSuggestionDropdown();
+    if (typeof closeThMediaDropdown === 'function') closeThMediaDropdown();
   }
 });
 

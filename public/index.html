@@ -1293,7 +1293,7 @@
 
   <!-- E. ADMIN PORTAL (PLUS ICON UPLOAD, BULK DELETE, LIVE CMS) -->
   <div id="admin-modal" class="modal-overlay" onclick="closeAdminModal()">
-    <div class="modal-card" style="max-width: 1100px;" onclick="event.stopPropagation()">
+    <div class="modal-card admin-control-card" onclick="event.stopPropagation()">
       <div class="modal-header">
         <div style="display: flex; align-items: center; gap: 14px;">
           <h3>Admin Control Center</h3>
@@ -1301,6 +1301,11 @@
         </div>
 
         <div class="admin-header-actions">
+          <!-- Refresh Button directly in Admin Panel Header -->
+          <button type="button" class="btn btn-sm btn-secondary btn-admin-header-refresh" id="btn-admin-panel-refresh" onclick="refreshAdminPanelData(event)" title="Refresh all live data">
+            <span class="refresh-icon">🔄</span>
+            <span class="refresh-text">Refresh</span>
+          </button>
           <!-- Plus Icon Button to upload directly -->
           <button class="btn-plus-icon" onclick="openAddChartModal()" title="Add / Upload New Chart &amp; Videos">
             +
@@ -1447,9 +1452,6 @@
               Click the <strong>Plus (+) button</strong> above to upload a new chart. Use checkboxes to delete single or multiple charts simultaneously.
             </p>
             <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-              <button class="btn btn-sm btn-secondary" onclick="openAllChartsControlModal()" style="border-color: rgba(0,242,152,0.4); color: #00f298; display: inline-flex; align-items: center; gap: 6px;">
-                <span>📊 All Charts Hub</span>
-              </button>
               <button class="btn btn-sm btn-primary" onclick="openAddChartModal()">
                 <span style="font-size: 1.1rem; line-height: 1;">+</span> Upload New Chart Setup
               </button>
@@ -1477,19 +1479,22 @@
                   <th style="width: 65px;">Preview</th>
                   <th>Title &amp; Info</th>
                   <th>Category</th>
-                  <th class="th-videos-dropdown-cell" id="th-videos-dropdown-cell" style="min-width: 195px; text-align: center;">
-                    <div class="th-media-switch-container">
-                      <div class="th-segmented-switcher">
-                        <button type="button" id="btn-switch-col-videos" class="th-seg-btn active" onclick="handleThMediaSelect('videos', event)" title="Display Telugu &amp; English Videos">
-                          <span>🎬 Videos</span>
-                        </button>
-                        <button type="button" id="btn-switch-col-charts" class="th-seg-btn" onclick="handleThMediaSelect('charts', event)" title="Display HD Drawn Charts">
-                          <span>📊 Charts</span>
-                        </button>
-                      </div>
-                      <button type="button" class="th-quick-toggle-btn" onclick="toggleVideosHeaderDropdown(event)" title="Click to switch Videos ⇄ Charts">
-                        <span>⇄</span>
+                  <th class="th-videos-dropdown-cell" id="th-videos-dropdown-cell" style="position: relative; min-width: 140px; text-align: center; user-select: none;">
+                    <div class="th-dropdown-wrapper" style="position: relative; display: inline-block;">
+                      <button type="button" id="th-media-toggle-btn" class="th-single-text-btn" onclick="toggleThMediaDropdown(event)" title="Click to switch between Videos and Charts">
+                        <span id="th-media-current-text">Videos</span>
+                        <span id="th-media-arrow" class="th-small-arrow">▾</span>
                       </button>
+                      <div id="th-media-popdown" class="th-media-popdown" style="display: none;">
+                        <div class="th-popdown-item active" id="th-popdown-videos" onclick="selectThMediaOption('videos', event)">
+                          <span>🎬</span>
+                          <span>Videos</span>
+                        </div>
+                        <div class="th-popdown-item" id="th-popdown-charts" onclick="selectThMediaOption('charts', event)">
+                          <span>📊</span>
+                          <span>Charts</span>
+                        </div>
+                      </div>
                     </div>
                   </th>
                   <th style="width: 150px;">Actions</th>
