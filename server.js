@@ -1007,6 +1007,8 @@ app.post('/api/charts', upload.fields([
       englishVideo: englishVideo || '/videos/english/reel-1(volume secret).mp4',
       chartImage: chartImage,
       dateAdded: new Date().toISOString().split('T')[0],
+      isRecentlyUploaded: true,
+      uploadedAt: Date.now(),
       views: 1
     };
 
@@ -1110,12 +1112,29 @@ app.get('/api/media-inventory', (req, res) => {
     const englishFiles = fs.existsSync(ENGLISH_VIDEO_DIR) ? fs.readdirSync(ENGLISH_VIDEO_DIR) : [];
     const uploadedFiles = fs.existsSync(UPLOADS_DIR) ? fs.readdirSync(UPLOADS_DIR) : [];
 
-    const uploadedVideos = uploadedFiles.filter(f => /\.(mp4|webm|mov|mkv)$/i.test(f));
+    const now = Date.now();
+    const uploadedVideos = uploadedFiles
+      .filter(f => /\.(mp4|webm|mov|mkv)$/i.test(f))
+      .map(f => {
+        let mtime = 0;
+        try {
+          mtime = fs.statSync(path.join(UPLOADS_DIR, f)).mtimeMs;
+        } catch (_) {}
+        const isRecentlyUploaded = (now - mtime) < (7 * 24 * 3600 * 1000);
+        return {
+          name: f,
+          url: `/uploads/${encodeURIComponent(f)}`,
+          mtime,
+          isRecentlyUploaded,
+          uploadedAt: mtime
+        };
+      })
+      .sort((a, b) => b.mtime - a.mtime); // GUARANTEED 1ST PLACE for new uploads!
 
     res.json({
       teluguVideos: teluguFiles.map(f => ({ name: f, url: `/videos/telugu/${encodeURIComponent(f)}` })),
       englishVideos: englishFiles.map(f => ({ name: f, url: `/videos/english/${encodeURIComponent(f)}` })),
-      uploadedMedia: uploadedVideos.map(f => ({ name: f, url: `/uploads/${encodeURIComponent(f)}` }))
+      uploadedMedia: uploadedVideos
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1141,7 +1160,9 @@ app.post('/api/videos/upload', upload.single('videoFile'), (req, res) => {
         url: fileUrl,
         language: lang,
         filename: req.file.filename,
-        size: req.file.size
+        size: req.file.size,
+        isRecentlyUploaded: true,
+        uploadedAt: Date.now()
       }
     });
   } catch (err) {
@@ -1196,7 +1217,9 @@ app.post('/api/chart-gallery', upload.single('chartImage'), (req, res) => {
       id: `gallery-${Date.now()}`,
       title,
       imageUrl,
-      dateAdded: new Date().toISOString().split('T')[0]
+      dateAdded: new Date().toISOString().split('T')[0],
+      isRecentlyUploaded: true,
+      uploadedAt: Date.now()
     };
 
     gallery.unshift(newItem);

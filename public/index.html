@@ -23,7 +23,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/css/styles.css?v=20260915_v42" />
+  <link rel="stylesheet" href="/css/styles.css?v=20260915_v43" />
   <link rel="icon" type="image/png" href="/brand-logo" />
   <!-- Zero-Latency Auth Pre-check for Mobile Top Bar -->
   <script>
@@ -302,6 +302,7 @@
         <p style="color: var(--text-secondary); font-size: 0.82rem; margin: 0;">Upload PNG, JPG, SVG, or WebP. Owner / Admin Exclusive Tool.</p>
         <input type="file" id="gallery-file-input" style="display: none;" accept="image/*" onchange="handleGalleryFileInput(this.files)" />
       </div>
+      <div id="gallery-upload-confirm-box" class="upload-confirm-box" style="display: none; margin-top: 14px;"></div>
     </div>
 
     <!-- Gallery Grid -->
@@ -371,6 +372,7 @@
         </button>
         <input type="file" id="daily-chart-file-input" style="display: none;" accept="image/*" onchange="handleDailyChartUpload(this.files)" />
       </div>
+      <div id="daily-chart-upload-confirm-box" class="upload-confirm-box" style="display: none; margin-top: 14px;"></div>
     </div>
 
     <!-- Cards Grid -->
@@ -1812,6 +1814,9 @@
             </button>
           </div>
 
+          <!-- Staged Chart Upload Confirmation Box (Submit & Cancel) -->
+          <div id="chart-upload-confirm-box" class="upload-confirm-box" style="display: none; margin-top: 12px;"></div>
+
           <div style="display: flex; align-items: center; justify-content: space-between; margin: 18px 0 10px; flex-wrap: wrap; gap: 8px;">
             <h4 style="margin: 0; font-size: 0.94rem; color: #fff; display: flex; align-items: center; gap: 6px;">
               <span>🖼️</span> Uploaded Charts Library
@@ -1854,6 +1859,9 @@
                 Select Video File
               </button>
             </div>
+
+            <!-- Staged Video Upload Confirmation Box (Submit & Cancel) -->
+            <div id="video-upload-confirm-box" class="upload-confirm-box" style="display: none; margin-top: 12px;"></div>
           </div>
 
           <div style="display: flex; align-items: center; justify-content: space-between; margin: 16px 0 10px; flex-wrap: wrap; gap: 8px;">
@@ -1979,6 +1987,9 @@
             <span style="font-size: 0.74rem;">Instantly adds to your active charts library (from Phone or PC)</span>
           </div>
         </div>
+
+        <!-- Control Hub Upload Staging & Confirmation Card (Submit & Cancel) -->
+        <div id="control-hub-confirm-box" class="upload-confirm-box" style="display: none; margin-bottom: 16px;"></div>
 
         <!-- Quick Search Bar -->
         <div style="margin-bottom: 16px;">
@@ -2128,7 +2139,7 @@
   <div id="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="/js/app.js?v=20260915_v42"></script>
+  <script src="/js/app.js?v=20260915_v43"></script>
 
   <!-- V22: SHARE WEBSITE SOCIAL MEDIA POPUP MODAL -->
   <div id="share-website-modal" class="modal-overlay" onclick="if (event.target === this) closeWebsiteShareModal();">

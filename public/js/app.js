@@ -208,6 +208,64 @@ const state = {
   systemRevisions: { charts: 0, users: 0, gallery: 0, comments: 0, siteConfig: 0 }
 };
 
+// ==================== RECENT UPLOADS & STAGING STATE ====================
+let pendingChartUpload = null;
+let pendingVideoUpload = null;
+let pendingControlHubUpload = null;
+let pendingGalleryUpload = null;
+
+function formatBytes(bytes) {
+  if (!bytes || bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function getStoredRecentUploads() {
+  try {
+    const raw = localStorage.getItem('tradinghub_recent_uploads');
+    return new Set(raw ? JSON.parse(raw) : []);
+  } catch (_) {
+    return new Set();
+  }
+}
+
+function trackRecentUpload(idOrUrl) {
+  if (!idOrUrl) return;
+  try {
+    const key = String(idOrUrl);
+    const raw = localStorage.getItem('tradinghub_recent_uploads');
+    const list = raw ? JSON.parse(raw) : [];
+    const filtered = list.filter(k => k !== key);
+    filtered.unshift(key);
+    if (filtered.length > 100) filtered.pop();
+    localStorage.setItem('tradinghub_recent_uploads', JSON.stringify(filtered));
+  } catch (_) {}
+}
+
+function isRecentlyUploadedItem(item) {
+  if (!item) return false;
+  if (item.isRecentlyUploaded) return true;
+  const recents = getStoredRecentUploads();
+  const keys = [item.id, item.url, item.imageUrl, item.name, item.chartImage, item.filename].filter(Boolean).map(String);
+  for (const k of keys) {
+    if (recents.has(k)) return true;
+    try {
+      const decoded = decodeURIComponent(k);
+      if (recents.has(decoded)) return true;
+    } catch (_) {}
+  }
+  if (item.uploadedAt && (Date.now() - Number(item.uploadedAt) < 7 * 24 * 3600 * 1000)) return true;
+  if (item.mtime && (Date.now() - Number(item.mtime) < 7 * 24 * 3600 * 1000)) return true;
+  return false;
+}
+
+function renderRecentlyUploadedBadge(item) {
+  if (!isRecentlyUploadedItem(item)) return '';
+  return `<span class="badge-recently-uploaded" title="Recently Uploaded">✨ RECENTLY UPLOADED</span>`;
+}
+
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', async () => {
   initAuthState();
@@ -993,6 +1051,14 @@ function renderCharts() {
 
     let allChartSetups = [...galleryItems, ...lessonChartItems];
 
+    // GUARANTEE 1ST PLACE FOR NEWLY UPLOADED CHARTS
+    allChartSetups.sort((a, b) => {
+      const aRecent = isRecentlyUploadedItem(a) ? 1 : 0;
+      const bRecent = isRecentlyUploadedItem(b) ? 1 : 0;
+      if (bRecent !== aRecent) return bRecent - aRecent;
+      return 0;
+    });
+
     if (state.searchQuery.trim()) {
       const q = state.searchQuery.toLowerCase();
       allChartSetups = allChartSetups.filter(c => 
@@ -1054,9 +1120,12 @@ function renderCharts() {
                 <span style="font-size: 0.72rem; color: var(--accent-gold); font-weight: 700; margin-top: 4px;">Unlock to View</span>
               </div>
             ` : ''}
-            <span class="chart-reel-badge" style="background: rgba(0, 242, 152, 0.2); color: var(--accent-green); border: 1px solid rgba(0, 242, 152, 0.4);">
-              📊 ONLY CHART
-            </span>
+            <div style="position: absolute; top: 8px; left: 8px; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; z-index: 2;">
+              <span class="chart-reel-badge" style="background: rgba(0, 242, 152, 0.2); color: var(--accent-green); border: 1px solid rgba(0, 242, 152, 0.4); position: static;">
+                📊 ONLY CHART
+              </span>
+              ${renderRecentlyUploadedBadge(item)}
+            </div>
           </div>
           <div class="chart-card-body">
             <span class="chart-category-tag">${item.category || 'Daily Setup'}</span>
@@ -1142,6 +1211,14 @@ function renderCharts() {
   // ==================== MODE B: VIDEO LESSONS CURRICULUM ====================
   let filtered = [...state.charts];
 
+  // GUARANTEE 1ST PLACE FOR RECENTLY UPLOADED VIDEO LESSONS
+  filtered.sort((a, b) => {
+    const aRecent = isRecentlyUploadedItem(a) ? 1 : 0;
+    const bRecent = isRecentlyUploadedItem(b) ? 1 : 0;
+    if (bRecent !== aRecent) return bRecent - aRecent;
+    return 0;
+  });
+
   // Category filter
   if (state.activeFilter !== 'all') {
     filtered = filtered.filter(c => c.category?.toLowerCase() === state.activeFilter.toLowerCase());
@@ -1189,7 +1266,10 @@ function renderCharts() {
       <div class="chart-card">
         <div class="chart-thumbnail-wrap" onclick="openChartModal('${chart.id}')" style="cursor: pointer;" title="Watch Video Breakdown">
           <img src="${chart.chartImage || '/assets/charts/chart-1.svg'}" alt="${chart.title}" loading="lazy" decoding="async" />
-          <span class="chart-reel-badge">REEL-${chart.reelNumber || ''}</span>
+          <div style="position: absolute; top: 8px; left: 8px; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; z-index: 2;">
+            <span class="chart-reel-badge" style="position: static;">REEL-${chart.reelNumber || ''}</span>
+            ${renderRecentlyUploadedBadge(chart)}
+          </div>
           <span class="chart-bilingual-pill">
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
             TELUGU &amp; ENGLISH
@@ -2721,7 +2801,15 @@ function renderAdminChartsTable() {
   const tbody = document.getElementById('admin-charts-table-body');
   if (!tbody) return;
 
-  tbody.innerHTML = state.charts.map(chart => {
+  // GUARANTEE 1ST PLACE FOR NEWLY UPLOADED CHARTS IN ADMIN TABLE
+  const sortedCharts = [...state.charts].sort((a, b) => {
+    const aRecent = isRecentlyUploadedItem(a) ? 1 : 0;
+    const bRecent = isRecentlyUploadedItem(b) ? 1 : 0;
+    if (bRecent !== aRecent) return bRecent - aRecent;
+    return 0;
+  });
+
+  tbody.innerHTML = sortedCharts.map(chart => {
     const isSelected = state.adminSelectedChartIds.has(chart.id);
     return `
       <tr>
@@ -2735,7 +2823,10 @@ function renderAdminChartsTable() {
           </div>
         </td>
         <td>
-          <strong style="cursor: pointer; color: #fff;" onclick="openChartModal('${chart.id}')" title="Watch Video Breakdown">${chart.title}</strong>
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <strong style="cursor: pointer; color: #fff;" onclick="openChartModal('${chart.id}')" title="Watch Video Breakdown">${chart.title}</strong>
+            ${renderRecentlyUploadedBadge(chart)}
+          </div>
           <div style="font-size: 0.76rem; color: var(--text-muted);">Reel #${chart.reelNumber || '-'} • Added: ${chart.dateAdded || ''}</div>
         </td>
         <td>
@@ -2969,30 +3060,79 @@ function triggerControlHubUpload() {
   if (fileInput) fileInput.click();
 }
 
-async function handleControlHubFileInput(event) {
-  const file = event.target.files && event.target.files[0];
+function handleControlHubFileInput(event) {
+  const file = (event && event.target && event.target.files && event.target.files[0]) || (event && event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0]);
   if (!file) return;
 
+  pendingControlHubUpload = file;
   const defaultTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-  const title = await customPrompt({
-    title: 'New Chart Setup Title',
-    message: 'Enter a descriptive title for this new chart setup:',
-    defaultValue: defaultTitle,
-    placeholder: 'e.g. Nifty 50 Liquidity Sweep & Mitigation Zone',
-    label: 'Chart Title',
-    badge: '📊 NEW CHART SETUP',
-    type: 'primary',
-    confirmText: 'Upload Chart',
-    cancelText: 'Cancel',
-    icon: '📊'
-  });
-  if (!title) return;
+  const box = document.getElementById('control-hub-confirm-box');
+  if (!box) return;
+
+  const previewUrl = URL.createObjectURL(file);
+  box.innerHTML = `
+    <div class="upload-confirm-header">
+      <span class="upload-confirm-badge">📊 Control Center Chart • Verify &amp; Confirm</span>
+      <span style="font-size: 0.72rem; color: var(--accent-green); font-weight: 700;">★ Placed in 1st place</span>
+    </div>
+    <div class="upload-confirm-preview-row">
+      <img src="${previewUrl}" class="upload-confirm-thumb" alt="Chart Preview" />
+      <div class="upload-confirm-meta">
+        <div class="upload-confirm-filename" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</div>
+        <div class="upload-confirm-filesize">${formatBytes(file.size)} • ${escapeHtml(file.type || 'Chart Image')}</div>
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom: 0;">
+      <label class="form-label" style="font-size: 0.78rem;">Chart Setup Title</label>
+      <input type="text" id="pending-control-hub-title" class="form-input" value="${escapeHtml(defaultTitle)}" placeholder="e.g. Nifty 50 Liquidity Sweep" style="font-size: 0.86rem;" />
+    </div>
+    <div class="upload-confirm-actions">
+      <button type="button" class="btn-submit-upload" id="btn-control-hub-submit" onclick="executeControlHubUpload()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span>Submit &amp; Upload Chart</span>
+      </button>
+      <button type="button" class="btn-cancel-upload" onclick="cancelControlHubUpload()">
+        ✕ Cancel (Do Not Upload)
+      </button>
+    </div>
+  `;
+  box.style.display = 'block';
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function cancelControlHubUpload() {
+  pendingControlHubUpload = null;
+  const input = document.getElementById('control-hub-file-input');
+  if (input) input.value = '';
+  const box = document.getElementById('control-hub-confirm-box');
+  if (box) {
+    box.style.display = 'none';
+    box.innerHTML = '';
+  }
+  showToast('Chart upload cancelled. Nothing was uploaded.', 'info');
+}
+
+async function executeControlHubUpload() {
+  if (!pendingControlHubUpload) {
+    showToast('No chart image selected', 'error');
+    return;
+  }
+  const file = pendingControlHubUpload;
+  const titleInput = document.getElementById('pending-control-hub-title');
+  const defaultTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+  const title = (titleInput && titleInput.value.trim()) || defaultTitle;
+
+  const btn = document.getElementById('btn-control-hub-submit');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-small"></span> Uploading...`;
+  }
 
   const formData = new FormData();
   formData.append('chartImage', file);
-  formData.append('title', title.trim() || defaultTitle);
+  formData.append('title', title);
 
-  showToast('Uploading chart to library...', 'info');
+  showToast('Uploading chart to Control Center in 1st place...', 'info');
   try {
     const res = await fetch('/api/chart-gallery', {
       method: 'POST',
@@ -3000,17 +3140,35 @@ async function handleControlHubFileInput(event) {
     });
     const data = await res.json();
     if (data.success) {
-      showToast('🖼️ Chart added to Control Center!', 'success');
-      event.target.value = '';
+      trackRecentUpload(data.chart?.id || data.chart?.imageUrl || title);
+      showToast('🖼️ Chart added to Control Center in 1st place with RECENTLY UPLOADED tag!', 'success');
+
+      pendingControlHubUpload = null;
+      const input = document.getElementById('control-hub-file-input');
+      if (input) input.value = '';
+      const box = document.getElementById('control-hub-confirm-box');
+      if (box) {
+        box.style.display = 'none';
+        box.innerHTML = '';
+      }
+
       await loadChartGallery();
       await loadCharts();
       renderControlHubCharts('');
       renderAdminChartsTable();
     } else {
       showToast(data.error || 'Upload failed', 'error');
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<span>Submit &amp; Upload Chart</span>`;
+      }
     }
   } catch (err) {
     showToast(err.message, 'error');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<span>Submit &amp; Upload Chart</span>`;
+    }
   }
 }
 
@@ -3035,7 +3193,8 @@ function renderControlHubCharts(query = '') {
         imageUrl: c.chartImage,
         category: c.category || 'Price Action',
         source: 'chart',
-        dateAdded: c.dateAdded || ''
+        dateAdded: c.dateAdded || '',
+        isRecentlyUploaded: c.isRecentlyUploaded
       });
     }
   });
@@ -3050,7 +3209,8 @@ function renderControlHubCharts(query = '') {
         imageUrl: g.imageUrl,
         category: 'Gallery Chart',
         source: 'gallery',
-        dateAdded: g.dateAdded || ''
+        dateAdded: g.dateAdded || '',
+        isRecentlyUploaded: g.isRecentlyUploaded
       });
     }
   });
@@ -3061,6 +3221,14 @@ function renderControlHubCharts(query = '') {
         (item.category && item.category.toLowerCase().includes(cleanQuery))
       )
     : chartItems;
+
+  // GUARANTEE 1ST PLACE FOR NEWLY UPLOADED CHARTS
+  filtered.sort((a, b) => {
+    const aRecent = isRecentlyUploadedItem(a) ? 1 : 0;
+    const bRecent = isRecentlyUploadedItem(b) ? 1 : 0;
+    if (bRecent !== aRecent) return bRecent - aRecent;
+    return 0;
+  });
 
   if (countEl) {
     countEl.textContent = `${filtered.length} of ${chartItems.length} charts ready • Full 1-tap controls active`;
@@ -3084,9 +3252,12 @@ function renderControlHubCharts(query = '') {
         </button>
       </div>
       <div class="asset-body">
-        <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 4px;">
-          <span class="control-hub-type-badge">${item.source === 'chart' ? 'SETUP' : 'GALLERY'}</span>
-          <span style="font-size: 0.7rem; color: var(--text-muted);">${item.category || ''}</span>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 4px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <span class="control-hub-type-badge">${item.source === 'chart' ? 'SETUP' : 'GALLERY'}</span>
+            <span style="font-size: 0.7rem; color: var(--text-muted);">${item.category || ''}</span>
+          </div>
+          ${renderRecentlyUploadedBadge(item)}
         </div>
         <div class="asset-title" title="${escapeHtml(item.title)}" style="font-weight: 700; color: #fff; font-size: 0.86rem; margin-bottom: 6px;">
           ${escapeHtml(item.title)}
@@ -3424,6 +3595,14 @@ async function loadChartGallerySubpanel() {
     const gallery = await res.json();
     state.chartGallery = Array.isArray(gallery) ? gallery : [];
 
+    // GUARANTEE 1ST PLACE FOR RECENTLY UPLOADED CHARTS
+    state.chartGallery.sort((a, b) => {
+      const aRecent = isRecentlyUploadedItem(a) ? 1 : 0;
+      const bRecent = isRecentlyUploadedItem(b) ? 1 : 0;
+      if (bRecent !== aRecent) return bRecent - aRecent;
+      return 0;
+    });
+
     if (countBadge) countBadge.textContent = state.chartGallery.length;
 
     if (state.chartGallery.length === 0) {
@@ -3444,8 +3623,11 @@ async function loadChartGallerySubpanel() {
           </button>
         </div>
         <div class="asset-body">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px; flex-wrap: wrap; margin-bottom: 2px;">
+            <div class="asset-meta">${item.dateAdded || 'Added'}</div>
+            ${renderRecentlyUploadedBadge(item)}
+          </div>
           <div class="asset-title" title="${escapeHtml(item.title)}">${escapeHtml(item.title)}</div>
-          <div class="asset-meta">${item.dateAdded || 'Added'}</div>
           <div class="asset-actions">
             <button type="button" class="btn-asset-action" onclick="renameChartOnly('${item.id}', '${escapeHtml(item.title)}')" title="Rename Chart">
               ✏️ Rename
@@ -3468,30 +3650,79 @@ async function loadChartGallerySubpanel() {
   }
 }
 
-async function handleChartOnlyFileInput(event) {
-  const file = event.target.files && event.target.files[0];
+function handleChartOnlyFileInput(event) {
+  const file = (event && event.target && event.target.files && event.target.files[0]) || (event && event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0]);
   if (!file) return;
 
+  pendingChartUpload = file;
   const defaultTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-  const title = await customPrompt({
-    title: 'Upload Standalone Chart',
-    message: 'Enter a title for this chart asset in your library:',
-    defaultValue: defaultTitle,
-    placeholder: 'Enter chart title...',
-    label: 'Chart Title',
-    badge: '📊 STANDALONE CHART',
-    type: 'primary',
-    confirmText: 'Upload to Library',
-    cancelText: 'Cancel',
-    icon: '📊'
-  });
-  if (!title) return;
+  const box = document.getElementById('chart-upload-confirm-box');
+  if (!box) return;
+
+  const previewUrl = URL.createObjectURL(file);
+  box.innerHTML = `
+    <div class="upload-confirm-header">
+      <span class="upload-confirm-badge">🖼️ Ready to Upload Chart • Verify &amp; Confirm</span>
+      <span style="font-size: 0.72rem; color: var(--accent-green); font-weight: 700;">★ Uploads to 1st Place</span>
+    </div>
+    <div class="upload-confirm-preview-row">
+      <img src="${previewUrl}" class="upload-confirm-thumb" alt="Chart Preview" />
+      <div class="upload-confirm-meta">
+        <div class="upload-confirm-filename" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</div>
+        <div class="upload-confirm-filesize">${formatBytes(file.size)} • ${escapeHtml(file.type || 'Image File')}</div>
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom: 0;">
+      <label class="form-label" style="font-size: 0.78rem;">Chart Title in Library</label>
+      <input type="text" id="pending-chart-title" class="form-input" value="${escapeHtml(defaultTitle)}" placeholder="Enter chart title..." style="font-size: 0.86rem;" />
+    </div>
+    <div class="upload-confirm-actions">
+      <button type="button" class="btn-submit-upload" id="btn-chart-upload-submit" onclick="executeChartUpload()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span>Submit &amp; Upload Chart</span>
+      </button>
+      <button type="button" class="btn-cancel-upload" onclick="cancelChartUpload()">
+        ✕ Cancel (Do Not Upload)
+      </button>
+    </div>
+  `;
+  box.style.display = 'block';
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function cancelChartUpload() {
+  pendingChartUpload = null;
+  const input = document.getElementById('chart-only-file-input');
+  if (input) input.value = '';
+  const box = document.getElementById('chart-upload-confirm-box');
+  if (box) {
+    box.style.display = 'none';
+    box.innerHTML = '';
+  }
+  showToast('Chart upload cancelled. Nothing was uploaded.', 'info');
+}
+
+async function executeChartUpload() {
+  if (!pendingChartUpload) {
+    showToast('Please select a chart image first.', 'error');
+    return;
+  }
+  const file = pendingChartUpload;
+  const titleInput = document.getElementById('pending-chart-title');
+  const defaultTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+  const title = (titleInput && titleInput.value.trim()) || defaultTitle;
+
+  const btn = document.getElementById('btn-chart-upload-submit');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-small"></span> Uploading Chart...`;
+  }
 
   const formData = new FormData();
   formData.append('chartImage', file);
-  formData.append('title', title.trim() || defaultTitle);
+  formData.append('title', title);
 
-  showToast('Uploading chart image...', 'info');
+  showToast('Uploading chart image to 1st place...', 'info');
   try {
     const res = await fetch('/api/chart-gallery', {
       method: 'POST',
@@ -3499,16 +3730,36 @@ async function handleChartOnlyFileInput(event) {
     });
     const data = await res.json();
     if (data.success) {
-      showToast('🖼️ Chart image uploaded to library!', 'success');
-      event.target.value = '';
+      trackRecentUpload(data.chart?.id || data.chart?.imageUrl || title);
+      showToast('🖼️ Chart uploaded to 1st place with RECENTLY UPLOADED badge!', 'success');
+
+      pendingChartUpload = null;
+      const input = document.getElementById('chart-only-file-input');
+      if (input) input.value = '';
+      const box = document.getElementById('chart-upload-confirm-box');
+      if (box) {
+        box.style.display = 'none';
+        box.innerHTML = '';
+      }
+
       await loadChartGallerySubpanel();
       populateAddChartExistingImages();
       await loadCharts();
+      renderApp();
+      renderAdminChartsTable();
     } else {
       showToast(data.error || 'Upload failed', 'error');
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<span>Submit &amp; Upload Chart</span>`;
+      }
     }
   } catch (err) {
     showToast('Error: ' + err.message, 'error');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<span>Submit &amp; Upload Chart</span>`;
+    }
   }
 }
 
@@ -3603,9 +3854,16 @@ async function loadVideoRepositorySubpanel() {
 
     let itemsHtml = '';
 
-    // Uploaded videos first
-    (data.uploadedMedia || []).forEach(v => {
-      itemsHtml += renderVideoCardHtml(v.name, v.url, 'UPLOADED', true);
+    // GUARANTEE 1ST PLACE FOR RECENTLY UPLOADED VIDEOS
+    const uploadedMediaList = [...(data.uploadedMedia || [])].sort((a, b) => {
+      const aRecent = isRecentlyUploadedItem(a) ? 1 : 0;
+      const bRecent = isRecentlyUploadedItem(b) ? 1 : 0;
+      if (bRecent !== aRecent) return bRecent - aRecent;
+      return (b.mtime || 0) - (a.mtime || 0);
+    });
+
+    uploadedMediaList.forEach(v => {
+      itemsHtml += renderVideoCardHtml(v.name, v.url, 'UPLOADED', true, v.isRecentlyUploaded);
     });
 
     // Telugu reels
@@ -3637,9 +3895,10 @@ function safeDecode(str) {
   }
 }
 
-function renderVideoCardHtml(name, url, tag, isDeletable) {
+function renderVideoCardHtml(name, url, tag, isDeletable, isRecent) {
   const cleanName = safeDecode(name);
   const tagColor = tag === 'TELUGU' ? 'var(--accent-green)' : (tag === 'ENGLISH' ? 'var(--accent-cyan)' : 'var(--accent-gold)');
+  const recent = isRecent || isRecentlyUploadedItem({ name, url, filename: cleanName });
   return `
     <div class="admin-asset-card">
       <div class="asset-thumb-wrap" style="background: #090e1a; cursor: pointer;" onclick="openAdminVideoPlayer('${url}', '${escapeHtml(cleanName)}')" title="Click to test play">
@@ -3652,8 +3911,9 @@ function renderVideoCardHtml(name, url, tag, isDeletable) {
         </div>
       </div>
       <div class="asset-body">
-        <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px; flex-wrap: wrap;">
           <span style="font-size: 0.68rem; font-weight: 800; color: ${tagColor}; background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 4px;">${tag}</span>
+          ${renderRecentlyUploadedBadge({ name, url, filename: cleanName, isRecentlyUploaded: recent })}
         </div>
         <div class="asset-title" title="${escapeHtml(cleanName)}">${escapeHtml(cleanName)}</div>
         <div class="asset-actions">
@@ -3677,19 +3937,91 @@ function renderVideoCardHtml(name, url, tag, isDeletable) {
   `;
 }
 
-async function handleVideoOnlyFileInput(event) {
-  const file = event.target.files && event.target.files[0];
+function handleVideoOnlyFileInput(event) {
+  const file = (event && event.target && event.target.files && event.target.files[0]) || (event && event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0]);
   if (!file) return;
 
-  const lang = document.getElementById('video-only-lang')?.value || 'telugu';
-  const customTitle = document.getElementById('video-only-title')?.value.trim();
+  pendingVideoUpload = file;
+  const defaultTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+  const box = document.getElementById('video-upload-confirm-box');
+  if (!box) return;
+
+  const currentLang = document.getElementById('video-only-lang')?.value || 'telugu';
+  const customTitleInput = document.getElementById('video-only-title')?.value.trim();
+  const titleToUse = customTitleInput || defaultTitle;
+
+  box.innerHTML = `
+    <div class="upload-confirm-header">
+      <span class="upload-confirm-badge">🎬 Ready to Upload Video • Verify &amp; Confirm</span>
+      <span style="font-size: 0.72rem; color: var(--accent-cyan); font-weight: 700;">★ Uploads to 1st Place</span>
+    </div>
+    <div class="upload-confirm-preview-row">
+      <div class="upload-confirm-video-thumb">🎬</div>
+      <div class="upload-confirm-meta">
+        <div class="upload-confirm-filename" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</div>
+        <div class="upload-confirm-filesize">${formatBytes(file.size)} • ${escapeHtml(file.type || 'MP4 Video')}</div>
+      </div>
+    </div>
+    <div class="form-grid-2" style="margin-bottom: 0;">
+      <div class="form-group" style="margin-bottom: 8px;">
+        <label class="form-label" style="font-size: 0.78rem;">Video Language</label>
+        <select id="pending-video-lang" class="form-select" style="font-size: 0.86rem;">
+          <option value="telugu" ${currentLang === 'telugu' ? 'selected' : ''}>Telugu (తెలుగు) Reel</option>
+          <option value="english" ${currentLang === 'english' ? 'selected' : ''}>English Explanation Reel</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom: 8px;">
+        <label class="form-label" style="font-size: 0.78rem;">Video Title</label>
+        <input type="text" id="pending-video-title" class="form-input" value="${escapeHtml(titleToUse)}" placeholder="e.g. Volume Secret Retest" style="font-size: 0.86rem;" />
+      </div>
+    </div>
+    <div class="upload-confirm-actions">
+      <button type="button" class="btn-submit-upload" id="btn-video-upload-submit" onclick="executeVideoUpload()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span>Submit &amp; Upload Video</span>
+      </button>
+      <button type="button" class="btn-cancel-upload" onclick="cancelVideoUpload()">
+        ✕ Cancel (Do Not Upload)
+      </button>
+    </div>
+  `;
+  box.style.display = 'block';
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function cancelVideoUpload() {
+  pendingVideoUpload = null;
+  const input = document.getElementById('video-only-file-input');
+  if (input) input.value = '';
+  const box = document.getElementById('video-upload-confirm-box');
+  if (box) {
+    box.style.display = 'none';
+    box.innerHTML = '';
+  }
+  showToast('Video upload cancelled. Nothing was uploaded.', 'info');
+}
+
+async function executeVideoUpload() {
+  if (!pendingVideoUpload) {
+    showToast('Please select a video file first.', 'error');
+    return;
+  }
+  const file = pendingVideoUpload;
+  const lang = document.getElementById('pending-video-lang')?.value || 'telugu';
+  const title = document.getElementById('pending-video-title')?.value.trim() || file.name;
+
+  const btn = document.getElementById('btn-video-upload-submit');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-small"></span> Uploading Video (${formatBytes(file.size)})...`;
+  }
 
   const formData = new FormData();
   formData.append('videoFile', file);
   formData.append('language', lang);
-  if (customTitle) formData.append('title', customTitle);
+  if (title) formData.append('title', title);
 
-  showToast('Uploading video file to server/AWS...', 'info');
+  showToast(`Uploading ${formatBytes(file.size)} video to 1st place...`, 'info');
   try {
     const res = await fetch('/api/videos/upload', {
       method: 'POST',
@@ -3697,16 +4029,34 @@ async function handleVideoOnlyFileInput(event) {
     });
     const data = await res.json();
     if (data.success) {
-      showToast('🎬 Video uploaded successfully!', 'success');
-      event.target.value = '';
+      trackRecentUpload(data.video?.url || data.video?.name || file.name);
+      showToast('🎬 Video uploaded to 1st place with RECENTLY UPLOADED badge!', 'success');
+
+      pendingVideoUpload = null;
+      const input = document.getElementById('video-only-file-input');
+      if (input) input.value = '';
       if (document.getElementById('video-only-title')) document.getElementById('video-only-title').value = '';
+      const box = document.getElementById('video-upload-confirm-box');
+      if (box) {
+        box.style.display = 'none';
+        box.innerHTML = '';
+      }
+
       await loadVideoRepositorySubpanel();
       populateVideoDropdowns();
     } else {
       showToast(data.error || 'Video upload failed', 'error');
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<span>Submit &amp; Upload Video</span>`;
+      }
     }
   } catch (err) {
     showToast('Error: ' + err.message, 'error');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<span>Submit &amp; Upload Video</span>`;
+    }
   }
 }
 
@@ -3852,7 +4202,13 @@ async function submitNewChart(event) {
     const data = await res.json();
 
     if (data.success) {
-      showToast('🚀 New Chart & Videos Published Successfully!', 'success');
+      if (data.chart) {
+        trackRecentUpload(data.chart.id);
+        if (!state.charts.some(c => c.id === data.chart.id)) {
+          state.charts.unshift(data.chart);
+        }
+      }
+      showToast('🚀 New Chart & Videos Published Successfully in 1st Place with RECENTLY UPLOADED badge!', 'success');
       closeAddChartModal();
       await loadCharts();
       renderApp();
@@ -4757,6 +5113,14 @@ function renderChartGallery() {
     return;
   }
 
+  // GUARANTEE 1ST PLACE FOR RECENTLY UPLOADED GALLERY CHARTS
+  state.gallery.sort((a, b) => {
+    const aRecent = isRecentlyUploadedItem(a) ? 1 : 0;
+    const bRecent = isRecentlyUploadedItem(b) ? 1 : 0;
+    if (bRecent !== aRecent) return bRecent - aRecent;
+    return 0;
+  });
+
   // Strictly limit to 2 charts on Home page until user clicks More
   let displayGallery = state.gallery;
   let hasMoreGallery = false;
@@ -4785,6 +5149,9 @@ function renderChartGallery() {
         </button>
         <div class="gallery-thumb-wrap ${isUnlocked ? '' : 'locked'}" onclick="${clickAction}" title="${isUnlocked ? 'Click to view full screen' : '🔒 Locked Chart - Click to Unlock'}" style="cursor: pointer;">
           <img src="${item.imageUrl}" alt="${item.title}" loading="lazy" decoding="async" />
+          <div style="position: absolute; top: 8px; left: 8px; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; z-index: 2;">
+            ${renderRecentlyUploadedBadge(item)}
+          </div>
           ${!isUnlocked ? `
             <div class="gallery-lock-overlay">
               <div class="gallery-lock-badge">
@@ -4828,14 +5195,14 @@ function renderChartGallery() {
   // 3rd card: interactive "+ MORE CHARTS" card if on home page and not expanded
   if (hasMoreGallery) {
     cardsHtml += `
-      <div class="gallery-card more-explore-card" onclick="toggleShowAllGallery(true)" style="cursor: pointer;" title="Click to reveal all charts">
+      <div class="gallery-card more-explore-card" onclick="toggleShowAllGallery(true)" style="cursor: pointer;" title="Click to display all charts in the vault">
         <div class="more-card-content">
-          <div class="more-card-icon" style="border-color: var(--accent-gold); color: var(--accent-gold); box-shadow: 0 0 20px rgba(255,215,0,0.3); font-size: 2rem;">📊</div>
-          <div class="more-card-badge" style="background: var(--accent-gold); color: #000;">+ MORE CHARTS</div>
-          <h3 class="more-card-title">+ More Charts</h3>
+          <div class="more-card-icon">⚡</div>
+          <div class="more-card-badge" style="background: rgba(255, 215, 0, 0.15); color: var(--accent-gold);">+ MORE CHARTS</div>
+          <h4 class="more-card-title">+ More Setups</h4>
           <p class="more-card-desc">Click here to reveal all institutional hand-drawn charts and templates.</p>
           <button class="btn btn-sm btn-gold" onclick="event.stopPropagation(); toggleShowAllGallery(true);" style="margin-top: 8px;">
-            Show All Charts ▼
+            Show All Setups ▼
           </button>
         </div>
       </div>
@@ -4859,10 +5226,10 @@ function renderChartGallery() {
           <div style="display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; align-items: center;">
             <button type="button" class="btn btn-secondary btn-lg" onclick="toggleShowAllGallery(false)" style="border-color: rgba(255,255,255,0.25); color: #fff; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
-              <span>▲ Show Less (Collapse to 2 Charts)</span>
+              <span>▲ Show Less (Hide &amp; Collapse to 2 Charts)</span>
             </button>
-            <a href="/all-charts" class="btn btn-gold btn-lg" style="display: inline-flex; align-items: center; gap: 8px;">
-              <span>Explore Full Chart Vault Page &rarr;</span>
+            <a href="/all-charts" class="btn btn-primary btn-lg" style="display: inline-flex; align-items: center; gap: 8px;">
+              <span>Open Full Dedicated Vault &rarr;</span>
             </a>
           </div>
         `;
@@ -4876,55 +5243,6 @@ function renderChartGallery() {
 }
 
 // Admin Special Access Daily Chart Uploader (for Only Charts filter tab)
-async function handleDailyChartUpload(files) {
-  if (!files || files.length === 0) return;
-  if (state.currentUser?.role !== 'admin') {
-    showToast('Only Admin / Owner can upload daily charts.', 'error');
-    return;
-  }
-  const file = files[0];
-  const defaultTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
-  const title = await customPrompt({
-    title: 'Daily Institutional Chart',
-    message: 'Enter title for today\'s new technical chart setup:',
-    defaultValue: defaultTitle,
-    placeholder: 'e.g. Bank Nifty Morning Gap Fill Strategy',
-    label: 'Daily Chart Title',
-    badge: '👑 DAILY CHART UPLOAD',
-    type: 'primary',
-    confirmText: 'Publish Daily Chart',
-    cancelText: 'Cancel',
-    icon: '📈'
-  });
-  if (!title) return;
-
-  const formData = new FormData();
-  formData.append('chartImage', file);
-  formData.append('title', title);
-
-  showToast('Uploading new daily chart...', 'info');
-
-  try {
-    const res = await fetch('/api/chart-gallery', {
-      method: 'POST',
-      body: formData
-    });
-    const data = await res.json();
-    if (data.success) {
-      showToast('✅ Daily chart uploaded successfully!', 'success');
-      await loadChartGallery();
-      renderCharts();
-    } else {
-      showToast(data.error || 'Failed to upload daily chart', 'error');
-    }
-  } catch (err) {
-    showToast('Upload error: ' + err.message, 'error');
-  }
-
-  const fileInput = document.getElementById('daily-chart-file-input');
-  if (fileInput) fileInput.value = '';
-}
-
 function initDailyChartDragDrop() {
   const dropArea = document.getElementById('daily-chart-drop-area');
   if (!dropArea) return;
@@ -4954,7 +5272,6 @@ function initDailyChartDragDrop() {
   }, false);
 }
 
-window.handleDailyChartUpload = handleDailyChartUpload;
 window.initDailyChartDragDrop = initDailyChartDragDrop;
 
 function initGalleryDragDrop() {
@@ -4986,30 +5303,82 @@ function initGalleryDragDrop() {
   }, false);
 }
 
-async function handleGalleryFileInput(files) {
+function handleGalleryFileInput(files, targetConfirmId = 'gallery-upload-confirm-box') {
   if (!files || files.length === 0) return;
   const file = files[0];
+  pendingGalleryUpload = file;
   const defaultTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
-  const title = await customPrompt({
-    title: 'Hand-Drawn Technical Chart',
-    message: 'Enter a descriptive title for this chart setup:',
-    defaultValue: defaultTitle,
-    placeholder: 'e.g. Nifty 50 Liquidity Sweep & Mitigation Zone',
-    label: 'Chart Setup Title',
-    badge: '📊 HAND-DRAWN CHART',
-    type: 'primary',
-    confirmText: 'Save & Upload',
-    cancelText: 'Cancel',
-    icon: '🎨'
+  const box = document.getElementById(targetConfirmId) || document.getElementById('gallery-upload-confirm-box') || document.getElementById('daily-chart-upload-confirm-box');
+  if (!box) return;
+
+  const previewUrl = URL.createObjectURL(file);
+  box.innerHTML = `
+    <div class="upload-confirm-header">
+      <span class="upload-confirm-badge">🖼️ Ready to Upload Hand-Drawn Setup • Verify &amp; Confirm</span>
+      <span style="font-size: 0.72rem; color: var(--accent-green); font-weight: 700;">★ Uploads to 1st Place</span>
+    </div>
+    <div class="upload-confirm-preview-row">
+      <img src="${previewUrl}" class="upload-confirm-thumb" alt="Chart Preview" />
+      <div class="upload-confirm-meta">
+        <div class="upload-confirm-filename" title="${escapeHtml(file.name)}">${escapeHtml(file.name)}</div>
+        <div class="upload-confirm-filesize">${formatBytes(file.size)} • ${escapeHtml(file.type || 'Image File')}</div>
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom: 0;">
+      <label class="form-label" style="font-size: 0.78rem;">Setup Title</label>
+      <input type="text" id="pending-gallery-title" class="form-input" value="${escapeHtml(defaultTitle)}" placeholder="e.g. Nifty 50 Liquidity Sweep" style="font-size: 0.86rem;" />
+    </div>
+    <div class="upload-confirm-actions">
+      <button type="button" class="btn-submit-upload" id="btn-gallery-upload-submit" onclick="executeGalleryUpload()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span>Submit &amp; Upload Chart</span>
+      </button>
+      <button type="button" class="btn-cancel-upload" onclick="cancelGalleryUpload()">
+        ✕ Cancel (Do Not Upload)
+      </button>
+    </div>
+  `;
+  box.style.display = 'block';
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function cancelGalleryUpload() {
+  pendingGalleryUpload = null;
+  const input1 = document.getElementById('gallery-file-input');
+  if (input1) input1.value = '';
+  const input2 = document.getElementById('daily-chart-file-input');
+  if (input2) input2.value = '';
+  ['gallery-upload-confirm-box', 'daily-chart-upload-confirm-box'].forEach(id => {
+    const b = document.getElementById(id);
+    if (b) {
+      b.style.display = 'none';
+      b.innerHTML = '';
+    }
   });
-  if (!title) return;
+  showToast('Chart upload cancelled. Nothing was uploaded.', 'info');
+}
+
+async function executeGalleryUpload() {
+  if (!pendingGalleryUpload) {
+    showToast('Please select a chart file first.', 'error');
+    return;
+  }
+  const file = pendingGalleryUpload;
+  const titleInput = document.getElementById('pending-gallery-title');
+  const defaultTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
+  const title = (titleInput && titleInput.value.trim()) || defaultTitle;
+
+  const btn = document.getElementById('btn-gallery-upload-submit');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner-small"></span> Uploading...`;
+  }
 
   const formData = new FormData();
   formData.append('chartImage', file);
   formData.append('title', title);
 
-  showToast('Uploading chart image...', 'info');
-
+  showToast('Uploading chart in 1st place...', 'info');
   try {
     const res = await fetch('/api/chart-gallery', {
       method: 'POST',
@@ -5017,17 +5386,44 @@ async function handleGalleryFileInput(files) {
     });
     const data = await res.json();
     if (data.success) {
-      showToast('✅ Chart image uploaded successfully!', 'success');
+      trackRecentUpload(data.chart?.id || data.chart?.imageUrl || title);
+      showToast('✅ Chart uploaded in 1st place with RECENTLY UPLOADED badge!', 'success');
+
+      pendingGalleryUpload = null;
+      const input1 = document.getElementById('gallery-file-input');
+      if (input1) input1.value = '';
+      const input2 = document.getElementById('daily-chart-file-input');
+      if (input2) input2.value = '';
+      ['gallery-upload-confirm-box', 'daily-chart-upload-confirm-box'].forEach(id => {
+        const b = document.getElementById(id);
+        if (b) {
+          b.style.display = 'none';
+          b.innerHTML = '';
+        }
+      });
+
       await loadChartGallery();
+      await loadCharts();
+      renderApp();
+      renderCharts();
     } else {
       showToast(data.error || 'Failed to upload chart image', 'error');
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<span>Submit &amp; Upload Chart</span>`;
+      }
     }
   } catch (err) {
     showToast('Upload error: ' + err.message, 'error');
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = `<span>Submit &amp; Upload Chart</span>`;
+    }
   }
+}
 
-  const fileInput = document.getElementById('gallery-file-input');
-  if (fileInput) fileInput.value = '';
+function handleDailyChartUpload(files) {
+  handleGalleryFileInput(files, 'daily-chart-upload-confirm-box');
 }
 
 function openGalleryLightbox(imageUrl, title, chartId) {
@@ -5342,7 +5738,18 @@ window.openAddChartModal = openAddChartModal;
 window.closeAddChartModal = closeAddChartModal;
 window.switchAddChartSubTab = switchAddChartSubTab;
 window.handleChartOnlyFileInput = handleChartOnlyFileInput;
+window.executeChartUpload = executeChartUpload;
+window.cancelChartUpload = cancelChartUpload;
 window.handleVideoOnlyFileInput = handleVideoOnlyFileInput;
+window.executeVideoUpload = executeVideoUpload;
+window.cancelVideoUpload = cancelVideoUpload;
+window.handleControlHubFileInput = handleControlHubFileInput;
+window.executeControlHubUpload = executeControlHubUpload;
+window.cancelControlHubUpload = cancelControlHubUpload;
+window.handleGalleryFileInput = handleGalleryFileInput;
+window.handleDailyChartUpload = handleDailyChartUpload;
+window.executeGalleryUpload = executeGalleryUpload;
+window.cancelGalleryUpload = cancelGalleryUpload;
 window.renameChartOnly = renameChartOnly;
 window.deleteChartOnly = deleteChartOnly;
 window.useChartInFullSetup = useChartInFullSetup;
