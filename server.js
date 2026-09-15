@@ -130,6 +130,15 @@ app.use((req, res, next) => {
 const DATA_DIR = path.join(__dirname, 'data');
 const UPLOADS_DIR = path.join(__dirname, 'uploads');
 
+// Real-Time System Revisions (Tracks instantaneous changes across charts, videos, users, and site config)
+const systemRevisions = {
+  charts: Date.now(),
+  users: Date.now(),
+  gallery: Date.now(),
+  comments: Date.now(),
+  siteConfig: Date.now()
+};
+
 // ==================== AUTO-SYNC REELS FROM FOLDERS (v30) ====================
 function syncReelsFromFolders() {
   try {
@@ -781,6 +790,7 @@ app.post('/api/site-config', (req, res) => {
       lastUpdated: new Date().toISOString()
     };
     writeJson('site-config.json', updatedConfig);
+    systemRevisions.siteConfig = Date.now();
     res.json({ success: true, message: 'Website text & configuration updated instantly!', config: updatedConfig });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -1002,6 +1012,7 @@ app.post('/api/charts', upload.fields([
 
     charts.unshift(newChart); // Put newest first
     writeJson('charts.json', charts);
+    systemRevisions.charts = Date.now();
 
     res.status(201).json({ success: true, message: 'New chart & videos uploaded successfully!', chart: newChart });
   } catch (err) {
@@ -1047,6 +1058,7 @@ app.put('/api/charts/:id', upload.fields([
     };
 
     writeJson('charts.json', charts);
+    systemRevisions.charts = Date.now();
     res.json({ success: true, message: 'Chart updated successfully!', chart: charts[index] });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -1062,6 +1074,7 @@ app.delete('/api/charts/:id', (req, res) => {
     if (charts.length === initialLen) return res.status(404).json({ error: 'Chart not found' });
 
     writeJson('charts.json', charts);
+    systemRevisions.charts = Date.now();
     res.json({ success: true, message: 'Chart deleted successfully!' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -1082,6 +1095,7 @@ app.post('/api/charts/bulk-delete', (req, res) => {
     const deletedCount = beforeCount - charts.length;
 
     writeJson('charts.json', charts);
+    systemRevisions.charts = Date.now();
     res.json({ success: true, message: `Successfully deleted ${deletedCount} charts!`, deletedCount });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -1118,6 +1132,7 @@ app.post('/api/videos/upload', upload.single('videoFile'), (req, res) => {
     const title = req.body.title?.trim() || req.file.originalname;
     const fileUrl = `/uploads/${req.file.filename}`;
 
+    systemRevisions.charts = Date.now();
     res.json({
       success: true,
       message: 'Video uploaded successfully!',
@@ -1147,6 +1162,7 @@ app.delete('/api/videos', (req, res) => {
         try { fs.unlinkSync(filePath); } catch (_) {}
       }
     }
+    systemRevisions.charts = Date.now();
     res.json({ success: true, message: 'Video removed successfully' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -1185,6 +1201,7 @@ app.post('/api/chart-gallery', upload.single('chartImage'), (req, res) => {
 
     gallery.unshift(newItem);
     writeJson('chart_gallery.json', gallery);
+    systemRevisions.gallery = Date.now();
     res.json({ success: true, message: 'Chart image uploaded successfully!', chart: newItem });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -1203,6 +1220,7 @@ app.put('/api/chart-gallery/:id', (req, res) => {
 
     gallery[idx].title = newTitle;
     writeJson('chart_gallery.json', gallery);
+    systemRevisions.gallery = Date.now();
     res.json({ success: true, message: 'Chart renamed successfully!', chart: gallery[idx] });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -1228,6 +1246,7 @@ app.delete('/api/chart-gallery/:id', (req, res) => {
     }
 
     writeJson('chart_gallery.json', gallery);
+    systemRevisions.gallery = Date.now();
     res.json({ success: true, message: 'Chart deleted successfully!' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -1262,6 +1281,7 @@ app.post('/api/comments', (req, res) => {
 
     comments.unshift(newComment);
     writeJson('comments.json', comments);
+    systemRevisions.comments = Date.now();
     res.json({ success: true, message: 'Comment posted successfully!', comment: newComment });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -1277,6 +1297,7 @@ app.delete('/api/comments/:id', (req, res) => {
     if (comments.length === initialLen) return res.status(404).json({ error: 'Comment not found' });
 
     writeJson('comments.json', comments);
+    systemRevisions.comments = Date.now();
     res.json({ success: true, message: 'Comment deleted successfully by Admin!' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -2052,15 +2073,67 @@ app.post('/api/auth/sync-client-account', (req, res) => {
       writeJson('users.json', users);
       return res.json({ success: true, restored: true, user: newUser });
     } else {
-      // If server does not have verified payment and not admin, keep hasPaid false
-      if (!isVerifiedPaid && users[idx].role !== 'admin') {
-        users[idx].hasPaid = false;
-        writeJson('users.json', users);
-      }
+      // User exists on server. Server's users.json is the authoritative ground truth!
+      // If server already granted PRO or payments.json verified or admin, hasPaid IS TRUE!
+      const isPaid = Boolean(users[idx].hasPaid || users[idx].role === 'admin' || isVerifiedPaid);
+      users[idx].hasPaid = isPaid;
+      writeJson('users.json', users);
       return res.json({ success: true, restored: false, user: users[idx] });
     }
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+// ==================== REAL-TIME INSTANT SYNC API ====================
+// "Immediate action when I do anything in admin page - immediate action in user pages"
+app.post('/api/live-sync', (req, res) => {
+  try {
+    const { email, chartsRev, usersRev, galleryRev, siteConfigRev, commentsRev } = req.body || {};
+    const cleanEmail = (email || '').trim().toLowerCase();
+
+    let userState = null;
+    if (cleanEmail) {
+      const deletedEmails = getDeletedUserEmails();
+      if (deletedEmails.has(cleanEmail)) {
+        userState = { exists: false, deleted: true };
+      } else {
+        const users = readJson('users.json', []);
+        const u = users.find(x => x.email && x.email.toLowerCase() === cleanEmail);
+        if (u) {
+          userState = {
+            exists: true,
+            deleted: false,
+            email: u.email,
+            role: u.role || 'member',
+            hasPaid: Boolean(u.hasPaid || u.role === 'admin'),
+            name: u.name,
+            paymentId: u.paymentId || null
+          };
+        } else {
+          userState = { exists: false, deleted: false };
+        }
+      }
+    }
+
+    const chartsChanged = Boolean(chartsRev && Number(chartsRev) < systemRevisions.charts);
+    const usersChanged = Boolean(usersRev && Number(usersRev) < systemRevisions.users);
+    const galleryChanged = Boolean(galleryRev && Number(galleryRev) < systemRevisions.gallery);
+    const commentsChanged = Boolean(commentsRev && Number(commentsRev) < systemRevisions.comments);
+    const siteConfigChanged = Boolean(siteConfigRev && Number(siteConfigRev) < systemRevisions.siteConfig);
+
+    res.json({
+      success: true,
+      revisions: systemRevisions,
+      user: userState,
+      chartsChanged,
+      usersChanged,
+      galleryChanged,
+      commentsChanged,
+      siteConfigChanged
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -2114,6 +2187,24 @@ app.post('/api/admin/users/:id/toggle-pro', async (req, res) => {
       users[uIdx].paidAt = new Date().toISOString();
       users[uIdx].paymentId = users[uIdx].paymentId || 'PRO_ADMIN_GRANTED';
       delete users[uIdx].revokedAt;
+
+      // Ensure payments.json record is present and verified
+      const pIdx = payments.findIndex(p => p.email && p.email.toLowerCase() === users[uIdx].email.toLowerCase());
+      if (pIdx !== -1) {
+        payments[pIdx].verified = true;
+        payments[pIdx].id = users[uIdx].paymentId;
+        delete payments[pIdx].error;
+      } else {
+        payments.push({
+          id: users[uIdx].paymentId,
+          email: users[uIdx].email.toLowerCase(),
+          amount: 399,
+          verified: true,
+          date: new Date().toISOString(),
+          source: 'ADMIN_GRANTED'
+        });
+      }
+      writeJson('payments.json', payments);
     } else {
       // Revoking PRO access:
       users[uIdx].hasPaid = false;
@@ -2134,6 +2225,9 @@ app.post('/api/admin/users/:id/toggle-pro', async (req, res) => {
 
     writeJson('users.json', users);
     await syncToCloud('users.json', users);
+
+    // Instant real-time action!
+    systemRevisions.users = Date.now();
 
     const actionText = shouldHavePro ? 'Lifetime PRO Access Granted' : 'PRO Access Revoked Successfully';
     res.json({
@@ -2184,6 +2278,7 @@ app.delete('/api/admin/users/:id', async (req, res) => {
 
     // 4. Force immediate propagation to primary and secondary cloud mirrors!
     await syncToCloud('users.json', users);
+    systemRevisions.users = Date.now();
 
     // 5. Remove any payment records for this user
     payments = payments.filter(p => !p.email || p.email.toLowerCase() !== cleanEmail);
@@ -2217,6 +2312,7 @@ app.post('/api/admin/users/:id/reset-password', async (req, res) => {
     users[uIdx].activeSessionToken = null; // Forces re-login with new password
     writeJson('users.json', users);
     await syncToCloud('users.json', users);
+    systemRevisions.users = Date.now();
 
     res.json({
       success: true,
@@ -2261,6 +2357,7 @@ app.post('/api/admin/users/create', async (req, res) => {
     users.push(newUser);
     writeJson('users.json', users);
     await syncToCloud('users.json', users);
+    systemRevisions.users = Date.now();
 
     const { password: _, ...userSafe } = newUser;
     res.status(201).json({

@@ -1,1 +1,10 @@
-[]
+[
+  {
+    "id": "PRO_ADMIN_GRANTED",
+    "email": "student@tradinghub.in",
+    "amount": 399,
+    "verified": true,
+    "date": "2026-09-10T12:00:00.000Z",
+    "source": "ADMIN_PROVISIONED"
+  }
+]

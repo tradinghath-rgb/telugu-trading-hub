@@ -17,8 +17,9 @@
     "name": "Ramesh Trader",
     "role": "member",
     "hasPaid": true,
-    "paidAt": "2026-09-10T12:00:00.000Z",
-    "paymentId": "pay_DEMO_VERIFIED_LIFETIME"
+    "paidAt": "2026-09-15T00:01:11.272Z",
+    "paymentId": "PRO_ADMIN_GRANTED",
+    "activeSessionToken": null
   },
   {
     "id": "user-1789328314651",

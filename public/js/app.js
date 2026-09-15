@@ -204,7 +204,8 @@ const state = {
   showAllGalleryCharts: false,
   adminUsersList: [],
   adminUserFilter: 'all',
-  adminUserSearch: ''
+  adminUserSearch: '',
+  systemRevisions: { charts: 0, users: 0, gallery: 0, comments: 0, siteConfig: 0 }
 };
 
 // ==================== INITIALIZATION ====================
@@ -225,6 +226,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   checkResetPasswordTokenInUrl();
   renderApp();
   try { initMobileQuickStripSpy(); } catch (_) {}
+
+  // START REAL-TIME INSTANT SYNC (Immediate actions for Grant PRO, Revoke PRO, Chart/Video Renames, Delete, etc.)
+  initRealtimeLiveSync();
 });
 
 // ==================== BROWSER ACCOUNT VAULT (CROSS-DEPLOY PERMANENCE) ====================
@@ -400,11 +404,17 @@ function initAuthState() {
           showToast('This account has been removed by administrator.', 'info');
         } else if (d && d.user && state.currentUser) {
           // If server updated payment/role status, seamlessly keep client in sync
-          if (Boolean(d.user.hasPaid) !== Boolean(state.currentUser.hasPaid)) {
-            state.currentUser.hasPaid = Boolean(d.user.hasPaid);
-            safeStorage.setItem('tradinghub_user', JSON.stringify(state.currentUser));
-            safeSessionStorage.setItem('tradinghub_user', JSON.stringify(state.currentUser));
-            renderNavbar();
+          const hadPaid = Boolean(state.currentUser.hasPaid);
+          const nowPaid = Boolean(d.user.hasPaid);
+          state.currentUser.hasPaid = nowPaid;
+          state.currentUser.role = d.user.role || state.currentUser.role;
+          state.currentUser.name = d.user.name || state.currentUser.name;
+          if (d.user.paymentId) state.currentUser.paymentId = d.user.paymentId;
+          safeStorage.setItem('tradinghub_user', JSON.stringify(state.currentUser));
+          safeSessionStorage.setItem('tradinghub_user', JSON.stringify(state.currentUser));
+          renderNavbar();
+          if (hadPaid !== nowPaid) {
+            renderApp();
           }
         }
       })
@@ -421,6 +431,148 @@ function initAuthState() {
 // Multi-Device Access Enabled: Allows multiple phones, laptops, and PCs simultaneously
 async function validateActiveSession() {
   return true;
+}
+
+// ==================== REAL-TIME LIVE SYNC SYSTEM ====================
+// Provides sub-second immediate action across user screens when Admin grants/revokes PRO, modifies charts, etc.
+let isLiveSyncRunning = false;
+let liveSyncIntervalId = null;
+
+function initRealtimeLiveSync() {
+  if (liveSyncIntervalId) clearInterval(liveSyncIntervalId);
+  // Run continuous heartbeat every 2 seconds
+  liveSyncIntervalId = setInterval(runRealtimeLiveSync, 2000);
+
+  // Immediate triggers on focus and tab change
+  window.addEventListener('focus', () => runRealtimeLiveSync());
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) runRealtimeLiveSync();
+  });
+
+  // Run first sync immediately
+  setTimeout(runRealtimeLiveSync, 250);
+}
+
+async function runRealtimeLiveSync() {
+  if (isLiveSyncRunning) return;
+  isLiveSyncRunning = true;
+
+  try {
+    const payload = {
+      email: state.currentUser?.email || '',
+      chartsRev: state.systemRevisions?.charts || 0,
+      usersRev: state.systemRevisions?.users || 0,
+      galleryRev: state.systemRevisions?.gallery || 0,
+      siteConfigRev: state.systemRevisions?.siteConfig || 0,
+      commentsRev: state.systemRevisions?.comments || 0
+    };
+
+    const res = await fetch('/api/live-sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data || !data.revisions) return;
+
+    const isFirstRun = (!state.systemRevisions || state.systemRevisions.charts === 0);
+    state.systemRevisions = data.revisions;
+
+    // 1. IMMEDIATE USER ACCOUNT ACTIONS (Grant PRO, Revoke PRO, Delete User)
+    if (state.currentUser && data.user) {
+      // Case A: Account deleted by Admin in real-time
+      if (data.user.deleted || (!data.user.exists && state.currentUser.role !== 'admin')) {
+        console.warn('[LIVE SYNC] Account deleted by Admin in real-time!');
+        safeStorage.removeItem('tradinghub_user');
+        safeSessionStorage.removeItem('tradinghub_user');
+        safeStorage.removeItem('tradinghub_session_token');
+        safeSessionStorage.removeItem('tradinghub_session_token');
+        state.currentUser = null;
+        document.documentElement.classList.remove('is-admin', 'is-pro-member');
+        document.body.classList.remove('is-admin', 'is-pro-member', 'admin-home-blurred');
+        renderNavbar();
+        renderApp();
+        showToast('🚫 Your account has been removed by the administrator.', 'error');
+        return;
+      }
+
+      // Case B: PRO Status Granted in Real-Time
+      if (data.user.hasPaid && !state.currentUser.hasPaid) {
+        console.log('[LIVE SYNC] PRO Access granted in real-time!');
+        state.currentUser.hasPaid = true;
+        state.currentUser.paymentId = data.user.paymentId || 'PRO_ADMIN_GRANTED';
+        saveAuthState(state.currentUser);
+        renderNavbar();
+        renderApp();
+        showToast('💎 Real-Time Action: Lifetime PRO Access Granted by Admin! All charts and videos are now unlocked!', 'success');
+      }
+      // Case C: PRO Status Revoked in Real-Time
+      else if (!data.user.hasPaid && state.currentUser.hasPaid && state.currentUser.role !== 'admin') {
+        console.log('[LIVE SYNC] PRO Access revoked in real-time!');
+        state.currentUser.hasPaid = false;
+        state.currentUser.paymentId = null;
+        saveAuthState(state.currentUser);
+        renderNavbar();
+        renderApp();
+        showToast('⚠️ Notice: Your Lifetime PRO Access has been revoked by the administrator.', 'error');
+      }
+    }
+
+    // Live refresh Admin Users Table if Admin has CMS open and user database changed
+    if (data.usersChanged && state.currentUser?.role === 'admin') {
+      if (typeof loadAdminUsers === 'function') {
+        loadAdminUsers().then(() => {
+          if (typeof loadAdminStats === 'function') loadAdminStats();
+        }).catch(() => {});
+      }
+    }
+
+    // 2. IMMEDIATE CHARTS & VIDEOS ACTIONS (Add, Edit, Rename, Delete)
+    if (data.chartsChanged && !isFirstRun) {
+      console.log('[LIVE SYNC] Charts or Videos updated by Admin in real-time!');
+      await loadCharts();
+      renderCharts();
+      if (state.activeModalChart) {
+        const fresh = state.charts.find(c => c.id === state.activeModalChart.id);
+        if (fresh) {
+          state.activeModalChart = fresh;
+          const titleEl = document.getElementById('modal-chart-title');
+          if (titleEl) titleEl.textContent = fresh.title;
+        }
+      }
+      if (state.currentUser?.role === 'admin' && typeof renderAdminChartsTable === 'function') {
+        renderAdminChartsTable();
+      }
+    }
+
+    // 3. IMMEDIATE GALLERY ACTIONS
+    if (data.galleryChanged && !isFirstRun) {
+      await loadChartGallery();
+      renderChartGallery();
+      if (state.currentUser?.role === 'admin' && typeof renderAdminChartGallery === 'function') {
+        renderAdminChartGallery();
+      }
+    }
+
+    // 4. IMMEDIATE SITE CONFIG / TEXT ACTIONS
+    if (data.siteConfigChanged && !isFirstRun) {
+      await loadSiteConfig();
+      renderDynamicSiteTexts();
+    }
+
+    // 5. IMMEDIATE COMMENTS ACTIONS
+    if (data.commentsChanged && !isFirstRun) {
+      await loadComments();
+      renderComments();
+    }
+
+  } catch (err) {
+    // Network retry silent
+  } finally {
+    isLiveSyncRunning = false;
+  }
 }
 
 function handleConcurrentLogout() {
