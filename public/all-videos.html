@@ -151,6 +151,23 @@
       <div id="charts-grid-container" class="charts-grid">
         <!-- Dynamically rendered via app.js -->
       </div>
+
+      <!-- ==================== ADMIN-UPLOADED VIDEOS (PERMANENT) ==================== -->
+      <!-- Cloud-synced videos uploaded by admin. Visible to all PAID members. Survive all redeploys. -->
+      <div id="uploaded-videos-section" style="display: none; margin-top: 40px;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px; padding: 14px 18px; background: rgba(0, 242, 152, 0.05); border: 1px solid rgba(0, 242, 152, 0.2); border-radius: 10px;">
+          <div style="width: 34px; height: 34px; border-radius: 50%; background: rgba(0,242,152,0.15); border: 1.5px solid rgba(0,242,152,0.4); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-green)" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
+          <div>
+            <div style="font-size: 0.75rem; font-weight: 800; color: var(--accent-green); letter-spacing: 0.08em; margin-bottom: 2px;">📤 ADMIN UPLOADED VIDEOS</div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">Fresh content uploaded by Mentor — available exclusively for PRO members</div>
+          </div>
+        </div>
+        <div id="uploaded-videos-grid" class="charts-grid">
+          <!-- Dynamically rendered by app.js renderUploadedVideosSection() -->
+        </div>
+      </div>
     </div>
   </main>
 

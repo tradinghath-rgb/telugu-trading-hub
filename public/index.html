@@ -387,6 +387,22 @@
         <span id="charts-more-btn-text">+ More Videos (Click to Display All 24+ Lessons) ▼</span>
       </button>
     </div>
+
+    <!-- ==================== ADMIN-UPLOADED VIDEOS (PERMANENT) ==================== -->
+    <div id="uploaded-videos-section" style="margin-top: 40px; display: none;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.2rem;">🎬</span>
+            <h2 style="font-size: 1.25rem; font-weight: 800; color: #fff; margin: 0;">Newly Uploaded Video Lessons</h2>
+          </div>
+          <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 4px 0 0;">Exclusive video breakdowns and analysis uploaded by the admin.</p>
+        </div>
+      </div>
+      <div id="uploaded-videos-grid" class="charts-grid">
+        <!-- Dynamically populated by renderUploadedVideosSection -->
+      </div>
+    </div>
   </section>
 
   <!-- ==================== 6C. TRADER COMMUNITY & COMMENTS ==================== -->
@@ -1754,6 +1770,175 @@
             <div style="margin-left: auto; font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 5px;">
               <span>🇮🇳</span> All times shown in <strong style="color: #c678ff;">IST (India)</strong>
             </div>
+          </div>
+
+          <!-- ==================== INSTAGRAM-STYLE POST SCHEDULER COMPOSER ==================== -->
+          <div class="admin-composer-card" style="background: linear-gradient(135deg, rgba(108,59,255,0.08), rgba(20,25,45,0.7)); border: 1.5px solid rgba(108,59,255,0.35); border-radius: 14px; padding: 18px 20px; margin-bottom: 22px; box-shadow: 0 8px 30px rgba(0,0,0,0.4);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #6c3bff, #00f298); display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                  📅
+                </div>
+                <div>
+                  <h4 style="margin: 0; color: #fff; font-size: 1.05rem; font-weight: 800;">Schedule a New Post (Instagram-Style)</h4>
+                  <span style="font-size: 0.78rem; color: rgba(198,120,255,0.85);">Upload today, automatically goes live at your chosen future date &amp; 12hr time in IST</span>
+                </div>
+              </div>
+              <span class="category-pill" style="border-color: rgba(108,59,255,0.5); color: #c678ff; font-size: 0.75rem;">12-Hour IST Timing</span>
+            </div>
+
+            <form id="admin-schedule-creator-form" onsubmit="handleScheduleComposerSubmit(event)">
+              <!-- Post Type Selection -->
+              <div class="form-group" style="margin-bottom: 14px;">
+                <label class="form-label" style="color: #fff; font-weight: 700; font-size: 0.84rem; margin-bottom: 8px;">1. Select Post Type to Publish</label>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px;">
+                  <label class="schedule-type-radio active" id="sched-type-lbl-chart" onclick="switchScheduleComposerType('chart')">
+                    <input type="radio" name="sched_post_type" value="chart" checked style="display: none;" />
+                    <span style="font-size: 1.2rem;">📊</span>
+                    <div>
+                      <strong style="display: block; color: #fff; font-size: 0.85rem;">Chart Only</strong>
+                      <small style="color: var(--text-muted); font-size: 0.72rem;">Hand-drawn chart setup</small>
+                    </div>
+                  </label>
+                  <label class="schedule-type-radio" id="sched-type-lbl-video" onclick="switchScheduleComposerType('video')">
+                    <input type="radio" name="sched_post_type" value="video" style="display: none;" />
+                    <span style="font-size: 1.2rem;">🎬</span>
+                    <div>
+                      <strong style="display: block; color: #fff; font-size: 0.85rem;">Video Only</strong>
+                      <small style="color: var(--text-muted); font-size: 0.72rem;">Uploaded video lesson</small>
+                    </div>
+                  </label>
+                  <label class="schedule-type-radio" id="sched-type-lbl-both" onclick="switchScheduleComposerType('both')">
+                    <input type="radio" name="sched_post_type" value="both" style="display: none;" />
+                    <span style="font-size: 1.2rem;">🌟</span>
+                    <div>
+                      <strong style="display: block; color: #fff; font-size: 0.85rem;">Both Chart &amp; Video</strong>
+                      <small style="color: var(--text-muted); font-size: 0.72rem;">Complete paired setup</small>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Post Title & Category -->
+              <div class="form-grid-2" style="margin-bottom: 14px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label" style="font-size: 0.8rem;">Setup / Video Title *</label>
+                  <input type="text" id="sched-composer-title" class="form-input" placeholder="e.g. Bank Nifty Liquidity Trap &amp; 1:4 Reversal" required style="font-size: 0.86rem;" />
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                  <label class="form-label" style="font-size: 0.8rem;">Category</label>
+                  <select id="sched-composer-category" class="form-select" style="font-size: 0.86rem;">
+                    <option value="SMC & Liquidity">SMC &amp; Liquidity</option>
+                    <option value="Traps & Fakeouts">Traps &amp; Fakeouts</option>
+                    <option value="Price Action Core">Price Action Core</option>
+                    <option value="Candlestick Patterns">Candlestick Patterns</option>
+                    <option value="Advanced Strategies">Advanced Strategies</option>
+                    <option value="Index Strategies">Index Strategies</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Media Upload Area -->
+              <div id="sched-media-container" style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 14px; margin-bottom: 16px;">
+                <!-- Chart File Upload (visible for chart & both) -->
+                <div id="sched-chart-input-group" style="margin-bottom: 12px;">
+                  <label class="form-label" style="color: var(--accent-green); font-size: 0.8rem; display: flex; align-items: center; gap: 6px;">
+                    <span>📊 Chart Image (PNG, JPG, SVG, WebP)</span>
+                  </label>
+                  <input type="file" id="sched-composer-chart-file" accept="image/*" class="form-input form-input-sm" onchange="handleScheduleChartFileSelect(event)" />
+                  <div id="sched-chart-preview-box" style="display: none; align-items: center; gap: 10px; margin-top: 8px; background: rgba(0,242,152,0.06); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(0,242,152,0.2);">
+                    <img id="sched-chart-preview-img" src="" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1);" alt="Preview" />
+                    <span id="sched-chart-preview-name" style="font-size: 0.8rem; color: #fff; word-break: break-all;"></span>
+                  </div>
+                </div>
+
+                <!-- Video Input (visible for video & both) -->
+                <div id="sched-video-input-group" style="display: none;">
+                  <label class="form-label" style="color: var(--accent-cyan); font-size: 0.8rem; display: flex; align-items: center; gap: 6px;">
+                    <span>🎬 Video File OR URL (MP4 / YouTube)</span>
+                  </label>
+                  <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px;">
+                    <input type="file" id="sched-composer-video-file" accept="video/mp4,video/*" class="form-input form-input-sm" style="flex: 1; min-width: 200px;" />
+                    <select id="sched-composer-language" class="form-select form-select-sm" style="width: 120px;">
+                      <option value="Telugu">Telugu (తెలుగు)</option>
+                      <option value="English">English</option>
+                    </select>
+                  </div>
+                  <input type="text" id="sched-composer-video-url" class="form-input form-input-sm" placeholder="Or enter Video URL / YouTube Link (https://...)" style="margin-top: 4px;" />
+                </div>
+              </div>
+
+              <!-- 📅 Instagram-Style Date & 12-Hour Time Scheduling -->
+              <div style="background: rgba(108,59,255,0.1); border: 1.5px solid rgba(108,59,255,0.3); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px;">
+                <label class="form-label" style="color: #c678ff; font-weight: 800; font-size: 0.84rem; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+                  <span>🕐 Choose Future Date &amp; Time to Go Live (12-Hour Format IST)</span>
+                </label>
+                
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; align-items: flex-end;">
+                  <div>
+                    <span style="font-size: 0.74rem; color: var(--text-muted); display: block; margin-bottom: 4px;">📆 Date</span>
+                    <input type="date" id="sched-composer-date" class="form-input" onchange="updateScheduleComposerPreview()" style="font-size: 0.86rem; padding: 8px 10px;" />
+                  </div>
+                  <div>
+                    <span style="font-size: 0.74rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Hour (12hr)</span>
+                    <select id="sched-composer-hour" class="form-select" onchange="updateScheduleComposerPreview()" style="font-size: 0.86rem; padding: 8px 10px;">
+                      <option value="01">01</option>
+                      <option value="02">02</option>
+                      <option value="03">03</option>
+                      <option value="04">04</option>
+                      <option value="05">05</option>
+                      <option value="06" selected>06 (6:00)</option>
+                      <option value="07">07</option>
+                      <option value="08">08</option>
+                      <option value="09">09 (9:00)</option>
+                      <option value="10">10</option>
+                      <option value="11">11</option>
+                      <option value="12">12</option>
+                    </select>
+                  </div>
+                  <div>
+                    <span style="font-size: 0.74rem; color: var(--text-muted); display: block; margin-bottom: 4px;">Minute</span>
+                    <select id="sched-composer-minute" class="form-select" onchange="updateScheduleComposerPreview()" style="font-size: 0.86rem; padding: 8px 10px;">
+                      <option value="00" selected>:00</option>
+                      <option value="05">:05</option>
+                      <option value="10">:10</option>
+                      <option value="15">:15</option>
+                      <option value="20">:20</option>
+                      <option value="25">:25</option>
+                      <option value="30">:30</option>
+                      <option value="35">:35</option>
+                      <option value="40">:40</option>
+                      <option value="45">:45</option>
+                      <option value="50">:50</option>
+                      <option value="55">:55</option>
+                    </select>
+                  </div>
+                  <div>
+                    <span style="font-size: 0.74rem; color: var(--text-muted); display: block; margin-bottom: 4px;">AM / PM</span>
+                    <select id="sched-composer-ampm" class="form-select" onchange="updateScheduleComposerPreview()" style="font-size: 0.86rem; padding: 8px 10px;">
+                      <option value="AM" selected>AM (Morning)</option>
+                      <option value="PM">PM (Evening)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Live dynamic banner explaining exact schedule -->
+                <div id="sched-composer-preview-banner" style="margin-top: 12px; font-size: 0.82rem; color: #00f298; background: rgba(0,242,152,0.08); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(0,242,152,0.2); display: flex; align-items: center; gap: 8px;">
+                  <span>✨</span>
+                  <span id="sched-composer-preview-text">Post will automatically publish tomorrow at 06:00 AM IST</span>
+                </div>
+              </div>
+
+              <!-- Submit Buttons -->
+              <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button type="submit" id="btn-submit-schedule-composer" class="btn btn-primary" style="background: linear-gradient(135deg, #6c3bff, #00f298); border: none; font-weight: 800; font-size: 0.9rem; padding: 10px 20px; display: inline-flex; align-items: center; gap: 8px;">
+                  <span>📅 Schedule Post for Later</span>
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="publishScheduleComposerImmediately()" style="font-size: 0.85rem; padding: 10px 16px;">
+                  <span>⚡ Publish Immediately Instead</span>
+                </button>
+              </div>
+            </form>
           </div>
 
           <!-- Posts list -->

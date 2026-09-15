@@ -7255,6 +7255,46 @@ body {
   border-color: #9b4dff;
 }
 
+.btn-publish-now {
+  background: rgba(0, 242, 152, 0.12);
+  border: 1px solid rgba(0, 242, 152, 0.35);
+  color: var(--accent-green);
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.btn-publish-now:hover {
+  background: rgba(0, 242, 152, 0.25);
+  border-color: var(--accent-green);
+  box-shadow: 0 0 10px rgba(0, 242, 152, 0.2);
+}
+
+.schedule-type-radio {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1.5px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+.schedule-type-radio:hover {
+  background: rgba(108, 59, 255, 0.12);
+  border-color: rgba(108, 59, 255, 0.4);
+}
+.schedule-type-radio.active {
+  background: rgba(108, 59, 255, 0.22);
+  border-color: #c678ff;
+  box-shadow: 0 0 14px rgba(108, 59, 255, 0.35);
+}
+
 /* Responsive schedule picker */
 @media (max-width: 480px) {
   .schedule-picker-grid {

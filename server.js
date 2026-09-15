@@ -402,6 +402,12 @@ const CLOUD_SYNC_MAP = {
     secondaryId: 'ff808181a067127101a09c30eadb0c2e',
     key: 'comments',
     name: 'tradinghub_comments'
+  },
+  'videos_uploaded.json': {
+    primaryId: 'ff808181a067127101a09c50b8210c40',
+    secondaryId: 'ff808181a067127101a09c50b8220c41',
+    key: 'videos',
+    name: 'tradinghub_videos'
   }
 };
 
@@ -601,6 +607,7 @@ async function initCloudDataPersistence() {
   await syncFromCloud('users.json');
   await syncFromCloud('chart_gallery.json');
   await syncFromCloud('comments.json');
+  await syncFromCloud('videos_uploaded.json');
 }
 
 
@@ -1114,7 +1121,9 @@ app.get('/api/media-inventory', (req, res) => {
     const uploadedFiles = fs.existsSync(UPLOADS_DIR) ? fs.readdirSync(UPLOADS_DIR) : [];
 
     const now = Date.now();
-    const uploadedVideos = uploadedFiles
+
+    // Get disk-based uploaded videos (may not survive redeploy for large files)
+    const diskUploadedVideos = uploadedFiles
       .filter(f => /\.(mp4|webm|mov|mkv)$/i.test(f))
       .map(f => {
         let mtime = 0;
@@ -1129,42 +1138,153 @@ app.get('/api/media-inventory', (req, res) => {
           isRecentlyUploaded,
           uploadedAt: mtime
         };
-      })
-      .sort((a, b) => b.mtime - a.mtime); // GUARANTEED 1ST PLACE for new uploads!
+      });
+
+    // Get cloud-synced uploaded videos (PERMANENTLY STORED - survive redeploys)
+    const cloudVideos = readJson('videos_uploaded.json', []).map(v => ({
+      name: v.name || v.filename || 'Uploaded Video',
+      url: v.url,
+      id: v.id,
+      language: v.language || 'telugu',
+      type: v.type || 'uploaded',
+      isRecentlyUploaded: v.isRecentlyUploaded || ((now - (v.uploadedAt || 0)) < (7 * 24 * 3600 * 1000)),
+      uploadedAt: v.uploadedAt || 0,
+      mtime: v.uploadedAt || 0
+    }));
+
+    // Merge cloud-synced + disk (deduplicate by name)
+    const cloudNames = new Set(cloudVideos.map(v => v.name));
+    const diskOnly = diskUploadedVideos.filter(v => !cloudNames.has(v.name));
+    const allUploadedMedia = [...cloudVideos, ...diskOnly]
+      .sort((a, b) => {
+        const aRecent = a.isRecentlyUploaded ? 1 : 0;
+        const bRecent = b.isRecentlyUploaded ? 1 : 0;
+        if (bRecent !== aRecent) return bRecent - aRecent;
+        return (b.uploadedAt || b.mtime || 0) - (a.uploadedAt || a.mtime || 0);
+      });
 
     res.json({
       teluguVideos: teluguFiles.map(f => ({ name: f, url: `/videos/telugu/${encodeURIComponent(f)}` })),
       englishVideos: englishFiles.map(f => ({ name: f, url: `/videos/english/${encodeURIComponent(f)}` })),
-      uploadedMedia: uploadedVideos
+      uploadedMedia: allUploadedMedia
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
+// Permanently stored uploaded videos for PAID USERS to view on all-videos page
+// These are cloud-synced and survive all redeploys
+app.get('/api/uploaded-videos', (req, res) => {
+  try {
+    const uploadedVideos = readJson('videos_uploaded.json', []);
+    res.json(uploadedVideos);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete an uploaded video (admin only)
+app.delete('/api/uploaded-videos/:id', (req, res) => {
+  try {
+    let videos = readJson('videos_uploaded.json', []);
+    const initialLen = videos.length;
+    const item = videos.find(v => v.id === req.params.id);
+    videos = videos.filter(v => v.id !== req.params.id);
+    if (videos.length === initialLen) return res.status(404).json({ error: 'Video not found' });
+
+    // Try to remove disk file if it's an upload path
+    if (item && item.filename) {
+      const filePath = path.join(UPLOADS_DIR, item.filename);
+      if (fs.existsSync(filePath)) {
+        try { fs.unlinkSync(filePath); } catch (_) {}
+      }
+    }
+
+    writeJson('videos_uploaded.json', videos);
+    systemRevisions.charts = Date.now();
+    res.json({ success: true, message: 'Video deleted successfully!' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Standalone Video Upload (Telugu or English)
 app.post('/api/videos/upload', upload.single('videoFile'), (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No video file provided' });
-    }
     const lang = (req.body.language || 'telugu').toLowerCase();
-    const title = req.body.title?.trim() || req.file.originalname;
-    const fileUrl = `/uploads/${req.file.filename}`;
+    const title = req.body.title?.trim() || (req.file ? req.file.originalname : 'New Video Lesson');
 
-    systemRevisions.charts = Date.now();
-    res.json({
-      success: true,
-      message: 'Video uploaded successfully!',
-      video: {
+    // Check if a YouTube/external link was provided instead of a file
+    const youtubeUrl = req.body.youtubeUrl?.trim();
+    if (youtubeUrl) {
+      // External URL video — store in cloud-synced videos_uploaded.json
+      const videosUploaded = readJson('videos_uploaded.json', []);
+      const newVideo = {
+        id: `video-${Date.now()}`,
         name: title,
-        url: fileUrl,
+        url: youtubeUrl,
         language: lang,
-        filename: req.file.filename,
-        size: req.file.size,
+        type: 'external',
         isRecentlyUploaded: true,
         uploadedAt: Date.now()
+      };
+      videosUploaded.unshift(newVideo);
+      writeJson('videos_uploaded.json', videosUploaded);
+      systemRevisions.charts = Date.now();
+      return res.json({ success: true, message: 'Video link saved! Permanently stored — visible to all paid members.', video: newVideo });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No video file or YouTube link provided.' });
+    }
+
+    // For uploaded video files — store metadata + file URL in cloud-synced JSON
+    // NOTE: File itself is on local disk; we also store a base64 copy for videos under 50MB
+    const fileUrl = `/uploads/${req.file.filename}`;
+    let persistentUrl = fileUrl;
+    let videoBase64 = null;
+
+    // For small videos (<= 50MB), embed as base64 for permanent cloud storage
+    if (req.file.size <= 50 * 1024 * 1024) {
+      try {
+        const fileBuffer = fs.readFileSync(req.file.path);
+        const mimeType = req.file.mimetype || 'video/mp4';
+        videoBase64 = fileBuffer.toString('base64');
+        persistentUrl = `data:${mimeType};base64,${videoBase64}`;
+        try { fs.unlinkSync(req.file.path); } catch (_) {}
+        console.log(`[Video Upload] Video "${title}" embedded as base64 (${Math.round(videoBase64.length / 1024)}KB). Permanently stored.`);
+      } catch (embedErr) {
+        console.warn('[Video Upload] Base64 embed failed, using file URL:', embedErr.message);
+        persistentUrl = fileUrl;
       }
+    } else {
+      console.log(`[Video Upload] Video "${title}" is large (${Math.round(req.file.size / (1024*1024))}MB). Stored as file URL (may not survive redeploy). Consider using YouTube link instead.`);
+    }
+
+    // Store in cloud-synced videos_uploaded.json
+    const videosUploaded = readJson('videos_uploaded.json', []);
+    const newVideo = {
+      id: `video-${Date.now()}`,
+      name: title,
+      url: persistentUrl,
+      language: lang,
+      type: 'uploaded',
+      filename: req.file.filename,
+      size: req.file.size,
+      isRecentlyUploaded: true,
+      uploadedAt: Date.now()
+    };
+    videosUploaded.unshift(newVideo);
+    writeJson('videos_uploaded.json', videosUploaded);
+    systemRevisions.charts = Date.now();
+
+    res.json({
+      success: true,
+      message: req.file.size <= 50 * 1024 * 1024
+        ? 'Video uploaded and permanently stored! Visible to all paid members even after updates.'
+        : 'Video uploaded! Note: For permanent storage, use a YouTube link instead.',
+      video: newVideo
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -1200,6 +1320,8 @@ app.get('/api/chart-gallery', (req, res) => {
 });
 
 // Upload new chart image (Drag-and-Drop or File Picker)
+// PERMANENT STORAGE: Image is converted to base64 data URL and embedded in chart_gallery.json
+// which is cloud-synced — so uploaded charts survive ALL redeploys and never disappear.
 app.post('/api/chart-gallery', upload.single('chartImage'), (req, res) => {
   try {
     const gallery = readJson('chart_gallery.json', []);
@@ -1207,7 +1329,24 @@ app.post('/api/chart-gallery', upload.single('chartImage'), (req, res) => {
 
     let imageUrl = '';
     if (req.file) {
-      imageUrl = `/uploads/${req.file.filename}`;
+      // Convert uploaded file to base64 data URL for permanent cloud storage
+      // This ensures the image is embedded in chart_gallery.json and survives redeploys
+      try {
+        const fileBuffer = fs.readFileSync(req.file.path);
+        const mimeType = req.file.mimetype || 'image/jpeg';
+        const base64Data = fileBuffer.toString('base64');
+        imageUrl = `data:${mimeType};base64,${base64Data}`;
+        // Clean up the temp file from disk since we embedded it
+        try { fs.unlinkSync(req.file.path); } catch (_) {}
+        console.log(`[Gallery Upload] Chart "${title}" embedded as base64 (${Math.round(base64Data.length / 1024)}KB). Will persist across all redeploys.`);
+      } catch (embedErr) {
+        // Fallback to file URL if base64 conversion fails
+        imageUrl = `/uploads/${req.file.filename}`;
+        console.warn('[Gallery Upload] Base64 embed failed, using file URL:', embedErr.message);
+      }
+    } else if (req.body.imageData) {
+      // Direct base64 data URL from client (already encoded)
+      imageUrl = req.body.imageData;
     } else if (req.body.customImageUrl) {
       imageUrl = req.body.customImageUrl;
     } else {
@@ -1217,7 +1356,7 @@ app.post('/api/chart-gallery', upload.single('chartImage'), (req, res) => {
     const newItem = {
       id: `gallery-${Date.now()}`,
       title,
-      imageUrl,
+      imageUrl,  // Contains base64 data URL — permanently embedded
       dateAdded: new Date().toISOString().split('T')[0],
       isRecentlyUploaded: true,
       uploadedAt: Date.now()
@@ -1226,7 +1365,7 @@ app.post('/api/chart-gallery', upload.single('chartImage'), (req, res) => {
     gallery.unshift(newItem);
     writeJson('chart_gallery.json', gallery);
     systemRevisions.gallery = Date.now();
-    res.json({ success: true, message: 'Chart image uploaded successfully!', chart: newItem });
+    res.json({ success: true, message: 'Chart image uploaded successfully! Permanently stored — visible to all paid members.', chart: newItem });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -1294,10 +1433,14 @@ app.get('/api/schedule', (req, res) => {
   }
 });
 
-// POST a new scheduled post (admin uploads file + sets future datetime)
-app.post('/api/schedule', upload.single('file'), (req, res) => {
+// POST a new scheduled post (admin uploads chart, video, or both + sets future datetime)
+app.post('/api/schedule', upload.fields([
+  { name: 'file', maxCount: 1 },
+  { name: 'chartFile', maxCount: 1 },
+  { name: 'videoFile', maxCount: 1 }
+]), (req, res) => {
   try {
-    const { title, scheduledAt, type, language } = req.body;
+    const { title, scheduledAt, type, language, category, summary, keyTakeaway, teluguVideo, englishVideo } = req.body;
     // scheduledAt must be a valid ISO string (UTC), client converts IST → UTC before sending
     if (!scheduledAt || isNaN(new Date(scheduledAt).getTime())) {
       return res.status(400).json({ error: 'Invalid scheduledAt datetime' });
@@ -1307,21 +1450,46 @@ app.post('/api/schedule', upload.single('file'), (req, res) => {
     }
 
     let fileUrl = null;
-    if (req.file) {
+    let chartUrl = null;
+    let videoUrl = null;
+
+    if (req.files) {
+      if (req.files.file && req.files.file[0]) {
+        fileUrl = `/uploads/${req.files.file[0].filename}`;
+      }
+      if (req.files.chartFile && req.files.chartFile[0]) {
+        chartUrl = `/uploads/${req.files.chartFile[0].filename}`;
+      }
+      if (req.files.videoFile && req.files.videoFile[0]) {
+        videoUrl = `/uploads/${req.files.videoFile[0].filename}`;
+      }
+    } else if (req.file) {
       fileUrl = `/uploads/${req.file.filename}`;
-    } else if (req.body.fileUrl) {
-      fileUrl = req.body.fileUrl; // allow re-scheduling an already uploaded file
-    } else {
-      return res.status(400).json({ error: 'No file or fileUrl provided' });
     }
 
-    const postType = (type || 'gallery').toLowerCase(); // 'gallery' | 'chart' | 'video'
+    // Fallbacks from body URLs if provided
+    chartUrl = chartUrl || req.body.chartUrl || (type === 'video' ? null : fileUrl);
+    videoUrl = videoUrl || req.body.videoUrl || (type === 'video' ? fileUrl : null);
+    fileUrl = fileUrl || chartUrl || videoUrl;
+
+    if (!fileUrl && !chartUrl && !videoUrl && !teluguVideo && !englishVideo) {
+      return res.status(400).json({ error: 'No media file or URL provided for scheduling' });
+    }
+
+    const postType = (type || (chartUrl && videoUrl ? 'both' : (videoUrl ? 'video' : 'chart'))).toLowerCase();
     const newPost = {
       id: `sched-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-      type: postType,
-      title: (title || 'Untitled Post').trim(),
-      fileUrl,
-      language: language || null,
+      type: postType, // 'chart' | 'video' | 'both'
+      title: (title || 'Untitled Scheduled Setup').trim(),
+      fileUrl: chartUrl || fileUrl || videoUrl,
+      chartUrl: chartUrl || (postType === 'video' ? null : fileUrl),
+      videoUrl: videoUrl || (postType === 'video' ? fileUrl : null),
+      teluguVideo: teluguVideo || videoUrl || null,
+      englishVideo: englishVideo || videoUrl || null,
+      category: category || 'SMC & Liquidity',
+      summary: summary || 'Institutional price action breakdown & liquidity structure.',
+      keyTakeaway: keyTakeaway || 'Mark key liquidity levels and enter on confirmed structural shift.',
+      language: language || 'Telugu',
       scheduledAt: new Date(scheduledAt).toISOString(),
       createdAt: new Date().toISOString(),
       status: 'pending'
@@ -1384,6 +1552,26 @@ app.put('/api/schedule/:id', (req, res) => {
   }
 });
 
+// POST /api/schedule/:id/publish-now — Publish a scheduled post immediately
+app.post('/api/schedule/:id/publish-now', (req, res) => {
+  try {
+    const posts = readJson('scheduled_posts.json', []);
+    const idx = posts.findIndex(p => p.id === req.params.id);
+    if (idx === -1) return res.status(404).json({ error: 'Scheduled post not found' });
+    const post = posts[idx];
+
+    publishScheduledPost(post);
+    posts[idx].status = 'published';
+    posts[idx].publishedAt = new Date().toISOString();
+    writeJson('scheduled_posts.json', posts);
+    systemRevisions.scheduled = Date.now();
+
+    res.json({ success: true, message: `🚀 "${post.title}" published live immediately!` });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // DELETE /api/schedule/:id — Cancel a scheduled post
 app.delete('/api/schedule/:id', (req, res) => {
   try {
@@ -1393,19 +1581,22 @@ app.delete('/api/schedule/:id', (req, res) => {
 
     const post = posts[idx];
 
-    // Delete the staged uploaded file from disk
-    if (post.fileUrl && post.fileUrl.startsWith('/uploads/')) {
-      const fileName = post.fileUrl.replace('/uploads/', '');
-      const filePath = path.join(UPLOADS_DIR, decodeURIComponent(fileName));
-      if (fs.existsSync(filePath)) {
-        try { fs.unlinkSync(filePath); } catch (_) {}
+    // Delete staged uploaded files from disk
+    const filesToClean = [post.fileUrl, post.chartUrl, post.videoUrl].filter(Boolean);
+    filesToClean.forEach(fUrl => {
+      if (fUrl && fUrl.startsWith('/uploads/')) {
+        const fileName = fUrl.replace('/uploads/', '');
+        const filePath = path.join(UPLOADS_DIR, decodeURIComponent(fileName));
+        if (fs.existsSync(filePath)) {
+          try { fs.unlinkSync(filePath); } catch (_) {}
+        }
       }
-    }
+    });
 
     posts.splice(idx, 1);
     writeJson('scheduled_posts.json', posts);
     systemRevisions.scheduled = Date.now();
-    res.json({ success: true, message: 'Scheduled post cancelled and file removed.' });
+    res.json({ success: true, message: 'Scheduled post cancelled and files removed.' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -1423,6 +1614,111 @@ app.get('/api/schedule/count', (req, res) => {
 });
 
 // ==================== AUTO-PUBLISH BACKGROUND SCHEDULER ====================
+// Helper to publish any scheduled post to the active databases
+function publishScheduledPost(post) {
+  const now = Date.now();
+  const today = new Date().toISOString().split('T')[0];
+
+  if (post.type === 'chart' || post.type === 'gallery' || post.type === 'chart-only') {
+    // 1. Add to chart_gallery.json (1st place)
+    const gallery = readJson('chart_gallery.json', []);
+    const newItem = {
+      id: `gallery-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
+      title: post.title,
+      imageUrl: post.chartUrl || post.fileUrl,
+      dateAdded: today,
+      isRecentlyUploaded: true,
+      uploadedAt: now
+    };
+    gallery.unshift(newItem);
+    writeJson('chart_gallery.json', gallery);
+    try { writeJson('chart_gallery_permanent.json', gallery); } catch (_) {}
+    systemRevisions.gallery = now;
+    console.log(`[Scheduler] ✅ Published chart "${post.title}" to gallery at 1st place.`);
+
+  } else if (post.type === 'video') {
+    // 2. Add to videos_uploaded.json (1st place)
+    const uploadedVideos = readJson('videos_uploaded.json', []);
+    const vUrl = post.videoUrl || post.fileUrl;
+    const isYt = vUrl && (vUrl.includes('youtube') || vUrl.includes('youtu.be'));
+    uploadedVideos.unshift({
+      id: `vid-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
+      name: post.title,
+      url: vUrl,
+      type: isYt ? 'external' : 'mp4',
+      language: (post.language || 'telugu').toLowerCase(),
+      dateAdded: today,
+      isRecentlyUploaded: true,
+      uploadedAt: now
+    });
+    writeJson('videos_uploaded.json', uploadedVideos);
+    try { writeJson('videos_uploaded_permanent.json', uploadedVideos); } catch (_) {}
+    systemRevisions.charts = now;
+    console.log(`[Scheduler] ✅ Published video "${post.title}" to uploaded videos.`);
+
+  } else if (post.type === 'both' || post.type === 'full-chart') {
+    // 3. Complete Setup: Pair both chart and video into charts.json AND chart_gallery.json
+    const charts = readJson('charts.json', []);
+    const chartImg = post.chartUrl || post.fileUrl || '/assets/charts/chart-1.svg';
+    const vidUrl = post.videoUrl || (post.fileUrl && post.fileUrl.endsWith('.mp4') ? post.fileUrl : null);
+
+    const newChart = {
+      id: `chart-${Date.now().toString().slice(-6)}`,
+      reelNumber: Math.max(...charts.map(c => Number(c.reelNumber) || 0), 0) + 1,
+      title: post.title,
+      category: post.category || 'SMC & Liquidity',
+      summary: post.summary || 'Institutional price action breakdown and liquidity structure.',
+      keyTakeaway: post.keyTakeaway || 'Mark key liquidity levels and enter on confirmed structural shift.',
+      teluguVideo: post.teluguVideo || vidUrl || '/videos/telugu/reel-1(volume secret).mp4',
+      englishVideo: post.englishVideo || vidUrl || '/videos/english/reel-1(volume secret).mp4',
+      chartImage: chartImg,
+      dateAdded: today,
+      isRecentlyUploaded: true,
+      uploadedAt: now,
+      views: 1
+    };
+    charts.unshift(newChart);
+    writeJson('charts.json', charts);
+    try { writeJson('charts_permanent.json', charts); } catch (_) {}
+
+    // Also add to gallery
+    if (chartImg) {
+      const gallery = readJson('chart_gallery.json', []);
+      gallery.unshift({
+        id: `gallery-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
+        title: post.title,
+        imageUrl: chartImg,
+        dateAdded: today,
+        isRecentlyUploaded: true,
+        uploadedAt: now
+      });
+      writeJson('chart_gallery.json', gallery);
+      try { writeJson('chart_gallery_permanent.json', gallery); } catch (_) {}
+    }
+
+    // Also add video if present
+    if (vidUrl) {
+      const uploadedVideos = readJson('videos_uploaded.json', []);
+      uploadedVideos.unshift({
+        id: `vid-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
+        name: post.title,
+        url: vidUrl,
+        type: (vidUrl.includes('youtube') || vidUrl.includes('youtu.be')) ? 'external' : 'mp4',
+        language: (post.language || 'telugu').toLowerCase(),
+        dateAdded: today,
+        isRecentlyUploaded: true,
+        uploadedAt: now
+      });
+      writeJson('videos_uploaded.json', uploadedVideos);
+      try { writeJson('videos_uploaded_permanent.json', uploadedVideos); } catch (_) {}
+    }
+
+    systemRevisions.charts = now;
+    systemRevisions.gallery = now;
+    console.log(`[Scheduler] ✅ Published combined Chart & Video setup "${post.title}" live at 1st place.`);
+  }
+}
+
 // Checks every 60 seconds; if any scheduled post's scheduledAt <= now, publish it automatically.
 function runScheduledPublisher() {
   try {
@@ -1435,50 +1731,7 @@ function runScheduledPublisher() {
 
     due.forEach(post => {
       try {
-        if (post.type === 'gallery' || post.type === 'chart-only') {
-          // Publish to chart_gallery.json (1st place)
-          const gallery = readJson('chart_gallery.json', []);
-          const newItem = {
-            id: `gallery-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
-            title: post.title,
-            imageUrl: post.fileUrl,
-            dateAdded: new Date().toISOString().split('T')[0],
-            isRecentlyUploaded: true,
-            uploadedAt: Date.now()
-          };
-          gallery.unshift(newItem);
-          writeJson('chart_gallery.json', gallery);
-          systemRevisions.gallery = Date.now();
-          console.log(`[Scheduler] ✅ Published chart "${post.title}" to gallery at 1st place.`);
-
-        } else if (post.type === 'video') {
-          // Video is already in /uploads/ — just update systemRevisions so inventory refreshes
-          systemRevisions.charts = Date.now();
-          console.log(`[Scheduler] ✅ Published video "${post.title}" (already in uploads).`);
-
-        } else if (post.type === 'full-chart') {
-          // Publish to charts.json (complete setup, 1st place)
-          const charts = readJson('charts.json', []);
-          const newChart = {
-            id: `chart-${Date.now().toString().slice(-6)}`,
-            reelNumber: Math.max(...charts.map(c => Number(c.reelNumber) || 0), 0) + 1,
-            title: post.title,
-            category: post.category || 'SMC & Liquidity',
-            summary: post.summary || 'Institutional price action analysis.',
-            keyTakeaway: post.keyTakeaway || 'Mark key liquidity levels and enter on confirmed structural shift.',
-            teluguVideo: post.teluguVideo || '/videos/telugu/reel-1(volume secret).mp4',
-            englishVideo: post.englishVideo || '/videos/english/reel-1(volume secret).mp4',
-            chartImage: post.fileUrl,
-            dateAdded: new Date().toISOString().split('T')[0],
-            isRecentlyUploaded: true,
-            uploadedAt: Date.now(),
-            views: 1
-          };
-          charts.unshift(newChart);
-          writeJson('charts.json', charts);
-          systemRevisions.charts = Date.now();
-          console.log(`[Scheduler] ✅ Published full chart setup "${post.title}" at 1st place.`);
-        }
+        publishScheduledPost(post);
 
         // Mark as published
         const pidx = posts.findIndex(p => p.id === post.id);

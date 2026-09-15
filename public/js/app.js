@@ -205,6 +205,7 @@ const state = {
   adminUsersList: [],
   adminUserFilter: 'all',
   adminUserSearch: '',
+  uploadedVideos: [], // Cloud-synced videos uploaded by admin — permanent across redeploys
   systemRevisions: { charts: 0, users: 0, gallery: 0, comments: 0, siteConfig: 0 }
 };
 
@@ -734,6 +735,13 @@ async function loadCharts() {
   } catch (err) {
     console.error('Error loading charts:', err);
   }
+  // Also load cloud-synced uploaded videos (permanent, survive redeploys)
+  try {
+    const res2 = await fetch('/api/uploaded-videos');
+    state.uploadedVideos = await res2.json();
+  } catch (err) {
+    state.uploadedVideos = [];
+  }
 }
 
 // Check for payment redirect query parameters (e.g. ?payment_success=true)
@@ -823,6 +831,7 @@ function renderApp() {
   try { renderDynamicSiteTexts(); } catch (e) { console.error('Error in renderDynamicSiteTexts:', e); }
   try { renderCharts(); } catch (e) { console.error('Error in renderCharts:', e); }
   try { renderChartGallery(); } catch (e) { console.error('Error in renderChartGallery:', e); }
+  try { renderUploadedVideosSection(); } catch (e) { console.error('Error in renderUploadedVideosSection:', e); }
   try { renderComments(); } catch (e) { console.error('Error in renderComments:', e); }
   try { renderTermsAndNoRefund(); } catch (e) { console.error('Error in renderTermsAndNoRefund:', e); }
   try { renderAdminPanel(); } catch (e) { console.error('Error in renderAdminPanel:', e); }
@@ -1352,6 +1361,148 @@ function renderCharts() {
     }
   }
 }
+
+// ==================== UPLOADED VIDEOS SECTION (ADMIN-UPLOADED, PERMANENT) ====================
+// Renders admin-uploaded videos (cloud-synced) for paid users on all-videos and home page.
+// These survive all redeploys and website updates.
+function renderUploadedVideosSection() {
+  const container = document.getElementById('uploaded-videos-grid');
+  if (!container) return; // Only renders on pages that have this container
+
+  const isAdmin = state.currentUser?.role === 'admin';
+  const isUnlocked = Boolean(state.currentUser?.hasPaid || isAdmin);
+  const videos = state.uploadedVideos || [];
+
+  if (videos.length === 0) {
+    container.innerHTML = '';
+    const section = document.getElementById('uploaded-videos-section');
+    if (section) section.style.display = 'none';
+    return;
+  }
+
+  // Show section
+  const section = document.getElementById('uploaded-videos-section');
+  if (section) section.style.display = '';
+
+  const cardsHtml = videos.map(v => {
+    const cleanName = (v.name || 'Uploaded Video').replace(/'/g, "\\'");
+    const escapedName = (v.name || 'Uploaded Video').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const isYouTube = v.url && (v.url.includes('youtube.com') || v.url.includes('youtu.be') || v.url.includes('youtu'));
+    const isExternal = v.type === 'external' || isYouTube;
+    const langLabel = (v.language || 'telugu').toUpperCase();
+    const langColor = langLabel === 'TELUGU' ? 'var(--accent-green)' : 'var(--accent-cyan)';
+    const isRecent = v.isRecentlyUploaded || ((Date.now() - (v.uploadedAt || 0)) < 7 * 24 * 3600 * 1000);
+
+    const clickAction = isUnlocked
+      ? (isExternal
+          ? `window.open('${v.url}', '_blank', 'noopener')`
+          : `openUploadedVideoPlayer('${v.id || ''}', '${v.url.startsWith('data:') ? v.id : v.url}', '${cleanName}')`)
+      : `handleUnpaidChartClick()`;
+
+    return `
+      <div class="chart-card uploaded-video-card" style="position: relative;">
+        <div class="chart-thumbnail-wrap ${isUnlocked ? '' : 'locked'}" onclick="${clickAction}" style="cursor: pointer; background: linear-gradient(135deg, rgba(0,20,40,0.9), rgba(0,10,25,0.95)); display: flex; align-items: center; justify-content: center; min-height: 180px;">
+          <div style="text-align: center;">
+            <div style="font-size: 3.5rem; margin-bottom: 8px;">${isYouTube ? '🎥' : '🎬'}</div>
+            ${isUnlocked ? `
+              <div style="background: rgba(0,242,152,0.15); color: var(--accent-green); padding: 4px 12px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; display: inline-block;">
+                ▶ ${isYouTube ? 'Watch on YouTube' : 'Play Video'}
+              </div>
+            ` : `
+              <div class="gallery-lock-overlay" style="position: static; background: none; backdrop-filter: none; display: flex; flex-direction: column; align-items: center; gap: 6px;">
+                <div class="gallery-lock-badge">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <span>LOCKED VIDEO</span>
+                </div>
+                <span style="font-size: 0.72rem; color: var(--accent-gold); font-weight: 700;">Unlock to Watch</span>
+              </div>
+            `}
+          </div>
+          <div style="position: absolute; top: 8px; left: 8px; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; z-index: 2;">
+            <span style="font-size: 0.68rem; font-weight: 800; color: ${langColor}; background: rgba(255,255,255,0.08); padding: 2px 7px; border-radius: 4px;">${langLabel}</span>
+            ${isRecent ? '<span class="badge-recently-uploaded" title="Recently Uploaded">✨ RECENTLY UPLOADED</span>' : ''}
+          </div>
+          ${isYouTube ? `<div style="position: absolute; top: 8px; right: 8px; background: rgba(255,0,0,0.85); padding: 2px 7px; border-radius: 4px; font-size: 0.65rem; font-weight: 800; color: #fff;">YT</div>` : ''}
+        </div>
+        <div class="chart-card-body">
+          <span class="chart-category-tag">Admin Uploaded • ${isYouTube ? 'YouTube' : 'Video Lesson'}</span>
+          <h3 class="chart-card-title" style="font-size: 0.95rem;">${escapedName}</h3>
+          <div class="chart-card-footer" style="align-items: center; justify-content: space-between;">
+            <button class="btn btn-sm ${isUnlocked ? 'btn-primary' : 'btn-gold'}" onclick="${clickAction}" style="padding: 5px 12px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 4px;">
+              ${isUnlocked
+                ? `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg><span>${isYouTube ? 'Watch on YouTube' : 'Watch Video'}</span>`
+                : `<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span>🔒 Unlock to Watch</span>`
+              }
+            </button>
+            ${isAdmin ? `
+              <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteUploadedVideo('${v.id}')" title="Delete Video" style="padding: 4px 8px; font-size: 0.72rem;">
+                🗑️ Delete
+              </button>
+            ` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  container.innerHTML = cardsHtml;
+}
+
+// Open uploaded video in player modal
+function openUploadedVideoPlayer(id, url, title) {
+  const isUnlocked = Boolean(state.currentUser?.hasPaid || state.currentUser?.role === 'admin');
+  if (!isUnlocked) { handleUnpaidChartClick(); return; }
+
+  // If url starts with data: it's base64 embedded
+  let videoUrl = url;
+  if (!url.startsWith('data:') && !url.startsWith('http') && !url.startsWith('/')) {
+    // Try finding from state
+    const v = state.uploadedVideos.find(v => v.id === id);
+    if (v) videoUrl = v.url;
+  }
+
+  // Create a fullscreen overlay player
+  const overlay = document.createElement('div');
+  overlay.id = 'uploaded-video-player-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.97);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;';
+  overlay.innerHTML = `
+    <div style="width:100%;max-width:900px;position:relative;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <h3 style="color:#fff;font-size:1.1rem;font-weight:700;margin:0;">${title || 'Video Lesson'}</h3>
+        <button onclick="document.getElementById('uploaded-video-player-overlay').remove(); document.body.style.overflow='';" style="background:rgba(255,255,255,0.1);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>
+      <video id="uploaded-video-elem" src="${videoUrl}" controls autoplay playsinline style="width:100%;border-radius:12px;max-height:70vh;background:#000;"></video>
+    </div>
+  `;
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) { overlay.remove(); document.body.style.overflow = ''; }
+  });
+  document.body.appendChild(overlay);
+  document.body.style.overflow = 'hidden';
+}
+
+// Delete uploaded video (admin only)
+async function deleteUploadedVideo(videoId) {
+  if (!videoId) return;
+  const confirmDelete = await showCustomConfirm('Delete this uploaded video permanently?');
+  if (!confirmDelete) return;
+  try {
+    const res = await fetch(`/api/uploaded-videos/${videoId}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) {
+      state.uploadedVideos = state.uploadedVideos.filter(v => v.id !== videoId);
+      renderUploadedVideosSection();
+      showToast('Video deleted successfully.', 'success');
+    } else {
+      showToast('Failed to delete video.', 'error');
+    }
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+}
+window.openUploadedVideoPlayer = openUploadedVideoPlayer;
+window.deleteUploadedVideo = deleteUploadedVideo;
+window.renderUploadedVideosSection = renderUploadedVideosSection;
 
 // Category selection
 function setChartCategoryFilter(cat, btn) {
@@ -2758,6 +2909,7 @@ function switchAdminTab(tabName, btn) {
   } else if (tabName === 'charts') {
     renderAdminChartsTable();
   } else if (tabName === 'scheduled') {
+    initScheduleComposer();
     loadScheduledPosts();
     loadScheduledPostsCount();
   } else if (tabName === 'cms') {
@@ -2882,12 +3034,17 @@ function renderAdminChartsTable() {
 }
 
 // ==================== TABLE HEADER VIDEOS / CHARTS POP-DOWN DROPDOWN ====================
-// "here you can see in preview box there is no arrow beside videos text when i click upon theat videos or arrow the pop down text should appear charts when i click on the text all charts should appear and from there i can control charts easyly"
+// "in adims page the converting videos to charts button arrow not working every buttom should work there"
+let _lastDropdownToggleTime = 0;
 function toggleVideosHeaderDropdown(event) {
   if (event) {
     event.stopPropagation();
     event.preventDefault();
   }
+  const now = Date.now();
+  if (now - _lastDropdownToggleTime < 220) return; // Prevent double execution from inline onclick + event listener
+  _lastDropdownToggleTime = now;
+
   const btn = document.getElementById('th-dropdown-btn') || document.querySelector('.th-dropdown-btn');
   const menu = document.getElementById('th-media-popdown');
   const cell = document.getElementById('th-videos-dropdown-cell');
@@ -2897,6 +3054,7 @@ function toggleVideosHeaderDropdown(event) {
   if (isOpen) {
     menu.style.display = 'none';
     menu.classList.remove('active');
+    btn?.classList.remove('open');
     cell?.classList.remove('open');
   } else {
     // Fixed screen positioning to guarantee table overflow-x never clips the dropdown!
@@ -2904,16 +3062,19 @@ function toggleVideosHeaderDropdown(event) {
     if (targetBtn) {
       const rect = targetBtn.getBoundingClientRect();
       menu.style.position = 'fixed';
-      menu.style.top = (rect.bottom + 8) + 'px';
+      menu.style.top = (rect.bottom + 6) + 'px';
       const leftPos = Math.max(12, Math.min(window.innerWidth - 240, rect.left));
       menu.style.left = leftPos + 'px';
-      menu.style.zIndex = '999999';
+      menu.style.zIndex = '9999999';
     }
     menu.style.display = 'flex';
     menu.classList.add('active');
+    btn?.classList.add('open');
     cell?.classList.add('open');
   }
 }
+
+window.toggleVideosHeaderDropdown = toggleVideosHeaderDropdown;
 
 // Global click listener to close popdown dropdown when clicking outside
 document.addEventListener('click', (e) => {
@@ -2926,6 +3087,7 @@ document.addEventListener('click', (e) => {
     if (menu.contains(e.target)) return;
     menu.style.display = 'none';
     menu.classList.remove('active');
+    btn?.classList.remove('open');
     cell?.classList.remove('open');
   }
 });
@@ -2940,11 +3102,13 @@ function handleThMediaSelect(mode, event) {
   // Close popdown
   const menu = document.getElementById('th-media-popdown');
   const cell = document.getElementById('th-videos-dropdown-cell');
+  const btn = document.getElementById('th-dropdown-btn');
   if (menu) {
     menu.style.display = 'none';
     menu.classList.remove('active');
   }
   if (cell) cell.classList.remove('open');
+  if (btn) btn.classList.remove('open');
 
   // Update header text and active items
   const labelEl = document.getElementById('th-media-col-text');
@@ -2970,15 +3134,12 @@ function handleThMediaSelect(mode, event) {
   }
 }
 
+window.handleThMediaSelect = handleThMediaSelect;
+
 function setupVideosHeaderDropdownEvents() {
-  const btn = document.getElementById('th-dropdown-btn');
   const itemVid = document.getElementById('th-popdown-videos');
   const itemChart = document.getElementById('th-popdown-charts');
 
-  if (btn && !btn.__boundClick) {
-    btn.__boundClick = true;
-    btn.addEventListener('click', toggleVideosHeaderDropdown);
-  }
   if (itemVid && !itemVid.__boundClick) {
     itemVid.__boundClick = true;
     itemVid.addEventListener('click', e => handleThMediaSelect('videos', e));
@@ -6902,6 +7063,9 @@ async function loadScheduledPosts() {
             <div class="scheduled-post-time">📅 ${istTime} IST</div>
           </div>
           <div class="scheduled-post-actions">
+            <button class="btn-publish-now" onclick="publishNowScheduledPost('${post.id}', '${escapeHtml(post.title).replace(/'/g, '&apos;')}')" title="Publish live immediately to all users">
+              🚀 Publish Now
+            </button>
             <button class="btn-reschedule" onclick="openRescheduleModal('${post.id}', '${escapeHtml(post.title).replace(/'/g, '&apos;')}')">
               📅 Reschedule
             </button>
@@ -6969,6 +7133,7 @@ async function cancelScheduledPost(postId, title) {
     if (!res.ok) throw new Error(data.error || 'Failed to cancel scheduled post');
     showToast('✅ Scheduled post cancelled successfully', 'success');
     loadScheduledPosts();
+    loadScheduledPostsCount();
   } catch (err) {
     showToast(err.message, 'error');
   }
@@ -6976,9 +7141,7 @@ async function cancelScheduledPost(postId, title) {
 
 async function openRescheduleModal(postId, title) {
   const todayStr = getTodayISTString();
-  // Use a simple inline prompt via customConfirm-style HTML injection
   const overlayId = `reschedule-overlay-${postId}`;
-  // Remove existing if any
   document.getElementById(overlayId)?.remove();
 
   const overlay = document.createElement('div');
@@ -7044,21 +7207,332 @@ async function doReschedule(postId) {
     showToast(`📅 Rescheduled to ${istDisplay} IST`, 'success');
     document.getElementById(`reschedule-overlay-${postId}`)?.remove();
     loadScheduledPosts();
+    loadScheduledPostsCount();
   } catch (err) {
     showToast(err.message, 'error');
     if (btn) { btn.disabled = false; btn.textContent = '📅 Confirm Reschedule'; }
   }
 }
 
+// ---- Instagram-Style Schedule Composer Controller ----
+let currentScheduleComposerType = 'chart';
+let selectedScheduleChartFile = null;
+
+function initScheduleComposer() {
+  const dateInput = document.getElementById('sched-composer-date');
+  if (dateInput) {
+    const minDateStr = getTodayISTString();
+    dateInput.min = minDateStr;
+
+    // Set tomorrow by default for Instagram scheduling convenience
+    const tomorrow = new Date(Date.now() + 24 * 3600 * 1000);
+    const istTomorrow = new Date(tomorrow.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+    const y = istTomorrow.getFullYear();
+    const m = String(istTomorrow.getMonth() + 1).padStart(2, '0');
+    const d = String(istTomorrow.getDate()).padStart(2, '0');
+    if (!dateInput.value) {
+      dateInput.value = `${y}-${m}-${d}`;
+    }
+  }
+  updateScheduleComposerPreview();
+}
+
+function switchScheduleComposerType(type) {
+  currentScheduleComposerType = type;
+  
+  ['chart', 'video', 'both'].forEach(t => {
+    const lbl = document.getElementById(`sched-type-lbl-${t}`);
+    if (lbl) {
+      const radio = lbl.querySelector('input[type="radio"]');
+      if (t === type) {
+        lbl.classList.add('active');
+        if (radio) radio.checked = true;
+      } else {
+        lbl.classList.remove('active');
+        if (radio) radio.checked = false;
+      }
+    }
+  });
+
+  const chartGroup = document.getElementById('sched-chart-input-group');
+  const videoGroup = document.getElementById('sched-video-input-group');
+
+  if (chartGroup) chartGroup.style.display = (type === 'chart' || type === 'both') ? 'block' : 'none';
+  if (videoGroup) videoGroup.style.display = (type === 'video' || type === 'both') ? 'block' : 'none';
+
+  updateScheduleComposerPreview();
+}
+
+function handleScheduleChartFileSelect(event) {
+  const file = event.target.files?.[0];
+  selectedScheduleChartFile = file || null;
+  const previewBox = document.getElementById('sched-chart-preview-box');
+  const previewImg = document.getElementById('sched-chart-preview-img');
+  const previewName = document.getElementById('sched-chart-preview-name');
+
+  if (file && previewBox && previewImg && previewName) {
+    previewImg.src = URL.createObjectURL(file);
+    previewName.textContent = `${file.name} (${formatBytes(file.size)})`;
+    previewBox.style.display = 'flex';
+  } else if (previewBox) {
+    previewBox.style.display = 'none';
+  }
+}
+
+function updateScheduleComposerPreview() {
+  const dateInput = document.getElementById('sched-composer-date');
+  const hourSelect = document.getElementById('sched-composer-hour');
+  const minSelect = document.getElementById('sched-composer-minute');
+  const ampmSelect = document.getElementById('sched-composer-ampm');
+  const previewText = document.getElementById('sched-composer-preview-text');
+  if (!dateInput || !hourSelect || !minSelect || !ampmSelect || !previewText) return;
+
+  const dateStr = dateInput.value;
+  const hour = hourSelect.value;
+  const minute = minSelect.value;
+  const ampm = ampmSelect.value;
+
+  if (!dateStr) {
+    previewText.textContent = 'Please choose a scheduled date and time.';
+    return;
+  }
+
+  const scheduledAtUTC = convertISTtoUTC(dateStr, `${hour}:${minute}`, ampm);
+  const diffMs = new Date(scheduledAtUTC).getTime() - Date.now();
+  const istFormatted = formatUTCasIST(scheduledAtUTC);
+
+  if (diffMs <= 0) {
+    previewText.innerHTML = `⚠️ Selected time (<strong style="color:#ffaa00;">${istFormatted} IST</strong>) has already passed. Please pick a future time.`;
+    previewText.parentElement.style.background = 'rgba(255,170,0,0.1)';
+    previewText.parentElement.style.borderColor = 'rgba(255,170,0,0.3)';
+  } else {
+    const countdown = getCountdownText(scheduledAtUTC);
+    previewText.innerHTML = `Post will automatically go live on <strong style="color:#fff;">${istFormatted} IST</strong> (in <strong>${countdown}</strong>). 1st place in charts.`;
+    previewText.parentElement.style.background = 'rgba(0,242,152,0.08)';
+    previewText.parentElement.style.borderColor = 'rgba(0,242,152,0.2)';
+  }
+}
+
+async function handleScheduleComposerSubmit(event) {
+  if (event) event.preventDefault();
+
+  const titleInput = document.getElementById('sched-composer-title');
+  const categorySelect = document.getElementById('sched-composer-category');
+  const dateInput = document.getElementById('sched-composer-date');
+  const hourSelect = document.getElementById('sched-composer-hour');
+  const minSelect = document.getElementById('sched-composer-minute');
+  const ampmSelect = document.getElementById('sched-composer-ampm');
+  const chartFileInput = document.getElementById('sched-composer-chart-file');
+  const videoFileInput = document.getElementById('sched-composer-video-file');
+  const videoUrlInput = document.getElementById('sched-composer-video-url');
+  const langSelect = document.getElementById('sched-composer-language');
+  const submitBtn = document.getElementById('btn-submit-schedule-composer');
+
+  const title = titleInput ? titleInput.value.trim() : '';
+  if (!title) {
+    showToast('Please enter a title for the scheduled post', 'error');
+    titleInput?.focus();
+    return;
+  }
+
+  const dateStr = dateInput?.value;
+  const hour = hourSelect?.value || '06';
+  const minute = minSelect?.value || '00';
+  const ampm = ampmSelect?.value || 'AM';
+
+  if (!dateStr) {
+    showToast('Please select a date for scheduling', 'error');
+    return;
+  }
+
+  const scheduledAtUTC = convertISTtoUTC(dateStr, `${hour}:${minute}`, ampm);
+  if (new Date(scheduledAtUTC) <= new Date()) {
+    showToast('⏰ Scheduled time must be in the future (IST)', 'error');
+    return;
+  }
+
+  const chartFile = chartFileInput?.files?.[0] || selectedScheduleChartFile;
+  const videoFile = videoFileInput?.files?.[0];
+  const videoUrl = videoUrlInput?.value.trim();
+
+  if (currentScheduleComposerType === 'chart' && !chartFile) {
+    showToast('Please choose a Chart Image file to schedule', 'error');
+    return;
+  }
+  if (currentScheduleComposerType === 'video' && !videoFile && !videoUrl) {
+    showToast('Please select a video file or enter a Video URL', 'error');
+    return;
+  }
+  if (currentScheduleComposerType === 'both' && !chartFile) {
+    showToast('Please upload a chart image for the paired setup', 'error');
+    return;
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span>⏳ Scheduling Post…</span>';
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('type', currentScheduleComposerType);
+    formData.append('category', categorySelect?.value || 'SMC & Liquidity');
+    formData.append('scheduledAt', scheduledAtUTC);
+    formData.append('language', langSelect?.value || 'Telugu');
+
+    if (chartFile) {
+      formData.append('chartFile', chartFile);
+      formData.append('file', chartFile);
+    }
+    if (videoFile) {
+      formData.append('videoFile', videoFile);
+    }
+    if (videoUrl) {
+      formData.append('videoUrl', videoUrl);
+    }
+
+    const res = await fetch('/api/schedule', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to schedule post');
+
+    const istDisplay = formatUTCasIST(scheduledAtUTC);
+    showToast(`📅 Scheduled! "${title}" goes live on ${istDisplay} IST`, 'success', 6000);
+
+    // Reset form
+    if (titleInput) titleInput.value = '';
+    if (chartFileInput) chartFileInput.value = '';
+    if (videoFileInput) videoFileInput.value = '';
+    if (videoUrlInput) videoUrlInput.value = '';
+    selectedScheduleChartFile = null;
+    document.getElementById('sched-chart-preview-box')?.style?.setProperty('display', 'none');
+
+    // Reload list and counts
+    loadScheduledPosts();
+    loadScheduledPostsCount();
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span>📅 Schedule Post for Later</span>';
+    }
+  }
+}
+
+async function publishScheduleComposerImmediately() {
+  const titleInput = document.getElementById('sched-composer-title');
+  const chartFileInput = document.getElementById('sched-composer-chart-file');
+  const videoFileInput = document.getElementById('sched-composer-video-file');
+  const videoUrlInput = document.getElementById('sched-composer-video-url');
+  const categorySelect = document.getElementById('sched-composer-category');
+  const langSelect = document.getElementById('sched-composer-language');
+
+  const title = titleInput?.value.trim() || 'Direct Setup';
+  const chartFile = chartFileInput?.files?.[0] || selectedScheduleChartFile;
+  const videoFile = videoFileInput?.files?.[0];
+  const videoUrl = videoUrlInput?.value.trim();
+
+  if (!chartFile && !videoFile && !videoUrl) {
+    showToast('Please select an image or video to publish', 'error');
+    return;
+  }
+
+  const confirmed = await customConfirm({
+    title: `Publish Immediately?`,
+    message: `"${title}" will bypass scheduling and go LIVE immediately on the website for paid members!`,
+    badge: '⚡ INSTANT PUBLISH',
+    type: 'primary',
+    confirmText: '⚡ Yes, Publish Live',
+    cancelText: 'Cancel',
+    icon: '⚡'
+  });
+  if (!confirmed) return;
+
+  try {
+    showToast('Publishing live...', 'info');
+    const futureTime = new Date(Date.now() + 2000).toISOString();
+    const formData = new FormData();
+    formData.append('title', title);
+    formData.append('type', currentScheduleComposerType);
+    formData.append('category', categorySelect?.value || 'SMC & Liquidity');
+    formData.append('scheduledAt', futureTime);
+    formData.append('language', langSelect?.value || 'Telugu');
+    if (chartFile) {
+      formData.append('chartFile', chartFile);
+      formData.append('file', chartFile);
+    }
+    if (videoFile) formData.append('videoFile', videoFile);
+    if (videoUrl) formData.append('videoUrl', videoUrl);
+
+    const res = await fetch('/api/schedule', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to stage post');
+
+    if (data.post && data.post.id) {
+      await fetch(`/api/schedule/${data.post.id}/publish-now`, { method: 'POST' });
+    }
+
+    showToast(`🎉 "${title}" is now LIVE!`, 'success', 5000);
+    if (titleInput) titleInput.value = '';
+    if (chartFileInput) chartFileInput.value = '';
+    if (videoFileInput) videoFileInput.value = '';
+    if (videoUrlInput) videoUrlInput.value = '';
+    selectedScheduleChartFile = null;
+    document.getElementById('sched-chart-preview-box')?.style?.setProperty('display', 'none');
+
+    await loadCharts();
+    loadScheduledPosts();
+    loadScheduledPostsCount();
+    renderApp();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function publishNowScheduledPost(postId, title) {
+  const confirmed = await customConfirm({
+    title: `Publish Immediately?`,
+    message: `"${title}" will be published live right now to all traders!`,
+    badge: '🚀 PUBLISH NOW',
+    type: 'primary',
+    confirmText: '🚀 Yes, Publish Now',
+    cancelText: 'Keep Scheduled',
+    icon: '🚀'
+  });
+  if (!confirmed) return;
+
+  try {
+    const res = await fetch(`/api/schedule/${encodeURIComponent(postId)}/publish-now`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to publish');
+    showToast(`🚀 "${title}" is now LIVE!`, 'success');
+    await loadCharts();
+    loadScheduledPosts();
+    loadScheduledPostsCount();
+    renderApp();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
 // Expose globals
-window.executeScheduledUpload  = executeScheduledUpload;
-window.showSchedulePicker       = showSchedulePicker;
-window.hideSchedulePicker       = hideSchedulePicker;
-window.loadScheduledPosts       = loadScheduledPosts;
-window.loadScheduledPostsCount  = loadScheduledPostsCount;
-window.cancelScheduledPost      = cancelScheduledPost;
-window.openRescheduleModal      = openRescheduleModal;
-window.doReschedule             = doReschedule;
+window.executeScheduledUpload               = executeScheduledUpload;
+window.showSchedulePicker                    = showSchedulePicker;
+window.hideSchedulePicker                    = hideSchedulePicker;
+window.loadScheduledPosts                    = loadScheduledPosts;
+window.loadScheduledPostsCount               = loadScheduledPostsCount;
+window.cancelScheduledPost                   = cancelScheduledPost;
+window.openRescheduleModal                   = openRescheduleModal;
+window.doReschedule                          = doReschedule;
+window.initScheduleComposer                  = initScheduleComposer;
+window.switchScheduleComposerType            = switchScheduleComposerType;
+window.handleScheduleChartFileSelect         = handleScheduleChartFileSelect;
+window.updateScheduleComposerPreview         = updateScheduleComposerPreview;
+window.handleScheduleComposerSubmit          = handleScheduleComposerSubmit;
+window.publishScheduleComposerImmediately    = publishScheduleComposerImmediately;
+window.publishNowScheduledPost               = publishNowScheduledPost;
+
 
 
 
