@@ -2916,8 +2916,19 @@ async function handleControlHubFileInput(event) {
   if (!file) return;
 
   const defaultTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-  const title = prompt('Enter a title for this new chart:', defaultTitle);
-  if (title === null) return;
+  const title = await customPrompt({
+    title: 'New Chart Setup Title',
+    message: 'Enter a descriptive title for this new chart setup:',
+    defaultValue: defaultTitle,
+    placeholder: 'e.g. Nifty 50 Liquidity Sweep & Mitigation Zone',
+    label: 'Chart Title',
+    badge: '📊 NEW CHART SETUP',
+    type: 'primary',
+    confirmText: 'Upload Chart',
+    cancelText: 'Cancel',
+    icon: '📊'
+  });
+  if (!title) return;
 
   const formData = new FormData();
   formData.append('chartImage', file);
@@ -3048,7 +3059,18 @@ function renderControlHubCharts(query = '') {
 }
 
 async function renameControlHubChart(id, currentTitle, source) {
-  const newTitle = prompt(`Rename chart "${currentTitle}":`, currentTitle);
+  const newTitle = await customPrompt({
+    title: 'Rename Chart',
+    message: `Enter a new title for <strong style="color:var(--accent-green);">${escapeHtml(currentTitle)}</strong>:`,
+    defaultValue: currentTitle,
+    placeholder: 'Enter chart title...',
+    label: 'Chart Title',
+    badge: '✏️ RENAME CHART',
+    type: 'primary',
+    confirmText: 'Save New Title',
+    cancelText: 'Cancel',
+    icon: '✏️'
+  });
   if (!newTitle || newTitle.trim() === currentTitle) return;
 
   showToast('Renaming chart...', 'info');
@@ -3084,7 +3106,16 @@ async function renameControlHubChart(id, currentTitle, source) {
 }
 
 async function deleteControlHubChart(id, source, title) {
-  if (!confirm(`Are you sure you want to permanently delete chart "${title}"?`)) return;
+  const confirmed = await customConfirm({
+    title: 'Delete Chart Forever?',
+    message: `Are you sure you want to permanently delete chart <strong style="color:#ff3366;">"${escapeHtml(title)}"</strong>? This cannot be undone.`,
+    badge: '🗑️ PERMANENT DELETION',
+    type: 'danger',
+    confirmText: 'Delete Forever',
+    cancelText: 'Cancel',
+    icon: '🗑️'
+  });
+  if (!confirmed) return;
 
   showToast('Deleting chart...', 'info');
   try {
@@ -3149,9 +3180,16 @@ async function handleBulkDeleteSelected() {
   const ids = Array.from(state.adminSelectedChartIds);
   if (ids.length === 0) return;
 
-  if (!confirm(`Are you sure you want to permanently delete these ${ids.length} charts and their linked video references?`)) {
-    return;
-  }
+  const confirmed = await customConfirm({
+    title: 'Bulk Delete Selected Charts?',
+    message: `Are you sure you want to permanently delete all <strong style="color:#ff3366;">${ids.length} selected charts</strong> and their linked video references?`,
+    badge: '⚠️ BULK DELETION',
+    type: 'danger',
+    confirmText: `Delete ${ids.length} Charts`,
+    cancelText: 'Cancel',
+    icon: '⚠️'
+  });
+  if (!confirmed) return;
 
   try {
     const res = await fetch('/api/charts/bulk-delete', {
@@ -3177,7 +3215,16 @@ async function handleBulkDeleteSelected() {
 
 // Delete Single Chart
 async function deleteSingleChart(id) {
-  if (!confirm('Are you sure you want to delete this chart?')) return;
+  const confirmed = await customConfirm({
+    title: 'Delete Chart Setup?',
+    message: 'Are you sure you want to permanently delete this chart setup and its linked media pairings?',
+    badge: '🗑️ DELETE SETUP',
+    type: 'danger',
+    confirmText: 'Delete Setup',
+    cancelText: 'Cancel',
+    icon: '🗑️'
+  });
+  if (!confirmed) return;
 
   try {
     const res = await fetch(`/api/charts/${id}`, { method: 'DELETE' });
@@ -3357,8 +3404,19 @@ async function handleChartOnlyFileInput(event) {
   if (!file) return;
 
   const defaultTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-  const title = prompt('Enter a title for this chart setup (or keep default):', defaultTitle);
-  if (title === null) return; // user cancelled
+  const title = await customPrompt({
+    title: 'Upload Standalone Chart',
+    message: 'Enter a title for this chart asset in your library:',
+    defaultValue: defaultTitle,
+    placeholder: 'Enter chart title...',
+    label: 'Chart Title',
+    badge: '📊 STANDALONE CHART',
+    type: 'primary',
+    confirmText: 'Upload to Library',
+    cancelText: 'Cancel',
+    icon: '📊'
+  });
+  if (!title) return;
 
   const formData = new FormData();
   formData.append('chartImage', file);
@@ -3386,7 +3444,18 @@ async function handleChartOnlyFileInput(event) {
 }
 
 async function renameChartOnly(id, currentTitle) {
-  const newTitle = prompt('Enter new chart title:', currentTitle);
+  const newTitle = await customPrompt({
+    title: 'Rename Standalone Chart',
+    message: `Enter new title for <strong style="color:var(--accent-green);">${escapeHtml(currentTitle)}</strong>:`,
+    defaultValue: currentTitle,
+    placeholder: 'Enter chart title...',
+    label: 'Chart Title',
+    badge: '✏️ RENAME ASSET',
+    type: 'primary',
+    confirmText: 'Update Title',
+    cancelText: 'Cancel',
+    icon: '✏️'
+  });
   if (!newTitle || newTitle.trim() === currentTitle) return;
 
   try {
@@ -3409,7 +3478,16 @@ async function renameChartOnly(id, currentTitle) {
 }
 
 async function deleteChartOnly(id) {
-  if (!confirm('Are you sure you want to delete this chart from the gallery?')) return;
+  const confirmed = await customConfirm({
+    title: 'Delete Standalone Chart?',
+    message: 'Are you sure you want to delete this chart from the standalone gallery?',
+    badge: '🗑️ REMOVE CHART',
+    type: 'danger',
+    confirmText: 'Delete Chart',
+    cancelText: 'Cancel',
+    icon: '🗑️'
+  });
+  if (!confirmed) return;
 
   try {
     const res = await fetch(`/api/chart-gallery/${id}`, { method: 'DELETE' });
@@ -3551,7 +3629,16 @@ async function handleVideoOnlyFileInput(event) {
 }
 
 async function deleteVideoOnly(url) {
-  if (!confirm('Are you sure you want to delete this uploaded video?')) return;
+  const confirmed = await customConfirm({
+    title: 'Delete Uploaded Video?',
+    message: 'Are you sure you want to delete this uploaded video breakdown from your media library?',
+    badge: '🎬 VIDEO ASSET',
+    type: 'danger',
+    confirmText: 'Delete Video',
+    cancelText: 'Cancel',
+    icon: '🎬'
+  });
+  if (!confirmed) return;
 
   try {
     const res = await fetch('/api/videos', {
@@ -4177,6 +4264,240 @@ function createToastContainer() {
   return c;
 }
 
+// ==================== UNIVERSAL CUSTOM DIALOG SYSTEM (BEAUTIFUL CONFIRM, PROMPT & ALERT) ====================
+let customDialogResolver = null;
+let customDialogMode = 'confirm'; // 'confirm' | 'prompt' | 'alert'
+
+function ensureCustomDialogDOM() {
+  let modal = document.getElementById('custom-dialog-modal');
+  if (modal) return;
+  const div = document.createElement('div');
+  div.id = 'custom-dialog-modal';
+  div.className = 'modal-overlay custom-dialog-overlay';
+  div.style.display = 'none';
+  div.style.zIndex = '100000';
+  div.innerHTML = `
+    <div class="custom-dialog-card type-primary" id="custom-dialog-card">
+      <div class="custom-dialog-header">
+        <span id="custom-dialog-badge" class="custom-dialog-badge">⚠️ ADMIN ACTION</span>
+        <button type="button" class="custom-dialog-close-btn" onclick="resolveCustomDialog(false)">✕</button>
+      </div>
+
+      <div class="custom-dialog-body">
+        <div class="custom-dialog-icon-ring" id="custom-dialog-icon-ring">
+          <span class="custom-dialog-icon" id="custom-dialog-icon">⚠️</span>
+        </div>
+
+        <h3 class="custom-dialog-title" id="custom-dialog-title">Confirm Action</h3>
+        <div class="custom-dialog-message" id="custom-dialog-message">Are you sure you want to proceed?</div>
+
+        <!-- Prompt input area (visible only for prompt mode) -->
+        <div class="custom-dialog-input-wrap" id="custom-dialog-input-wrap" style="display: none;">
+          <label class="custom-dialog-input-label" id="custom-dialog-input-label">Setup Title</label>
+          <div class="custom-dialog-field-box">
+            <input type="text" id="custom-dialog-input" class="custom-dialog-input" placeholder="Type here..." autocomplete="off" />
+            <button type="button" class="custom-dialog-clear-btn" onclick="clearCustomDialogInput()" title="Clear input">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="custom-dialog-actions" id="custom-dialog-actions">
+        <button type="button" class="btn custom-dialog-btn-cancel" id="custom-dialog-cancel-btn" onclick="resolveCustomDialog(false)">Cancel</button>
+        <button type="button" class="btn custom-dialog-btn-confirm type-primary" id="custom-dialog-confirm-btn" onclick="resolveCustomDialog(true)">Confirm</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(div);
+
+  div.addEventListener('click', e => {
+    if (e.target === div) resolveCustomDialog(false);
+  });
+}
+
+function clearCustomDialogInput() {
+  const inp = document.getElementById('custom-dialog-input');
+  if (inp) {
+    inp.value = '';
+    inp.focus();
+  }
+}
+
+function resolveCustomDialog(confirmed) {
+  const modal = document.getElementById('custom-dialog-modal');
+  if (modal) modal.style.display = 'none';
+
+  if (customDialogResolver) {
+    if (customDialogMode === 'prompt') {
+      if (confirmed) {
+        const val = document.getElementById('custom-dialog-input')?.value;
+        customDialogResolver(val !== undefined ? val.trim() : '');
+      } else {
+        customDialogResolver(null);
+      }
+    } else {
+      customDialogResolver(Boolean(confirmed));
+    }
+    customDialogResolver = null;
+  }
+}
+
+// Global keyboard accessibility for custom dialog
+document.addEventListener('keydown', e => {
+  const modal = document.getElementById('custom-dialog-modal');
+  if (modal && modal.style.display !== 'none') {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      resolveCustomDialog(false);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      resolveCustomDialog(true);
+    }
+  }
+});
+
+// Setup click-backdrop listener for statically embedded modal
+document.addEventListener('DOMContentLoaded', () => {
+  const modal = document.getElementById('custom-dialog-modal');
+  if (modal) {
+    modal.addEventListener('click', e => {
+      if (e.target === modal) resolveCustomDialog(false);
+    });
+  }
+});
+
+function customConfirm({
+  title = 'Confirmation Required',
+  message = 'Are you sure you want to proceed?',
+  badge = '⚡ CONFIRMATION',
+  type = 'primary', // 'danger' | 'warning' | 'success' | 'primary'
+  confirmText = 'Confirm',
+  cancelText = 'Cancel',
+  icon = '⚠️'
+} = {}) {
+  ensureCustomDialogDOM();
+  customDialogMode = 'confirm';
+
+  const modal = document.getElementById('custom-dialog-modal');
+  const card = document.getElementById('custom-dialog-card');
+  const badgeEl = document.getElementById('custom-dialog-badge');
+  const iconEl = document.getElementById('custom-dialog-icon');
+  const titleEl = document.getElementById('custom-dialog-title');
+  const msgEl = document.getElementById('custom-dialog-message');
+  const inputWrap = document.getElementById('custom-dialog-input-wrap');
+  const cancelBtn = document.getElementById('custom-dialog-cancel-btn');
+  const confirmBtn = document.getElementById('custom-dialog-confirm-btn');
+
+  if (card) card.className = `custom-dialog-card type-${type}`;
+  if (badgeEl) badgeEl.textContent = badge;
+  if (iconEl) iconEl.textContent = icon;
+  if (titleEl) titleEl.textContent = title;
+  if (msgEl) msgEl.innerHTML = message;
+  if (inputWrap) inputWrap.style.display = 'none';
+
+  if (cancelBtn) {
+    cancelBtn.style.display = cancelText ? 'block' : 'none';
+    cancelBtn.textContent = cancelText || 'Cancel';
+  }
+
+  if (confirmBtn) {
+    confirmBtn.textContent = confirmText;
+    confirmBtn.className = `btn custom-dialog-btn-confirm type-${type}`;
+  }
+
+  modal.style.display = 'flex';
+  if (confirmBtn) confirmBtn.focus();
+
+  return new Promise(resolve => {
+    customDialogResolver = resolve;
+  });
+}
+
+function customPrompt({
+  title = 'Input Required',
+  message = 'Please enter a value:',
+  defaultValue = '',
+  placeholder = 'Type here...',
+  label = 'Value',
+  badge = '✏️ INPUT REQUIRED',
+  type = 'primary',
+  confirmText = 'Save',
+  cancelText = 'Cancel',
+  icon = '✏️'
+} = {}) {
+  ensureCustomDialogDOM();
+  customDialogMode = 'prompt';
+
+  const modal = document.getElementById('custom-dialog-modal');
+  const card = document.getElementById('custom-dialog-card');
+  const badgeEl = document.getElementById('custom-dialog-badge');
+  const iconEl = document.getElementById('custom-dialog-icon');
+  const titleEl = document.getElementById('custom-dialog-title');
+  const msgEl = document.getElementById('custom-dialog-message');
+  const inputWrap = document.getElementById('custom-dialog-input-wrap');
+  const labelEl = document.getElementById('custom-dialog-input-label');
+  const input = document.getElementById('custom-dialog-input');
+  const cancelBtn = document.getElementById('custom-dialog-cancel-btn');
+  const confirmBtn = document.getElementById('custom-dialog-confirm-btn');
+
+  if (card) card.className = `custom-dialog-card type-${type}`;
+  if (badgeEl) badgeEl.textContent = badge;
+  if (iconEl) iconEl.textContent = icon;
+  if (titleEl) titleEl.textContent = title;
+  if (msgEl) msgEl.innerHTML = message;
+
+  if (inputWrap) inputWrap.style.display = 'block';
+  if (labelEl) labelEl.textContent = label;
+  if (input) {
+    input.value = defaultValue || '';
+    input.placeholder = placeholder;
+  }
+
+  if (cancelBtn) {
+    cancelBtn.style.display = cancelText ? 'block' : 'none';
+    cancelBtn.textContent = cancelText || 'Cancel';
+  }
+
+  if (confirmBtn) {
+    confirmBtn.textContent = confirmText;
+    confirmBtn.className = `btn custom-dialog-btn-confirm type-${type}`;
+  }
+
+  modal.style.display = 'flex';
+  setTimeout(() => {
+    if (input) {
+      input.focus();
+      input.select();
+    }
+  }, 60);
+
+  return new Promise(resolve => {
+    customDialogResolver = resolve;
+  });
+}
+
+function customAlert({
+  title = 'Notice',
+  message = '',
+  badge = 'ℹ️ INFORMATION',
+  type = 'primary',
+  confirmText = 'Got It',
+  icon = 'ℹ️'
+} = {}) {
+  return customConfirm({
+    title,
+    message,
+    badge,
+    type,
+    confirmText,
+    cancelText: '',
+    icon
+  });
+}
+
+window.customConfirm = customConfirm;
+window.customPrompt = customPrompt;
+window.customAlert = customAlert;
+
 // ==================== DEDICATED ADMIN LOGIN MODAL (FOOTER ACCESS) ====================
 function openDedicatedAdminLoginModal() {
   const emailInput = document.getElementById('dedicated-admin-email');
@@ -4481,7 +4802,19 @@ async function handleDailyChartUpload(files) {
   }
   const file = files[0];
   const defaultTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
-  const title = prompt('👑 Admin: Enter title for this new daily chart:', defaultTitle) || defaultTitle;
+  const title = await customPrompt({
+    title: 'Daily Institutional Chart',
+    message: 'Enter title for today\'s new technical chart setup:',
+    defaultValue: defaultTitle,
+    placeholder: 'e.g. Bank Nifty Morning Gap Fill Strategy',
+    label: 'Daily Chart Title',
+    badge: '👑 DAILY CHART UPLOAD',
+    type: 'primary',
+    confirmText: 'Publish Daily Chart',
+    cancelText: 'Cancel',
+    icon: '📈'
+  });
+  if (!title) return;
 
   const formData = new FormData();
   formData.append('chartImage', file);
@@ -4574,9 +4907,20 @@ function initGalleryDragDrop() {
 async function handleGalleryFileInput(files) {
   if (!files || files.length === 0) return;
   const file = files[0];
-
   const defaultTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
-  const title = prompt('Enter a title for this chart setup:', defaultTitle) || defaultTitle;
+  const title = await customPrompt({
+    title: 'Hand-Drawn Technical Chart',
+    message: 'Enter a descriptive title for this chart setup:',
+    defaultValue: defaultTitle,
+    placeholder: 'e.g. Nifty 50 Liquidity Sweep & Mitigation Zone',
+    label: 'Chart Setup Title',
+    badge: '📊 HAND-DRAWN CHART',
+    type: 'primary',
+    confirmText: 'Save & Upload',
+    cancelText: 'Cancel',
+    icon: '🎨'
+  });
+  if (!title) return;
 
   const formData = new FormData();
   formData.append('chartImage', file);
@@ -4681,7 +5025,16 @@ async function submitRenameGalleryImage(event) {
 }
 
 async function deleteGalleryImage(id) {
-  if (!confirm('Are you sure you want to delete this chart from the image vault?')) return;
+  const confirmed = await customConfirm({
+    title: 'Remove From Image Vault?',
+    message: 'Are you sure you want to permanently delete this chart from the image vault?',
+    badge: '🗑️ VAULT DELETION',
+    type: 'danger',
+    confirmText: 'Delete Chart',
+    cancelText: 'Cancel',
+    icon: '🗑️'
+  });
+  if (!confirmed) return;
 
   try {
     const res = await fetch(`/api/chart-gallery/${id}`, { method: 'DELETE' });
@@ -4829,7 +5182,16 @@ async function handleCommentSubmit(event) {
 }
 
 async function handleDeleteComment(commentId) {
-  if (!confirm('Are you sure you want to delete this comment? This action cannot be undone.')) return;
+  const confirmed = await customConfirm({
+    title: 'Delete Trader Comment?',
+    message: 'Are you sure you want to delete this comment? This action cannot be undone.',
+    badge: '💬 COMMENT MODERATION',
+    type: 'warning',
+    confirmText: 'Delete Comment',
+    cancelText: 'Cancel',
+    icon: '💬'
+  });
+  if (!confirmed) return;
 
   try {
     const res = await fetch(`/api/comments/${commentId}`, { method: 'DELETE' });
@@ -4990,10 +5352,19 @@ async function loadAdminPayments() {
 }
 
 async function handleAdminPaymentAction(id, action) {
-  const confirmMsg = action === 'approve' 
-    ? 'Are you sure you want to approve this payment and grant lifetime access to this user?'
-    : 'Are you sure you want to revoke access for this payment?';
-  if (!confirm(confirmMsg)) return;
+  const isApprove = action === 'approve';
+  const confirmed = await customConfirm({
+    title: isApprove ? 'Approve Payment & Grant PRO?' : 'Revoke Payment Access?',
+    message: isApprove
+      ? 'Approve this verification record and immediately grant Lifetime PRO access to the trader?'
+      : 'Are you sure you want to revoke PRO access for this payment record?',
+    badge: isApprove ? '💎 PRO PAYMENT APPROVAL' : '⚠️ REVOKE PAYMENT',
+    type: isApprove ? 'success' : 'danger',
+    confirmText: isApprove ? '👑 Approve & Grant PRO' : 'Revoke Access',
+    cancelText: 'Cancel',
+    icon: isApprove ? '💎' : '⚠️'
+  });
+  if (!confirmed) return;
 
   try {
     const res = await fetch(`/api/admin/payments/${id}/action`, {
@@ -5340,12 +5711,19 @@ function filterAdminUsers(filter, btn) {
 
 // Revoke or Grant PRO Status
 async function adminTogglePro(userId, shouldBePro, email) {
-  const actionName = shouldBePro ? 'GRANT Lifetime PRO Access' : 'REVOKE PRO Access';
-  const warning = shouldBePro 
-    ? `Are you sure you want to GRANT Lifetime PRO Access to ${email}?`
-    : `⚠️ WARNING: Are you sure you want to REVOKE PRO Access for ${email}? They will immediately lose access to all drawn charts and videos.`;
+  const confirmed = await customConfirm({
+    title: shouldBePro ? 'Grant Lifetime PRO Access?' : 'Revoke PRO Access?',
+    message: shouldBePro 
+      ? `Are you sure you want to GRANT Lifetime PRO Access to <strong style="color:var(--accent-green);">${escapeHtml(email)}</strong>? They will immediately unlock all 24+ chart setups & private video breakdowns.`
+      : `⚠️ WARNING: Are you sure you want to REVOKE PRO Access for <strong style="color:#ff3366;">${escapeHtml(email)}</strong>? They will immediately lose access to all drawn charts and videos.`,
+    badge: shouldBePro ? '💎 PRO MEMBERSHIP GRANT' : '⚠️ REVOKE PRO ACCESS',
+    type: shouldBePro ? 'success' : 'danger',
+    confirmText: shouldBePro ? '👑 Grant PRO Access' : 'Revoke PRO Access',
+    cancelText: 'Cancel',
+    icon: shouldBePro ? '💎' : '⚠️'
+  });
 
-  if (!confirm(warning)) return;
+  if (!confirmed) return;
 
   try {
     const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}/toggle-pro`, {
@@ -5368,8 +5746,16 @@ async function adminTogglePro(userId, shouldBePro, email) {
 
 // Delete User Account (Remove Gmail)
 async function adminDeleteUser(userId, email) {
-  const confirmMsg = `🚨 DANGER: Are you sure you want to PERMANENTLY REMOVE account '${email}' from the platform?\n\nThis will remove the user, clear their credentials, and delete any associated records. This cannot be undone.`;
-  if (!confirm(confirmMsg)) return;
+  const confirmed = await customConfirm({
+    title: 'Permanently Remove Account?',
+    message: `🚨 Are you sure you want to PERMANENTLY REMOVE account <strong style="color:#ff3366;">"${escapeHtml(email)}"</strong> from the platform?<br/><br/><span style="font-size: 0.84rem; color: var(--text-muted);">This clears their credentials, PRO access, and saved data. This cannot be undone.</span>`,
+    badge: '🚫 PERMANENT USER DELETION',
+    type: 'danger',
+    confirmText: 'Delete User Account',
+    cancelText: 'Cancel',
+    icon: '👤'
+  });
+  if (!confirmed) return;
 
   try {
     const res = await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
@@ -5392,9 +5778,11 @@ async function adminDeleteUser(userId, email) {
       }
     } catch (_) {}
 
-    // 2. If the current logged-in user is this deleted user, log out immediately
+    // 2. If the currently logged in user is the one being deleted, log them out
     if (state.currentUser && state.currentUser.email && state.currentUser.email.toLowerCase().trim() === cleanEmail) {
-      handleLogout();
+      safeStorage.removeItem('tradinghub_user');
+      safeSessionStorage.removeItem('tradinghub_user');
+      state.currentUser = null;
     }
 
     showToast(data.message || `Account ${email} has been removed.`, 'success');
@@ -5409,7 +5797,18 @@ async function adminDeleteUser(userId, email) {
 
 // Reset User Password Prompt
 async function adminPromptResetPassword(userId, email) {
-  const newPass = prompt(`Enter a new password for ${email} (minimum 4 characters):`);
+  const newPass = await customPrompt({
+    title: 'Reset User Password',
+    message: `Enter a new password for <strong style="color:var(--accent-green);">${escapeHtml(email)}</strong> (minimum 4 characters):`,
+    defaultValue: '',
+    placeholder: 'Enter new password...',
+    label: 'New Password',
+    badge: '🔑 ADMIN SECURITY',
+    type: 'warning',
+    confirmText: 'Change Password',
+    cancelText: 'Cancel',
+    icon: '🔑'
+  });
   if (!newPass) return;
   if (newPass.trim().length < 4) {
     showToast('Password must be at least 4 characters.', 'error');
@@ -5537,7 +5936,16 @@ async function loadAdminComments() {
 
 // Admin Delete Comment
 async function adminDeleteComment(commentId) {
-  if (!confirm('Are you sure you want to delete this comment?')) return;
+  const confirmed = await customConfirm({
+    title: 'Delete Trader Comment?',
+    message: 'Are you sure you want to permanently remove this trader comment?',
+    badge: '💬 COMMENT MODERATION',
+    type: 'warning',
+    confirmText: 'Delete Comment',
+    cancelText: 'Cancel',
+    icon: '💬'
+  });
+  if (!confirmed) return;
 
   try {
     const res = await fetch(`/api/comments/${encodeURIComponent(commentId)}`, {
@@ -5958,7 +6366,16 @@ function filterAdminDropoffs(query) {
 }
 
 async function adminDeleteDropoff(id) {
-  if (!confirm('Remove this dropoff record from the admin dashboard?')) return;
+  const confirmed = await customConfirm({
+    title: 'Remove Abandoned Dropoff?',
+    message: 'Remove this payment dropoff record from the admin analytics?',
+    badge: '🛒 PAYMENT RECORD',
+    type: 'warning',
+    confirmText: 'Remove Record',
+    cancelText: 'Cancel',
+    icon: '🛒'
+  });
+  if (!confirmed) return;
   try {
     await fetch(`/api/admin/payment-attempts/${id}`, { method: 'DELETE' });
     showToast('Record removed', 'info');
@@ -6174,7 +6591,18 @@ function copyPaymentLink() {
   navigator.clipboard.writeText(url).then(() => {
     showToast('📋 ₹399 Payment link copied to clipboard! Send to WhatsApp or pay from another phone.', 'success');
   }).catch(() => {
-    prompt('Copy this payment link to pay from another device:', url);
+    customPrompt({
+      title: 'Copy Payment Link',
+      message: 'Here is the verified ₹399 Lifetime PRO payment link:',
+      defaultValue: url,
+      placeholder: 'Payment URL',
+      label: 'Official Payment Link',
+      badge: '💳 LIFETIME PRO PAYMENT',
+      type: 'primary',
+      confirmText: 'Done',
+      cancelText: 'Close',
+      icon: '📋'
+    });
   });
 }
 window.copyPaymentLink = copyPaymentLink;
@@ -6208,7 +6636,18 @@ function copyWebsiteShareLink() {
   navigator.clipboard.writeText(shareUrl).then(() => {
     showToast('📋 Website link copied to clipboard! Share with your trader friends.', 'success');
   }).catch(() => {
-    prompt('Copy website link:', shareUrl);
+    customPrompt({
+      title: 'Copy Website Link',
+      message: 'Share Telugu Trading Hub with fellow traders:',
+      defaultValue: shareUrl,
+      placeholder: 'Website URL',
+      label: 'Platform Website Link',
+      badge: '🚀 SHARE WEBSITE',
+      type: 'primary',
+      confirmText: 'Done',
+      cancelText: 'Close',
+      icon: '🔗'
+    });
   });
 }
 window.copyWebsiteShareLink = copyWebsiteShareLink;
