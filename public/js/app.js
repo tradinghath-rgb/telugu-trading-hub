@@ -2757,6 +2757,9 @@ function switchAdminTab(tabName, btn) {
     loadAdminComments();
   } else if (tabName === 'charts') {
     renderAdminChartsTable();
+  } else if (tabName === 'scheduled') {
+    loadScheduledPosts();
+    loadScheduledPostsCount();
   } else if (tabName === 'cms') {
     populateCmsForm();
   } else if (tabName === 'aws') {
@@ -3090,6 +3093,9 @@ function handleControlHubFileInput(event) {
       <button type="button" class="btn-submit-upload" id="btn-control-hub-submit" onclick="executeControlHubUpload()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         <span>Submit &amp; Upload Chart</span>
+      </button>
+      <button type="button" class="btn-schedule-upload" onclick="showSchedulePicker('control-hub', 'pending-control-hub-title')">
+        📅 Schedule for Later
       </button>
       <button type="button" class="btn-cancel-upload" onclick="cancelControlHubUpload()">
         ✕ Cancel (Do Not Upload)
@@ -3681,6 +3687,9 @@ function handleChartOnlyFileInput(event) {
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         <span>Submit &amp; Upload Chart</span>
       </button>
+      <button type="button" class="btn-schedule-upload" onclick="showSchedulePicker('chart', 'pending-chart-title')">
+        📅 Schedule for Later
+      </button>
       <button type="button" class="btn-cancel-upload" onclick="cancelChartUpload()">
         ✕ Cancel (Do Not Upload)
       </button>
@@ -3979,6 +3988,9 @@ function handleVideoOnlyFileInput(event) {
       <button type="button" class="btn-submit-upload" id="btn-video-upload-submit" onclick="executeVideoUpload()">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
         <span>Submit &amp; Upload Video</span>
+      </button>
+      <button type="button" class="btn-schedule-upload" onclick="showSchedulePicker('video', 'pending-video-title')">
+        📅 Schedule for Later
       </button>
       <button type="button" class="btn-cancel-upload" onclick="cancelVideoUpload()">
         ✕ Cancel (Do Not Upload)
@@ -6592,6 +6604,9 @@ function adminNavigateKpi(target) {
   } else if (target === 'comments') {
     const tabBtn = document.querySelector('.admin-tabs-nav .admin-tab-btn:nth-child(4)');
     switchAdminTab('comments', tabBtn);
+  } else if (target === 'scheduled') {
+    const tabBtn = document.querySelector('.admin-tabs-nav .admin-tab-btn[onclick*="scheduled"]');
+    switchAdminTab('scheduled', tabBtn);
   } else if (target === 'dropoffs') {
     const tabBtn = document.querySelector('.admin-tabs-nav .admin-tab-btn[onclick*="dropoffs"]');
     switchAdminTab('dropoffs', tabBtn);
@@ -6600,7 +6615,451 @@ function adminNavigateKpi(target) {
 
 window.adminNavigateKpi = adminNavigateKpi;
 
-window.bindAuthEnterKey = bindAuthEnterKey;
+// ==================== 📅 SCHEDULED PUBLISHING — FRONTEND SYSTEM ====================
+
+// ---- IST Utilities ----
+
+/**
+ * Get today's date string in YYYY-MM-DD for an <input type="date"> min attribute (IST)
+ */
+function getTodayISTString() {
+  const now = new Date();
+  const ist = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+  const y = ist.getFullYear();
+  const m = String(ist.getMonth() + 1).padStart(2, '0');
+  const d = String(ist.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Convert an IST date (YYYY-MM-DD) + 12hr time (HH:MM) + ampm to UTC ISO string
+ */
+function convertISTtoUTC(dateStr, timeStr, ampm) {
+  // timeStr is "HH:MM" in 12hr
+  let [hours, minutes] = timeStr.split(':').map(Number);
+  if (ampm === 'PM' && hours !== 12) hours += 12;
+  if (ampm === 'AM' && hours === 12) hours = 0;
+  // IST is UTC+5:30
+  const istOffsetMs = 5.5 * 60 * 60 * 1000;
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const istMs = Date.UTC(year, month - 1, day, hours, minutes, 0, 0);
+  return new Date(istMs - istOffsetMs).toISOString();
+}
+
+/**
+ * Format a UTC ISO string as a readable IST 12hr string
+ */
+function formatUTCasIST(isoStr) {
+  return new Date(isoStr).toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+}
+
+/**
+ * Compute a human-readable countdown from now to a UTC ISO string
+ */
+function getCountdownText(isoStr) {
+  const diffMs = new Date(isoStr).getTime() - Date.now();
+  if (diffMs <= 0) return 'Publishing soon…';
+  const totalSecs = Math.floor(diffMs / 1000);
+  const days = Math.floor(totalSecs / 86400);
+  const hrs  = Math.floor((totalSecs % 86400) / 3600);
+  const mins = Math.floor((totalSecs % 3600) / 60);
+  if (days > 0) return `${days}d ${hrs}h ${mins}m`;
+  if (hrs > 0)  return `${hrs}h ${mins}m`;
+  return `${mins}m`;
+}
+
+// ---- Schedule Picker UI ----
+// Returns the HTML for the schedule picker to inject into a confirm box
+function buildSchedulePickerHTML(uploadType, titleInputId) {
+  const todayStr = getTodayISTString();
+  return `
+    <div class="schedule-picker-box" id="schedule-picker-${uploadType}">
+      <div class="schedule-picker-header">
+        <div class="schedule-picker-header-icon">📅</div>
+        <div>
+          <div class="schedule-picker-title">Schedule for Later</div>
+          <div class="schedule-picker-sub">Choose the exact IST date &amp; time to go live</div>
+        </div>
+      </div>
+      <div class="schedule-picker-grid">
+        <div>
+          <div class="form-label">📆 Date</div>
+          <input type="date" id="sched-date-${uploadType}" min="${todayStr}" value="${todayStr}" />
+        </div>
+        <div>
+          <div class="form-label">🕐 Time (12hr)</div>
+          <div style="display:flex;gap:6px;">
+            <input type="time" id="sched-time-${uploadType}" value="09:00" style="flex:1;" />
+            <select id="sched-ampm-${uploadType}" style="width:68px;">
+              <option value="AM">AM</option>
+              <option value="PM">PM</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="schedule-ist-note">
+        🇮🇳 <strong>All times are Indian Standard Time (IST, UTC+5:30)</strong> — your local time zone
+      </div>
+      <div class="schedule-picker-actions">
+        <button type="button" class="btn-confirm-schedule" id="btn-confirm-sched-${uploadType}"
+          onclick="executeScheduledUpload('${uploadType}', '${titleInputId}')">
+          📅 Confirm Schedule
+        </button>
+        <button type="button" class="btn-back-to-upload" onclick="hideSchedulePicker('${uploadType}')">
+          ← Back
+        </button>
+      </div>
+    </div>`;
+}
+
+/** Show the schedule picker inside an existing confirm box */
+function showSchedulePicker(uploadType, titleInputId) {
+  const existingPicker = document.getElementById(`schedule-picker-${uploadType}`);
+  if (existingPicker) {
+    existingPicker.style.display = 'block';
+    existingPicker.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    return;
+  }
+  // Find the actions div of the confirm box and insert after it
+  const boxId = uploadType === 'control-hub' ? 'control-hub-dropzone' :
+                uploadType === 'chart'        ? 'chart-upload-confirm-box' :
+                uploadType === 'video'        ? 'video-upload-confirm-box' :
+                uploadType === 'gallery'      ? 'gallery-upload-confirm-box' :
+                uploadType === 'daily-chart'  ? 'admin-daily-charts-dropzone' : null;
+  if (!boxId) return;
+  const box = document.getElementById(boxId);
+  if (!box) return;
+  const actionsDiv = box.querySelector('.upload-confirm-actions');
+  if (!actionsDiv) return;
+  const pickerDiv = document.createElement('div');
+  pickerDiv.innerHTML = buildSchedulePickerHTML(uploadType, titleInputId);
+  actionsDiv.insertAdjacentElement('afterend', pickerDiv.firstElementChild);
+  pickerDiv.firstElementChild?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/** Hide the schedule picker */
+function hideSchedulePicker(uploadType) {
+  const picker = document.getElementById(`schedule-picker-${uploadType}`);
+  if (picker) picker.style.display = 'none';
+}
+
+/**
+ * Execute the scheduled upload — reads the file from pending state + chosen IST datetime,
+ * converts to UTC, sends POST /api/schedule
+ */
+async function executeScheduledUpload(uploadType, titleInputId) {
+  // Validate date/time inputs
+  const dateInput = document.getElementById(`sched-date-${uploadType}`);
+  const timeInput = document.getElementById(`sched-time-${uploadType}`);
+  const ampmInput = document.getElementById(`sched-ampm-${uploadType}`);
+  if (!dateInput || !timeInput || !ampmInput) return;
+
+  const dateStr = dateInput.value;
+  const timeStr = timeInput.value;
+  const ampm    = ampmInput.value;
+  if (!dateStr || !timeStr) {
+    showToast('Please select a valid date and time', 'error');
+    return;
+  }
+
+  const scheduledAtUTC = convertISTtoUTC(dateStr, timeStr, ampm);
+  if (new Date(scheduledAtUTC) <= new Date()) {
+    showToast('⏰ Scheduled time must be in the future (IST)', 'error');
+    return;
+  }
+
+  // Get the pending file
+  let pendingFile = null;
+  let postType = 'gallery';
+  if (uploadType === 'chart' || uploadType === 'control-hub' || uploadType === 'daily-chart') {
+    pendingFile = pendingChartUpload;
+    postType = 'gallery';
+  } else if (uploadType === 'video') {
+    pendingFile = pendingVideoUpload;
+    postType = 'video';
+  } else if (uploadType === 'gallery') {
+    pendingFile = pendingGalleryUpload;
+    postType = 'gallery';
+  }
+
+  if (!pendingFile) {
+    showToast('No file staged for scheduling. Please re-select your file.', 'error');
+    return;
+  }
+
+  // Get title
+  const titleEl = titleInputId ? document.getElementById(titleInputId) : null;
+  const title = titleEl ? titleEl.value.trim() : pendingFile.name.replace(/\.[^/.]+$/, '');
+
+  // Disable button
+  const confirmBtn = document.getElementById(`btn-confirm-sched-${uploadType}`);
+  if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = '⏳ Scheduling…'; }
+
+  try {
+    const formData = new FormData();
+    formData.append('file', pendingFile);
+    formData.append('title', title);
+    formData.append('type', postType);
+    formData.append('scheduledAt', scheduledAtUTC);
+
+    const res = await fetch('/api/schedule', { method: 'POST', body: formData });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to schedule post');
+
+    // Format IST display time for the toast
+    const istDisplay = formatUTCasIST(scheduledAtUTC);
+    showToast(`📅 Scheduled! Goes live on ${istDisplay} IST`, 'success', 6000);
+
+    // Clear the pending state — file is now on the server
+    if (uploadType === 'chart' || uploadType === 'control-hub' || uploadType === 'daily-chart') {
+      pendingChartUpload = null;
+    } else if (uploadType === 'video') {
+      pendingVideoUpload = null;
+    } else if (uploadType === 'gallery') {
+      pendingGalleryUpload = null;
+    }
+
+    // Hide confirm boxes
+    ['chart-upload-confirm-box', 'video-upload-confirm-box', 'gallery-upload-confirm-box'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.style.display = 'none'; el.innerHTML = ''; }
+    });
+
+    // Refresh the admin scheduled posts tab count
+    loadScheduledPostsCount();
+
+  } catch (err) {
+    showToast(err.message, 'error');
+    if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.innerHTML = '📅 Confirm Schedule'; }
+  }
+}
+
+// ---- Admin Scheduled Posts Dashboard ----
+
+async function loadScheduledPosts() {
+  const container = document.getElementById('admin-scheduled-posts-container');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="scheduled-posts-empty">
+      <div class="empty-icon" style="font-size:1.5rem;">⏳</div>
+      <div style="color:var(--text-muted);">Loading scheduled posts…</div>
+    </div>`;
+
+  try {
+    const res = await fetch('/api/schedule');
+    const posts = await res.json();
+
+    // Update stat bar
+    const pendingEl = document.getElementById('stat-scheduled-pending');
+    const countBadge = document.getElementById('count-scheduled-posts');
+    const kpiStat    = document.getElementById('admin-stat-scheduled');
+    if (pendingEl) pendingEl.textContent = posts.length;
+    if (countBadge) countBadge.textContent = posts.length;
+    if (kpiStat)    kpiStat.textContent = posts.length;
+
+    // Published today count (fetch separately for audit)
+    try {
+      const allRes = await fetch('/api/schedule');
+      // The main endpoint only returns pending. Published today tracked separately.
+    } catch (_) {}
+
+    if (!posts.length) {
+      container.innerHTML = `
+        <div class="scheduled-posts-empty">
+          <div class="empty-icon">📅</div>
+          <div style="color:#fff;font-weight:700;font-size:1rem;">No Pending Scheduled Posts</div>
+          <div style="color:var(--text-muted);font-size:0.85rem;max-width:340px;">When you schedule a chart or video for later, it will appear here with a live countdown.</div>
+        </div>`;
+      return;
+    }
+
+    const cardsHTML = posts.map(post => {
+      const istTime    = formatUTCasIST(post.scheduledAt);
+      const countdown  = getCountdownText(post.scheduledAt);
+      const typeLabel  = post.type === 'video' ? '🎬 VIDEO' : '🖼️ CHART';
+      const typeClass  = post.type === 'video' ? 'type-video' : 'type-chart';
+      const thumbEmoji = post.type === 'video' ? '🎬' : '📊';
+      const thumbHTML  = post.fileUrl
+        ? `<img src="${post.fileUrl}" onerror="this.parentElement.textContent='${thumbEmoji}'" alt="preview" />`
+        : thumbEmoji;
+
+      return `
+        <div class="scheduled-post-card" id="sched-card-${post.id}">
+          <div class="scheduled-post-thumb">${thumbHTML}</div>
+          <div class="scheduled-post-info">
+            <div class="scheduled-post-type-badge ${typeClass}">${typeLabel}</div>
+            <div class="scheduled-post-title" title="${escapeHtml(post.title)}">${escapeHtml(post.title)}</div>
+            <div class="scheduled-post-countdown">⏱️ Goes live in <strong>${countdown}</strong></div>
+            <div class="scheduled-post-time">📅 ${istTime} IST</div>
+          </div>
+          <div class="scheduled-post-actions">
+            <button class="btn-reschedule" onclick="openRescheduleModal('${post.id}', '${escapeHtml(post.title).replace(/'/g, '&apos;')}')">
+              📅 Reschedule
+            </button>
+            <button class="btn-cancel-schedule" onclick="cancelScheduledPost('${post.id}', '${escapeHtml(post.title).replace(/'/g, '&apos;')}')">
+              ✕ Cancel
+            </button>
+          </div>
+        </div>`;
+    }).join('');
+
+    container.innerHTML = `<div style="display:flex;flex-direction:column;gap:10px;">${cardsHTML}</div>`;
+
+    // Live-update countdowns every 30s
+    clearInterval(window._schedCountdownTimer);
+    window._schedCountdownTimer = setInterval(() => {
+      posts.forEach(post => {
+        const card = document.getElementById(`sched-card-${post.id}`);
+        if (card) {
+          const cdEl = card.querySelector('.scheduled-post-countdown strong');
+          if (cdEl) cdEl.textContent = getCountdownText(post.scheduledAt);
+        }
+      });
+    }, 30000);
+
+  } catch (err) {
+    console.error('Error loading scheduled posts:', err);
+    container.innerHTML = `
+      <div class="scheduled-posts-empty">
+        <div class="empty-icon">⚠️</div>
+        <div style="color:#ff5252;font-weight:700;">Failed to load scheduled posts</div>
+        <div style="color:var(--text-muted);font-size:0.84rem;">${err.message}</div>
+        <button class="btn btn-sm btn-secondary" onclick="loadScheduledPosts()" style="margin-top:10px;">🔄 Try Again</button>
+      </div>`;
+  }
+}
+
+async function loadScheduledPostsCount() {
+  try {
+    const res = await fetch('/api/schedule/count');
+    const data = await res.json();
+    const count = data.count || 0;
+    const badge   = document.getElementById('count-scheduled-posts');
+    const kpi     = document.getElementById('admin-stat-scheduled');
+    const pending  = document.getElementById('stat-scheduled-pending');
+    if (badge)   badge.textContent = count;
+    if (kpi)     kpi.textContent = count;
+    if (pending) pending.textContent = count;
+  } catch (_) {}
+}
+
+async function cancelScheduledPost(postId, title) {
+  const confirmed = await customConfirm({
+    title: `Cancel Scheduled Post?`,
+    message: `"${title}" will be removed from the schedule and the uploaded file will be permanently deleted.`,
+    badge: '📅 SCHEDULE CANCEL',
+    type: 'warning',
+    confirmText: '✕ Yes, Cancel It',
+    cancelText: 'Keep It',
+    icon: '📅'
+  });
+  if (!confirmed) return;
+  try {
+    const res = await fetch(`/api/schedule/${encodeURIComponent(postId)}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to cancel scheduled post');
+    showToast('✅ Scheduled post cancelled successfully', 'success');
+    loadScheduledPosts();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function openRescheduleModal(postId, title) {
+  const todayStr = getTodayISTString();
+  // Use a simple inline prompt via customConfirm-style HTML injection
+  const overlayId = `reschedule-overlay-${postId}`;
+  // Remove existing if any
+  document.getElementById(overlayId)?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = overlayId;
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(7,10,16,0.85);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(8px);';
+  overlay.innerHTML = `
+    <div style="background:#0e1422;border:1.5px solid rgba(108,59,255,0.4);border-radius:18px;padding:28px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.6);">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+        <div style="width:36px;height:36px;border-radius:50%;background:rgba(108,59,255,0.15);border:1.5px solid rgba(108,59,255,0.4);display:flex;align-items:center;justify-content:center;font-size:1.1rem;">📅</div>
+        <div>
+          <div style="font-weight:800;color:#fff;font-size:1rem;">Reschedule Post</div>
+          <div style="font-size:0.75rem;color:rgba(198,120,255,0.7);">"${escapeHtml(title)}"</div>
+        </div>
+      </div>
+      <div class="schedule-picker-grid" style="margin-bottom:10px;">
+        <div>
+          <div class="form-label">📆 New Date</div>
+          <input type="date" id="resched-date-${postId}" min="${todayStr}" value="${todayStr}" />
+        </div>
+        <div>
+          <div class="form-label">🕐 New Time (12hr)</div>
+          <div style="display:flex;gap:6px;">
+            <input type="time" id="resched-time-${postId}" value="09:00" style="flex:1;" />
+            <select id="resched-ampm-${postId}" style="width:68px;"><option>AM</option><option>PM</option></select>
+          </div>
+        </div>
+      </div>
+      <div class="schedule-ist-note" style="margin-bottom:16px;">🇮🇳 Indian Standard Time (IST, UTC+5:30)</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-confirm-schedule" id="btn-do-resched-${postId}" onclick="doReschedule('${postId}')" style="flex:1;justify-content:center;">📅 Confirm Reschedule</button>
+        <button class="btn-back-to-upload" onclick="document.getElementById('${overlayId}').remove()">Cancel</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+}
+
+async function doReschedule(postId) {
+  const dateEl = document.getElementById(`resched-date-${postId}`);
+  const timeEl = document.getElementById(`resched-time-${postId}`);
+  const ampmEl = document.getElementById(`resched-ampm-${postId}`);
+  if (!dateEl || !timeEl || !ampmEl) return;
+
+  const scheduledAtUTC = convertISTtoUTC(dateEl.value, timeEl.value, ampmEl.value);
+  if (new Date(scheduledAtUTC) <= new Date()) {
+    showToast('⏰ Rescheduled time must be in the future (IST)', 'error');
+    return;
+  }
+
+  const btn = document.getElementById(`btn-do-resched-${postId}`);
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving…'; }
+
+  try {
+    const res = await fetch(`/api/schedule/${encodeURIComponent(postId)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scheduledAt: scheduledAtUTC })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Reschedule failed');
+
+    const istDisplay = formatUTCasIST(scheduledAtUTC);
+    showToast(`📅 Rescheduled to ${istDisplay} IST`, 'success');
+    document.getElementById(`reschedule-overlay-${postId}`)?.remove();
+    loadScheduledPosts();
+  } catch (err) {
+    showToast(err.message, 'error');
+    if (btn) { btn.disabled = false; btn.textContent = '📅 Confirm Reschedule'; }
+  }
+}
+
+// Expose globals
+window.executeScheduledUpload  = executeScheduledUpload;
+window.showSchedulePicker       = showSchedulePicker;
+window.hideSchedulePicker       = hideSchedulePicker;
+window.loadScheduledPosts       = loadScheduledPosts;
+window.loadScheduledPostsCount  = loadScheduledPostsCount;
+window.cancelScheduledPost      = cancelScheduledPost;
+window.openRescheduleModal      = openRescheduleModal;
+window.doReschedule             = doReschedule;
+
 
 
 // ==================== PASSWORD EYE TOGGLE & SAVED ACCOUNTS AUTOFILL ====================

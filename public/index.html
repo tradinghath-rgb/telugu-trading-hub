@@ -23,7 +23,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@600;700;800;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet" />
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="/css/styles.css?v=20260915_v43" />
+  <link rel="stylesheet" href="/css/styles.css?v=20260915_v44" />
   <link rel="icon" type="image/png" href="/brand-logo" />
   <!-- Zero-Latency Auth Pre-check for Mobile Top Bar -->
   <script>
@@ -1327,6 +1327,13 @@
               <strong class="kpi-val" id="admin-stat-dropoffs" style="color: #ffaa00;">0</strong>
             </div>
           </div>
+          <div class="admin-kpi-card" onclick="adminNavigateKpi('scheduled')" title="Click to view and manage scheduled posts" style="border-color: rgba(108, 59, 255, 0.45); cursor: pointer;">
+            <div class="kpi-icon">📅</div>
+            <div class="kpi-info">
+              <span class="kpi-label" style="color: #c678ff;">Scheduled</span>
+              <strong class="kpi-val" id="admin-stat-scheduled" style="color: #c678ff;">0</strong>
+            </div>
+          </div>
         </div>
 
         <!-- Admin Navigation Tabs -->
@@ -1342,6 +1349,9 @@
           </button>
           <button class="admin-tab-btn" onclick="switchAdminTab('comments', this)">
             💬 Comments Moderation
+          </button>
+          <button class="admin-tab-btn" onclick="switchAdminTab('scheduled', this)" style="border-color: rgba(108, 59, 255, 0.4); color: #c678ff;">
+            📅 Scheduled Posts (<span id="count-scheduled-posts">0</span>)
           </button>
           <button class="admin-tab-btn" onclick="switchAdminTab('cms', this)">
             ⚙️ Live Site Text CMS
@@ -1709,6 +1719,73 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+
+        <!-- Tab: Scheduled Posts Dashboard -->
+        <div id="admin-tab-scheduled" class="admin-tab-content" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; flex-wrap: wrap; gap: 12px;">
+            <div>
+              <h4 style="margin: 0 0 4px; color: #fff; font-size: 1rem;">📅 Scheduled Publishing Dashboard</h4>
+              <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0;">Upload today, publish automatically at your chosen IST date &amp; time. Like Instagram's Schedule feature.</p>
+            </div>
+            <button class="btn btn-sm btn-secondary" onclick="loadScheduledPosts()" style="flex-shrink: 0; border-color: rgba(108, 59, 255, 0.4); color: #c678ff;">
+              🔄 Refresh
+            </button>
+          </div>
+
+          <!-- Stat bar -->
+          <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 12px 16px; background: rgba(108,59,255,0.06); border: 1px solid rgba(108,59,255,0.2); border-radius: 10px; margin-bottom: 18px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 1.1rem;">📅</span>
+              <div>
+                <div style="font-size: 0.7rem; color: rgba(198,120,255,0.7); text-transform: uppercase; letter-spacing: 0.05em;">Pending</div>
+                <strong id="stat-scheduled-pending" style="color: #c678ff; font-size: 1.1rem;">0</strong>
+              </div>
+            </div>
+            <div style="width: 1px; height: 32px; background: rgba(108,59,255,0.2);"></div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 1.1rem;">✅</span>
+              <div>
+                <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em;">Published Today</div>
+                <strong id="stat-scheduled-published" style="color: var(--accent-green); font-size: 1.1rem;">0</strong>
+              </div>
+            </div>
+            <div style="margin-left: auto; font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 5px;">
+              <span>🇮🇳</span> All times shown in <strong style="color: #c678ff;">IST (India)</strong>
+            </div>
+          </div>
+
+          <!-- Posts list -->
+          <div id="admin-scheduled-posts-container">
+            <div class="scheduled-posts-empty">
+              <div class="empty-icon">📅</div>
+              <div style="color: #fff; font-weight: 700; font-size: 1rem;">No Scheduled Posts Yet</div>
+              <div style="color: var(--text-muted); font-size: 0.85rem; max-width: 340px;">When you schedule a chart or video for later, it will appear here with a live countdown.</div>
+            </div>
+          </div>
+
+          <!-- How it works -->
+          <div style="margin-top: 24px; padding: 14px 16px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px;">
+            <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.06em;">⚙️ How Scheduled Publishing Works</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px;">
+              <div style="display: flex; gap: 8px; align-items: flex-start;">
+                <span style="font-size: 1rem; flex-shrink: 0;">1️⃣</span>
+                <span style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5;">Upload your chart or video and click <strong style="color:#c678ff;">📅 Schedule for Later</strong></span>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: flex-start;">
+                <span style="font-size: 1rem; flex-shrink: 0;">2️⃣</span>
+                <span style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5;">Pick any future date &amp; 12hr time in <strong style="color:#c678ff;">Indian Standard Time (IST)</strong></span>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: flex-start;">
+                <span style="font-size: 1rem; flex-shrink: 0;">3️⃣</span>
+                <span style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5;">Server auto-publishes at exact time — <strong style="color:var(--accent-green);">goes live in 1st place</strong> with ✨ badge</span>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: flex-start;">
+                <span style="font-size: 1rem; flex-shrink: 0;">4️⃣</span>
+                <span style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5;">Cancel or reschedule anytime from this dashboard before publish time</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2127,7 +2204,7 @@
   <div id="toast-container"></div>
 
   <!-- Scripts -->
-  <script src="/js/app.js?v=20260915_v43"></script>
+  <script src="/js/app.js?v=20260915_v44"></script>
 
   <!-- V22: SHARE WEBSITE SOCIAL MEDIA POPUP MODAL -->
   <div id="share-website-modal" class="modal-overlay" onclick="if (event.target === this) closeWebsiteShareModal();">

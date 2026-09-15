@@ -6930,3 +6930,343 @@ body {
   color: #fff;
   border-color: #ff5252;
 }
+
+/* =====================================================
+   📅 SCHEDULED PUBLISHING FEATURE — v44
+   Instagram-style schedule picker, badges, and admin dashboard cards
+   ===================================================== */
+
+/* Schedule for Later button — purple/indigo gradient */
+.btn-schedule-upload {
+  background: linear-gradient(135deg, #6c3bff 0%, #9b4dff 60%, #c678ff 100%);
+  border: 1px solid rgba(108, 59, 255, 0.5);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.88rem;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(108, 59, 255, 0.3);
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  letter-spacing: 0.01em;
+}
+.btn-schedule-upload:hover {
+  box-shadow: 0 6px 22px rgba(108, 59, 255, 0.5);
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, #7b4cff 0%, #ac5dff 60%, #d689ff 100%);
+}
+
+/* Schedule picker inline card */
+.schedule-picker-box {
+  background: rgba(108, 59, 255, 0.06);
+  border: 1.5px solid rgba(108, 59, 255, 0.35);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-top: 12px;
+}
+.schedule-picker-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.schedule-picker-header-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(108, 59, 255, 0.15);
+  border: 1.5px solid rgba(108, 59, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+.schedule-picker-title {
+  font-weight: 800;
+  color: #c678ff;
+  font-size: 0.92rem;
+}
+.schedule-picker-sub {
+  font-size: 0.74rem;
+  color: rgba(198, 120, 255, 0.7);
+  margin-top: 1px;
+}
+.schedule-picker-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.schedule-picker-grid .form-label {
+  font-size: 0.75rem;
+  color: rgba(198, 120, 255, 0.85);
+  margin-bottom: 4px;
+}
+.schedule-picker-grid input[type="date"],
+.schedule-picker-grid input[type="time"],
+.schedule-picker-grid select {
+  background: rgba(108, 59, 255, 0.08);
+  border: 1px solid rgba(108, 59, 255, 0.3);
+  border-radius: 8px;
+  color: #fff;
+  padding: 8px 10px;
+  font-size: 0.86rem;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s;
+  font-family: var(--font-sans);
+}
+.schedule-picker-grid input[type="date"]:focus,
+.schedule-picker-grid input[type="time"]:focus,
+.schedule-picker-grid select:focus {
+  border-color: rgba(198, 120, 255, 0.7);
+  box-shadow: 0 0 0 2px rgba(108, 59, 255, 0.15);
+}
+.schedule-picker-grid input[type="date"]::-webkit-calendar-picker-indicator,
+.schedule-picker-grid input[type="time"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) opacity(0.5);
+  cursor: pointer;
+}
+.schedule-ist-note {
+  font-size: 0.74rem;
+  color: rgba(198, 120, 255, 0.65);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 12px;
+  padding: 6px 10px;
+  background: rgba(108, 59, 255, 0.06);
+  border-radius: 6px;
+  border: 1px solid rgba(108, 59, 255, 0.15);
+}
+.schedule-picker-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.btn-confirm-schedule {
+  background: linear-gradient(135deg, #6c3bff 0%, #9b4dff 100%);
+  border: 1px solid rgba(108, 59, 255, 0.5);
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.86rem;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(108, 59, 255, 0.3);
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-confirm-schedule:hover {
+  box-shadow: 0 6px 20px rgba(108, 59, 255, 0.5);
+  transform: translateY(-1px);
+}
+.btn-confirm-schedule:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.btn-back-to-upload {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.84rem;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.btn-back-to-upload:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+/* ⏰ SCHEDULED badge — amber pulsing (mirror of RECENTLY UPLOADED) */
+@keyframes pulseScheduled {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 170, 0, 0.4), 0 0 8px rgba(255, 170, 0, 0.2); opacity: 1; }
+  50%       { box-shadow: 0 0 0 3px rgba(255, 170, 0, 0), 0 0 16px rgba(255, 170, 0, 0.35); opacity: 0.85; }
+}
+.badge-scheduled {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #ffaa00 !important;
+  background: rgba(255, 170, 0, 0.12) !important;
+  border: 1px solid rgba(255, 170, 0, 0.4) !important;
+  border-radius: 999px;
+  padding: 2px 8px;
+  white-space: nowrap;
+  animation: pulseScheduled 2.6s infinite ease-in-out;
+  flex-shrink: 0;
+  cursor: default;
+}
+
+/* Admin Scheduled Posts Tab */
+.scheduled-posts-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 60px 20px;
+  text-align: center;
+}
+.scheduled-posts-empty .empty-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(108, 59, 255, 0.08);
+  border: 1.5px solid rgba(108, 59, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+}
+
+/* Scheduled post card */
+.scheduled-post-card {
+  background: rgba(108, 59, 255, 0.04);
+  border: 1px solid rgba(108, 59, 255, 0.2);
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  transition: background 0.2s, border-color 0.2s;
+}
+.scheduled-post-card:hover {
+  background: rgba(108, 59, 255, 0.08);
+  border-color: rgba(108, 59, 255, 0.35);
+}
+.scheduled-post-thumb {
+  width: 60px;
+  height: 60px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1.5px solid rgba(108, 59, 255, 0.3);
+  flex-shrink: 0;
+  background: rgba(108, 59, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  overflow: hidden;
+}
+.scheduled-post-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 9px;
+}
+.scheduled-post-info {
+  flex: 1;
+  min-width: 0;
+}
+.scheduled-post-title {
+  font-weight: 700;
+  color: #fff;
+  font-size: 0.92rem;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.scheduled-post-type-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 7px;
+  border-radius: 999px;
+  margin-bottom: 6px;
+  letter-spacing: 0.05em;
+}
+.scheduled-post-type-badge.type-chart {
+  background: rgba(0, 242, 152, 0.12);
+  color: var(--accent-green);
+  border: 1px solid rgba(0, 242, 152, 0.3);
+}
+.scheduled-post-type-badge.type-video {
+  background: rgba(0, 210, 255, 0.12);
+  color: var(--accent-cyan);
+  border: 1px solid rgba(0, 210, 255, 0.3);
+}
+.scheduled-post-countdown {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #ffaa00;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.scheduled-post-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 3px;
+}
+.scheduled-post-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.btn-cancel-schedule {
+  background: rgba(255, 82, 82, 0.1);
+  border: 1px solid rgba(255, 82, 82, 0.3);
+  color: #ff5252;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.btn-cancel-schedule:hover {
+  background: rgba(255, 82, 82, 0.2);
+  border-color: #ff5252;
+}
+.btn-reschedule {
+  background: rgba(108, 59, 255, 0.12);
+  border: 1px solid rgba(108, 59, 255, 0.3);
+  color: #c678ff;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.btn-reschedule:hover {
+  background: rgba(108, 59, 255, 0.22);
+  border-color: #9b4dff;
+}
+
+/* Responsive schedule picker */
+@media (max-width: 480px) {
+  .schedule-picker-grid {
+    grid-template-columns: 1fr;
+  }
+  .scheduled-post-card {
+    flex-wrap: wrap;
+  }
+  .scheduled-post-actions {
+    flex-direction: row;
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+

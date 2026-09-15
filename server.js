@@ -136,7 +136,8 @@ const systemRevisions = {
   users: Date.now(),
   gallery: Date.now(),
   comments: Date.now(),
-  siteConfig: Date.now()
+  siteConfig: Date.now(),
+  scheduled: Date.now()
 };
 
 // ==================== AUTO-SYNC REELS FROM FOLDERS (v30) ====================
@@ -1275,6 +1276,245 @@ app.delete('/api/chart-gallery/:id', (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
+// ==================== 📅 SCHEDULED PUBLISHING API ====================
+// Instagram-style scheduled posts — upload today, auto-publish at exact IST date/time
+
+// GET all scheduled posts (admin dashboard)
+app.get('/api/schedule', (req, res) => {
+  try {
+    const posts = readJson('scheduled_posts.json', []);
+    // Return sorted by scheduledAt ascending (soonest first)
+    const sorted = posts
+      .filter(p => p.status === 'pending')
+      .sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
+    res.json(sorted);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST a new scheduled post (admin uploads file + sets future datetime)
+app.post('/api/schedule', upload.single('file'), (req, res) => {
+  try {
+    const { title, scheduledAt, type, language } = req.body;
+    // scheduledAt must be a valid ISO string (UTC), client converts IST → UTC before sending
+    if (!scheduledAt || isNaN(new Date(scheduledAt).getTime())) {
+      return res.status(400).json({ error: 'Invalid scheduledAt datetime' });
+    }
+    if (new Date(scheduledAt) <= new Date()) {
+      return res.status(400).json({ error: 'Scheduled time must be in the future' });
+    }
+
+    let fileUrl = null;
+    if (req.file) {
+      fileUrl = `/uploads/${req.file.filename}`;
+    } else if (req.body.fileUrl) {
+      fileUrl = req.body.fileUrl; // allow re-scheduling an already uploaded file
+    } else {
+      return res.status(400).json({ error: 'No file or fileUrl provided' });
+    }
+
+    const postType = (type || 'gallery').toLowerCase(); // 'gallery' | 'chart' | 'video'
+    const newPost = {
+      id: `sched-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      type: postType,
+      title: (title || 'Untitled Post').trim(),
+      fileUrl,
+      language: language || null,
+      scheduledAt: new Date(scheduledAt).toISOString(),
+      createdAt: new Date().toISOString(),
+      status: 'pending'
+    };
+
+    const posts = readJson('scheduled_posts.json', []);
+    posts.push(newPost);
+    writeJson('scheduled_posts.json', posts);
+    systemRevisions.scheduled = Date.now();
+
+    // Format display time in IST for response message
+    const istTime = new Date(scheduledAt).toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `✅ Scheduled! Will go live on ${istTime} IST`,
+      post: newPost,
+      scheduledAtIST: istTime
+    });
+  } catch (err) {
+    console.error('[Schedule] Error saving scheduled post:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// PUT /api/schedule/:id — Reschedule (change the publishAt datetime)
+app.put('/api/schedule/:id', (req, res) => {
+  try {
+    const { scheduledAt } = req.body;
+    if (!scheduledAt || isNaN(new Date(scheduledAt).getTime())) {
+      return res.status(400).json({ error: 'Invalid scheduledAt datetime' });
+    }
+    if (new Date(scheduledAt) <= new Date()) {
+      return res.status(400).json({ error: 'Rescheduled time must be in the future' });
+    }
+
+    const posts = readJson('scheduled_posts.json', []);
+    const idx = posts.findIndex(p => p.id === req.params.id);
+    if (idx === -1) return res.status(404).json({ error: 'Scheduled post not found' });
+    if (posts[idx].status !== 'pending') return res.status(400).json({ error: 'Only pending posts can be rescheduled' });
+
+    posts[idx].scheduledAt = new Date(scheduledAt).toISOString();
+    posts[idx].updatedAt = new Date().toISOString();
+    writeJson('scheduled_posts.json', posts);
+    systemRevisions.scheduled = Date.now();
+
+    const istTime = new Date(scheduledAt).toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      dateStyle: 'medium',
+      timeStyle: 'short'
+    });
+
+    res.json({ success: true, message: `Rescheduled to ${istTime} IST`, post: posts[idx] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// DELETE /api/schedule/:id — Cancel a scheduled post
+app.delete('/api/schedule/:id', (req, res) => {
+  try {
+    let posts = readJson('scheduled_posts.json', []);
+    const idx = posts.findIndex(p => p.id === req.params.id);
+    if (idx === -1) return res.status(404).json({ error: 'Scheduled post not found' });
+
+    const post = posts[idx];
+
+    // Delete the staged uploaded file from disk
+    if (post.fileUrl && post.fileUrl.startsWith('/uploads/')) {
+      const fileName = post.fileUrl.replace('/uploads/', '');
+      const filePath = path.join(UPLOADS_DIR, decodeURIComponent(fileName));
+      if (fs.existsSync(filePath)) {
+        try { fs.unlinkSync(filePath); } catch (_) {}
+      }
+    }
+
+    posts.splice(idx, 1);
+    writeJson('scheduled_posts.json', posts);
+    systemRevisions.scheduled = Date.now();
+    res.json({ success: true, message: 'Scheduled post cancelled and file removed.' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET count of pending scheduled posts (for KPI badge)
+app.get('/api/schedule/count', (req, res) => {
+  try {
+    const posts = readJson('scheduled_posts.json', []);
+    const count = posts.filter(p => p.status === 'pending').length;
+    res.json({ count });
+  } catch (err) {
+    res.json({ count: 0 });
+  }
+});
+
+// ==================== AUTO-PUBLISH BACKGROUND SCHEDULER ====================
+// Checks every 60 seconds; if any scheduled post's scheduledAt <= now, publish it automatically.
+function runScheduledPublisher() {
+  try {
+    const now = Date.now();
+    let posts = readJson('scheduled_posts.json', []);
+    const due = posts.filter(p => p.status === 'pending' && new Date(p.scheduledAt).getTime() <= now);
+    if (due.length === 0) return;
+
+    console.log(`[Scheduler] ⏰ ${due.length} scheduled post(s) due — publishing now...`);
+
+    due.forEach(post => {
+      try {
+        if (post.type === 'gallery' || post.type === 'chart-only') {
+          // Publish to chart_gallery.json (1st place)
+          const gallery = readJson('chart_gallery.json', []);
+          const newItem = {
+            id: `gallery-${Date.now()}-${Math.random().toString(36).substring(2, 5)}`,
+            title: post.title,
+            imageUrl: post.fileUrl,
+            dateAdded: new Date().toISOString().split('T')[0],
+            isRecentlyUploaded: true,
+            uploadedAt: Date.now()
+          };
+          gallery.unshift(newItem);
+          writeJson('chart_gallery.json', gallery);
+          systemRevisions.gallery = Date.now();
+          console.log(`[Scheduler] ✅ Published chart "${post.title}" to gallery at 1st place.`);
+
+        } else if (post.type === 'video') {
+          // Video is already in /uploads/ — just update systemRevisions so inventory refreshes
+          systemRevisions.charts = Date.now();
+          console.log(`[Scheduler] ✅ Published video "${post.title}" (already in uploads).`);
+
+        } else if (post.type === 'full-chart') {
+          // Publish to charts.json (complete setup, 1st place)
+          const charts = readJson('charts.json', []);
+          const newChart = {
+            id: `chart-${Date.now().toString().slice(-6)}`,
+            reelNumber: Math.max(...charts.map(c => Number(c.reelNumber) || 0), 0) + 1,
+            title: post.title,
+            category: post.category || 'SMC & Liquidity',
+            summary: post.summary || 'Institutional price action analysis.',
+            keyTakeaway: post.keyTakeaway || 'Mark key liquidity levels and enter on confirmed structural shift.',
+            teluguVideo: post.teluguVideo || '/videos/telugu/reel-1(volume secret).mp4',
+            englishVideo: post.englishVideo || '/videos/english/reel-1(volume secret).mp4',
+            chartImage: post.fileUrl,
+            dateAdded: new Date().toISOString().split('T')[0],
+            isRecentlyUploaded: true,
+            uploadedAt: Date.now(),
+            views: 1
+          };
+          charts.unshift(newChart);
+          writeJson('charts.json', charts);
+          systemRevisions.charts = Date.now();
+          console.log(`[Scheduler] ✅ Published full chart setup "${post.title}" at 1st place.`);
+        }
+
+        // Mark as published
+        const pidx = posts.findIndex(p => p.id === post.id);
+        if (pidx !== -1) {
+          posts[pidx].status = 'published';
+          posts[pidx].publishedAt = new Date().toISOString();
+        }
+      } catch (publishErr) {
+        console.error(`[Scheduler] Error publishing "${post.title}":`, publishErr.message);
+      }
+    });
+
+    // Write updated statuses (keep published records for audit)
+    writeJson('scheduled_posts.json', posts);
+    systemRevisions.scheduled = Date.now();
+
+    // Keep audit trail: trim published posts older than 30 days
+    const thirtyDaysAgo = Date.now() - (30 * 24 * 3600 * 1000);
+    const trimmed = posts.filter(p => {
+      if (p.status !== 'published') return true;
+      return p.publishedAt && new Date(p.publishedAt).getTime() > thirtyDaysAgo;
+    });
+    if (trimmed.length !== posts.length) {
+      writeJson('scheduled_posts.json', trimmed);
+    }
+  } catch (err) {
+    console.error('[Scheduler] Error in runScheduledPublisher:', err.message);
+  }
+}
+
+// Run immediately on startup (catches any posts that should have been published during downtime)
+// then every 60 seconds
+setTimeout(() => {
+  runScheduledPublisher();
+  setInterval(runScheduledPublisher, 60 * 1000);
+}, 5000); // 5-second delay to let server fully initialize
 
 // ==================== COMMUNITY COMMENTS & MESSAGE BOARD API ====================
 
