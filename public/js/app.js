@@ -2784,22 +2784,39 @@ function renderAdminChartsTable() {
   }).join('');
 
   updateBulkActionBar();
+  setupVideosHeaderDropdownEvents();
 }
 
 // ==================== TABLE HEADER VIDEOS / CHARTS POP-DOWN DROPDOWN ====================
 // "here you can see in preview box there is no arrow beside videos text when i click upon theat videos or arrow the pop down text should appear charts when i click on the text all charts should appear and from there i can control charts easyly"
 function toggleVideosHeaderDropdown(event) {
-  if (event) event.stopPropagation();
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
+  const btn = document.getElementById('th-dropdown-btn') || document.querySelector('.th-dropdown-btn');
   const menu = document.getElementById('th-media-popdown');
   const cell = document.getElementById('th-videos-dropdown-cell');
   if (!menu) return;
 
-  const isOpen = menu.style.display !== 'none';
+  const isOpen = menu.style.display === 'flex' || menu.classList.contains('active');
   if (isOpen) {
     menu.style.display = 'none';
+    menu.classList.remove('active');
     cell?.classList.remove('open');
   } else {
+    // Fixed screen positioning to guarantee table overflow-x never clips the dropdown!
+    const targetBtn = btn || (event ? event.currentTarget : null) || document.querySelector('.th-dropdown-btn');
+    if (targetBtn) {
+      const rect = targetBtn.getBoundingClientRect();
+      menu.style.position = 'fixed';
+      menu.style.top = (rect.bottom + 8) + 'px';
+      const leftPos = Math.max(12, Math.min(window.innerWidth - 240, rect.left));
+      menu.style.left = leftPos + 'px';
+      menu.style.zIndex = '999999';
+    }
     menu.style.display = 'flex';
+    menu.classList.add('active');
     cell?.classList.add('open');
   }
 }
@@ -2807,21 +2824,32 @@ function toggleVideosHeaderDropdown(event) {
 // Global click listener to close popdown dropdown when clicking outside
 document.addEventListener('click', (e) => {
   const cell = document.getElementById('th-videos-dropdown-cell');
+  const btn = document.getElementById('th-dropdown-btn');
   const menu = document.getElementById('th-media-popdown');
-  if (menu && cell && !cell.contains(e.target)) {
+  if (menu && (menu.style.display === 'flex' || menu.classList.contains('active'))) {
+    if (btn && btn.contains(e.target)) return;
+    if (cell && cell.contains(e.target)) return;
+    if (menu.contains(e.target)) return;
     menu.style.display = 'none';
-    cell.classList.remove('open');
+    menu.classList.remove('active');
+    cell?.classList.remove('open');
   }
 });
 
 function handleThMediaSelect(mode, event) {
-  if (event) event.stopPropagation();
+  if (event) {
+    event.stopPropagation();
+    event.preventDefault();
+  }
   state.adminTableMediaView = mode;
 
   // Close popdown
   const menu = document.getElementById('th-media-popdown');
   const cell = document.getElementById('th-videos-dropdown-cell');
-  if (menu) menu.style.display = 'none';
+  if (menu) {
+    menu.style.display = 'none';
+    menu.classList.remove('active');
+  }
   if (cell) cell.classList.remove('open');
 
   // Update header text and active items
@@ -2848,14 +2876,44 @@ function handleThMediaSelect(mode, event) {
   }
 }
 
+function setupVideosHeaderDropdownEvents() {
+  const btn = document.getElementById('th-dropdown-btn');
+  const itemVid = document.getElementById('th-popdown-videos');
+  const itemChart = document.getElementById('th-popdown-charts');
+
+  if (btn && !btn.__boundClick) {
+    btn.__boundClick = true;
+    btn.addEventListener('click', toggleVideosHeaderDropdown);
+  }
+  if (itemVid && !itemVid.__boundClick) {
+    itemVid.__boundClick = true;
+    itemVid.addEventListener('click', e => handleThMediaSelect('videos', e));
+  }
+  if (itemChart && !itemChart.__boundClick) {
+    itemChart.__boundClick = true;
+    itemChart.addEventListener('click', e => handleThMediaSelect('charts', e));
+  }
+}
+
 // ==================== ALL CHARTS CONTROL CENTER MODAL ====================
 // "when i click on the text all charts should appear and from there i can control charts easyly"
-function openAllChartsControlModal() {
+async function openAllChartsControlModal() {
   const modal = document.getElementById('all-charts-control-modal');
   if (!modal) return;
 
   const searchInput = document.getElementById('control-hub-search-input');
   if (searchInput) searchInput.value = '';
+
+  // Ensure charts and gallery data are loaded
+  if (!state.charts || state.charts.length === 0) {
+    try { await loadCharts(); } catch (_) {}
+  }
+  if (!state.chartGallery || state.chartGallery.length === 0) {
+    try {
+      const res = await fetch('/api/chart-gallery');
+      state.chartGallery = await res.json();
+    } catch (_) {}
+  }
 
   renderControlHubCharts('');
   modal.classList.add('active');
@@ -3141,6 +3199,17 @@ async function deleteControlHubChart(id, source, title) {
   }
 }
 
+window.toggleVideosHeaderDropdown = toggleVideosHeaderDropdown;
+window.handleThMediaSelect = handleThMediaSelect;
+window.openAllChartsControlModal = openAllChartsControlModal;
+window.closeAllChartsControlModal = closeAllChartsControlModal;
+window.filterControlHubCharts = filterControlHubCharts;
+window.triggerControlHubUpload = triggerControlHubUpload;
+window.handleControlHubFileInput = handleControlHubFileInput;
+window.renameControlHubChart = renameControlHubChart;
+window.deleteControlHubChart = deleteControlHubChart;
+window.renderControlHubCharts = renderControlHubCharts;
+window.setupVideosHeaderDropdownEvents = setupVideosHeaderDropdownEvents;
 
 function toggleAdminChartSelect(id, checked) {
   if (checked) {
@@ -3555,8 +3624,21 @@ async function loadVideoRepositorySubpanel() {
   }
 }
 
+function safeDecode(str) {
+  if (!str) return '';
+  try {
+    return decodeURIComponent(str);
+  } catch (_) {
+    try {
+      return decodeURI(str);
+    } catch (__) {
+      return String(str);
+    }
+  }
+}
+
 function renderVideoCardHtml(name, url, tag, isDeletable) {
-  const cleanName = decodeURIComponent(name);
+  const cleanName = safeDecode(name);
   const tagColor = tag === 'TELUGU' ? 'var(--accent-green)' : (tag === 'ENGLISH' ? 'var(--accent-cyan)' : 'var(--accent-gold)');
   return `
     <div class="admin-asset-card">
