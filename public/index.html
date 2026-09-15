@@ -1499,7 +1499,28 @@
                   <th style="width: 65px;">Preview</th>
                   <th>Title &amp; Info</th>
                   <th>Category</th>
-                  <th>Videos</th>
+                  <th class="th-videos-dropdown-cell" id="th-videos-dropdown-cell">
+                    <div class="th-dropdown-btn" onclick="toggleVideosHeaderDropdown(event)" title="Click arrow to switch view or open All Charts">
+                      <span id="th-media-col-text">Videos</span>
+                      <span class="th-dropdown-caret" id="th-media-caret">▼</span>
+                    </div>
+                    <div id="th-media-popdown" class="th-popdown-dropdown" style="display: none;">
+                      <div class="th-popdown-item active" id="th-popdown-videos" onclick="handleThMediaSelect('videos', event)">
+                        <span class="th-popdown-icon">🎬</span>
+                        <div class="th-popdown-info">
+                          <strong>Videos</strong>
+                          <small>View &amp; download video breakdowns</small>
+                        </div>
+                      </div>
+                      <div class="th-popdown-item" id="th-popdown-charts" onclick="handleThMediaSelect('charts', event)">
+                        <span class="th-popdown-icon">📊</span>
+                        <div class="th-popdown-info">
+                          <strong>Charts</strong>
+                          <small>Display &amp; control all charts easily</small>
+                        </div>
+                      </div>
+                    </div>
+                  </th>
                   <th style="width: 150px;">Actions</th>
                 </tr>
               </thead>
@@ -1925,6 +1946,48 @@
               Publish Chart Setup
             </button>
           </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ALL CHARTS CONTROL CENTER MODAL (Triggered when clicking "Charts" in table header dropdown) -->
+  <div id="all-charts-control-modal" class="modal-overlay" onclick="if(event.target === this) closeAllChartsControlModal()">
+    <div class="modal-card" style="max-width: 860px; max-height: 90vh;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 1.3rem;">📊</span>
+          <div>
+            <h3 style="margin: 0; color: #fff;">All Charts Control Center</h3>
+            <span style="font-size: 0.76rem; color: var(--accent-green);" id="all-charts-modal-count">Control, rename, download, and upload charts easily</span>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <button type="button" class="btn btn-sm btn-primary" onclick="triggerControlHubUpload()" style="padding: 6px 12px; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 6px;">
+            <span>➕ Upload Chart</span>
+          </button>
+          <button class="btn-close-modal" onclick="closeAllChartsControlModal()">✕</button>
+        </div>
+      </div>
+      <div class="modal-body" style="overflow-y: auto; padding: 18px;">
+        <!-- Dropzone for quick chart uploads -->
+        <div class="admin-dropzone" id="control-hub-dropzone" onclick="document.getElementById('control-hub-file-input').click()" style="margin-bottom: 16px; padding: 16px;">
+          <input type="file" id="control-hub-file-input" accept="image/*" style="display: none;" onchange="handleControlHubFileInput(event)" />
+          <div class="dropzone-icon" style="font-size: 1.6rem;">📥</div>
+          <div class="dropzone-text">
+            <strong>Tap or Drag &amp; Drop to Upload New Chart</strong>
+            <span style="font-size: 0.74rem;">Instantly adds to your active charts library (from Phone or PC)</span>
+          </div>
+        </div>
+
+        <!-- Quick Search Bar -->
+        <div style="margin-bottom: 16px;">
+          <input type="text" id="control-hub-search-input" class="form-input" placeholder="🔍 Search all charts by title or category..." oninput="filterControlHubCharts(this.value)" style="font-size: 0.86rem;" />
+        </div>
+
+        <!-- All Charts Visual Grid -->
+        <div class="admin-asset-grid" id="control-hub-charts-grid" style="grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px;">
+          <!-- Dynamically injected -->
         </div>
       </div>
     </div>

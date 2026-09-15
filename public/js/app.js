@@ -2742,16 +2742,24 @@ function renderAdminChartsTable() {
           <span class="category-pill" style="padding: 2px 8px; font-size: 0.75rem;">${chart.category}</span>
         </td>
         <td>
-          <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
-            <div class="admin-video-cell-group" title="Telugu Video">
-              <span style="color: var(--accent-green); cursor: pointer; font-size: 0.74rem; font-weight: 700;" onclick="openRenameModal('${chart.id}')">TEL</span>
-              <button type="button" class="btn-table-dl" onclick="event.stopPropagation(); downloadMediaFile('${chart.teluguVideo}', '${escapeHtml(chart.title)} - Telugu Video')" title="Download Telugu Video">📥</button>
+          ${state.adminTableMediaView === 'charts' ? `
+            <div class="admin-chart-cell-control" title="Paired Chart Image">
+              <img src="${chart.chartImage || '/assets/charts/chart-1.svg'}" class="admin-cell-chart-thumb" onclick="viewFullChartImage('${chart.chartImage}', '${escapeHtml(chart.title)}')" title="Click to view full HD chart" alt="" />
+              <button type="button" class="btn-table-dl" onclick="event.stopPropagation(); downloadMediaFile('${chart.chartImage}', '${escapeHtml(chart.title)} - Chart Image')" title="Download Chart Image (HD)">📥</button>
+              <button type="button" class="btn-cell-swap-chart" onclick="openRenameModal('${chart.id}')" title="Choose or Replace Chart">✏️ Edit</button>
             </div>
-            <div class="admin-video-cell-group" title="English Video">
-              <span style="color: var(--accent-cyan); cursor: pointer; font-size: 0.74rem; font-weight: 700;" onclick="openRenameModal('${chart.id}')">ENG</span>
-              <button type="button" class="btn-table-dl" onclick="event.stopPropagation(); downloadMediaFile('${chart.englishVideo}', '${escapeHtml(chart.title)} - English Video')" title="Download English Video">📥</button>
+          ` : `
+            <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+              <div class="admin-video-cell-group" title="Telugu Video">
+                <span style="color: var(--accent-green); cursor: pointer; font-size: 0.74rem; font-weight: 700;" onclick="openRenameModal('${chart.id}')">TEL</span>
+                <button type="button" class="btn-table-dl" onclick="event.stopPropagation(); downloadMediaFile('${chart.teluguVideo}', '${escapeHtml(chart.title)} - Telugu Video')" title="Download Telugu Video">📥</button>
+              </div>
+              <div class="admin-video-cell-group" title="English Video">
+                <span style="color: var(--accent-cyan); cursor: pointer; font-size: 0.74rem; font-weight: 700;" onclick="openRenameModal('${chart.id}')">ENG</span>
+                <button type="button" class="btn-table-dl" onclick="event.stopPropagation(); downloadMediaFile('${chart.englishVideo}', '${escapeHtml(chart.title)} - English Video')" title="Download English Video">📥</button>
+              </div>
             </div>
-          </div>
+          `}
         </td>
         <td>
           <div style="display: flex; gap: 6px; flex-wrap: wrap;">
@@ -2777,6 +2785,331 @@ function renderAdminChartsTable() {
 
   updateBulkActionBar();
 }
+
+// ==================== TABLE HEADER VIDEOS / CHARTS POP-DOWN DROPDOWN ====================
+// "here you can see in preview box there is no arrow beside videos text when i click upon theat videos or arrow the pop down text should appear charts when i click on the text all charts should appear and from there i can control charts easyly"
+function toggleVideosHeaderDropdown(event) {
+  if (event) event.stopPropagation();
+  const menu = document.getElementById('th-media-popdown');
+  const cell = document.getElementById('th-videos-dropdown-cell');
+  if (!menu) return;
+
+  const isOpen = menu.style.display !== 'none';
+  if (isOpen) {
+    menu.style.display = 'none';
+    cell?.classList.remove('open');
+  } else {
+    menu.style.display = 'flex';
+    cell?.classList.add('open');
+  }
+}
+
+// Global click listener to close popdown dropdown when clicking outside
+document.addEventListener('click', (e) => {
+  const cell = document.getElementById('th-videos-dropdown-cell');
+  const menu = document.getElementById('th-media-popdown');
+  if (menu && cell && !cell.contains(e.target)) {
+    menu.style.display = 'none';
+    cell.classList.remove('open');
+  }
+});
+
+function handleThMediaSelect(mode, event) {
+  if (event) event.stopPropagation();
+  state.adminTableMediaView = mode;
+
+  // Close popdown
+  const menu = document.getElementById('th-media-popdown');
+  const cell = document.getElementById('th-videos-dropdown-cell');
+  if (menu) menu.style.display = 'none';
+  if (cell) cell.classList.remove('open');
+
+  // Update header text and active items
+  const labelEl = document.getElementById('th-media-col-text');
+  if (labelEl) {
+    labelEl.textContent = (mode === 'charts' ? 'Charts' : 'Videos');
+  }
+
+  const optVideos = document.getElementById('th-popdown-videos');
+  const optCharts = document.getElementById('th-popdown-charts');
+  if (optVideos && optCharts) {
+    optVideos.classList.toggle('active', mode === 'videos');
+    optCharts.classList.toggle('active', mode === 'charts');
+  }
+
+  // Re-render table with selected column mode
+  renderAdminChartsTable();
+
+  // If Charts selected, immediately open the All Charts Control Center modal!
+  if (mode === 'charts') {
+    openAllChartsControlModal();
+  } else {
+    showToast('🎬 Table column updated to Videos mode.', 'info');
+  }
+}
+
+// ==================== ALL CHARTS CONTROL CENTER MODAL ====================
+// "when i click on the text all charts should appear and from there i can control charts easyly"
+function openAllChartsControlModal() {
+  const modal = document.getElementById('all-charts-control-modal');
+  if (!modal) return;
+
+  const searchInput = document.getElementById('control-hub-search-input');
+  if (searchInput) searchInput.value = '';
+
+  renderControlHubCharts('');
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+
+  const dz = document.getElementById('control-hub-dropzone');
+  if (dz && !dz.__dropzoneInitialized) {
+    dz.__dropzoneInitialized = true;
+    ['dragenter', 'dragover'].forEach(name => {
+      dz.addEventListener(name, e => {
+        e.preventDefault();
+        e.stopPropagation();
+        dz.classList.add('drag-over');
+      });
+    });
+    ['dragleave', 'drop'].forEach(name => {
+      dz.addEventListener(name, e => {
+        e.preventDefault();
+        e.stopPropagation();
+        dz.classList.remove('drag-over');
+      });
+    });
+    dz.addEventListener('drop', e => {
+      const files = e.dataTransfer && e.dataTransfer.files;
+      if (files && files.length > 0) {
+        const input = document.getElementById('control-hub-file-input');
+        if (input) {
+          const dt = new DataTransfer();
+          dt.items.add(files[0]);
+          input.files = dt.files;
+          handleControlHubFileInput({ target: input });
+        }
+      }
+    });
+  }
+}
+
+function closeAllChartsControlModal() {
+  const modal = document.getElementById('all-charts-control-modal');
+  if (modal) modal.classList.remove('active');
+  const otherActive = document.querySelector('.modal-overlay.active');
+  if (!otherActive) {
+    document.body.style.overflow = '';
+  }
+}
+
+function filterControlHubCharts(query) {
+  renderControlHubCharts(query || '');
+}
+
+function triggerControlHubUpload() {
+  const fileInput = document.getElementById('control-hub-file-input');
+  if (fileInput) fileInput.click();
+}
+
+async function handleControlHubFileInput(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  const defaultTitle = file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+  const title = prompt('Enter a title for this new chart:', defaultTitle);
+  if (title === null) return;
+
+  const formData = new FormData();
+  formData.append('chartImage', file);
+  formData.append('title', title.trim() || defaultTitle);
+
+  showToast('Uploading chart to library...', 'info');
+  try {
+    const res = await fetch('/api/chart-gallery', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast('🖼️ Chart added to Control Center!', 'success');
+      event.target.value = '';
+      await loadChartGallery();
+      await loadCharts();
+      renderControlHubCharts('');
+      renderAdminChartsTable();
+    } else {
+      showToast(data.error || 'Upload failed', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+function renderControlHubCharts(query = '') {
+  const grid = document.getElementById('control-hub-charts-grid');
+  const countEl = document.getElementById('all-charts-modal-count');
+  if (!grid) return;
+
+  const cleanQuery = query.toLowerCase().trim();
+
+  // Unified list of all charts (from charts.json and chart_gallery.json)
+  const chartItems = [];
+  const seenUrls = new Set();
+
+  // 1. From setup charts
+  (state.charts || []).forEach(c => {
+    if (c.chartImage && !seenUrls.has(c.chartImage)) {
+      seenUrls.add(c.chartImage);
+      chartItems.push({
+        id: c.id,
+        title: c.title,
+        imageUrl: c.chartImage,
+        category: c.category || 'Price Action',
+        source: 'chart',
+        dateAdded: c.dateAdded || ''
+      });
+    }
+  });
+
+  // 2. From chart gallery
+  (state.chartGallery || []).forEach(g => {
+    if (g.imageUrl && !seenUrls.has(g.imageUrl)) {
+      seenUrls.add(g.imageUrl);
+      chartItems.push({
+        id: g.id,
+        title: g.title,
+        imageUrl: g.imageUrl,
+        category: 'Gallery Chart',
+        source: 'gallery',
+        dateAdded: g.dateAdded || ''
+      });
+    }
+  });
+
+  const filtered = cleanQuery 
+    ? chartItems.filter(item => 
+        (item.title && item.title.toLowerCase().includes(cleanQuery)) ||
+        (item.category && item.category.toLowerCase().includes(cleanQuery))
+      )
+    : chartItems;
+
+  if (countEl) {
+    countEl.textContent = `${filtered.length} of ${chartItems.length} charts ready • Full 1-tap controls active`;
+  }
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `
+      <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 40px;">
+        No charts found matching "${escapeHtml(query)}". Use the upload box above to add a new chart!
+      </div>
+    `;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(item => `
+    <div class="admin-asset-card" id="hub-chart-card-${item.id}">
+      <div class="asset-thumb-wrap" onclick="viewFullChartImage('${item.imageUrl}', '${escapeHtml(item.title)}')" title="Click to view full HD image">
+        <img src="${item.imageUrl}" alt="${escapeHtml(item.title)}" class="asset-thumb-img" loading="lazy" />
+        <button type="button" class="asset-card-dl-badge" onclick="event.stopPropagation(); downloadMediaFile('${item.imageUrl}', '${escapeHtml(item.title)} - HD Chart')" title="Download Chart Image">
+          📥
+        </button>
+      </div>
+      <div class="asset-body">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 4px;">
+          <span class="control-hub-type-badge">${item.source === 'chart' ? 'SETUP' : 'GALLERY'}</span>
+          <span style="font-size: 0.7rem; color: var(--text-muted);">${item.category || ''}</span>
+        </div>
+        <div class="asset-title" title="${escapeHtml(item.title)}" style="font-weight: 700; color: #fff; font-size: 0.86rem; margin-bottom: 6px;">
+          ${escapeHtml(item.title)}
+        </div>
+        <div class="asset-actions" style="margin-top: auto; display: flex; gap: 5px; flex-wrap: wrap;">
+          <button type="button" class="btn-asset-action" onclick="renameControlHubChart('${item.id}', '${escapeHtml(item.title)}', '${item.source}')" title="Rename Chart">
+            ✏️ Rename
+          </button>
+          <button type="button" class="btn-asset-action btn-dl-action" onclick="downloadMediaFile('${item.imageUrl}', '${escapeHtml(item.title)} - HD Chart')" title="Download Chart Image in HD">
+            📥 DL
+          </button>
+          <button type="button" class="btn-asset-action btn-danger-action" onclick="deleteControlHubChart('${item.id}', '${item.source}', '${escapeHtml(item.title)}')" title="Delete Chart">
+            🗑️
+          </button>
+          ${item.source === 'chart' ? `
+            <button type="button" class="btn-asset-action" onclick="closeAllChartsControlModal(); openRenameModal('${item.id}');" title="Edit Full Setup & Media Pairings" style="margin-left: auto; color: var(--accent-green); font-weight: 700;">
+              ⚙️ Setup
+            </button>
+          ` : `
+            <button type="button" class="btn-asset-action" onclick="closeAllChartsControlModal(); openAddChartModal(); useChartInFullSetup('${item.imageUrl}', '${escapeHtml(item.title)}');" title="Create setup with this chart" style="margin-left: auto; color: var(--accent-green); font-weight: 700;">
+              ⚡ Use
+            </button>
+          `}
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function renameControlHubChart(id, currentTitle, source) {
+  const newTitle = prompt(`Rename chart "${currentTitle}":`, currentTitle);
+  if (!newTitle || newTitle.trim() === currentTitle) return;
+
+  showToast('Renaming chart...', 'info');
+  try {
+    let res;
+    if (source === 'chart') {
+      res = await fetch(`/api/charts/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTitle.trim() })
+      });
+    } else {
+      res = await fetch(`/api/chart-gallery/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTitle.trim() })
+      });
+    }
+
+    const data = await res.json();
+    if (data.success) {
+      showToast('✏️ Chart renamed successfully!', 'success');
+      await loadCharts();
+      await loadChartGallery();
+      renderControlHubCharts(document.getElementById('control-hub-search-input')?.value || '');
+      renderAdminChartsTable();
+    } else {
+      showToast(data.error || 'Failed to rename', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function deleteControlHubChart(id, source, title) {
+  if (!confirm(`Are you sure you want to permanently delete chart "${title}"?`)) return;
+
+  showToast('Deleting chart...', 'info');
+  try {
+    let res;
+    if (source === 'chart') {
+      res = await fetch(`/api/charts/${id}`, { method: 'DELETE' });
+    } else {
+      res = await fetch(`/api/chart-gallery/${id}`, { method: 'DELETE' });
+    }
+
+    const data = await res.json();
+    if (data.success) {
+      showToast('🗑️ Chart deleted successfully!', 'success');
+      await loadCharts();
+      await loadChartGallery();
+      renderControlHubCharts(document.getElementById('control-hub-search-input')?.value || '');
+      renderAdminChartsTable();
+    } else {
+      showToast(data.error || 'Failed to delete', 'error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
 
 function toggleAdminChartSelect(id, checked) {
   if (checked) {
