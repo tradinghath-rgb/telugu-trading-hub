@@ -6423,12 +6423,12 @@ body {
     flex-direction: column !important;
     background: #080e1a !important;
     overflow: hidden !important;
+    overscroll-behavior-y: contain !important;
   }
 
   #admin-modal .modal-header {
-    position: sticky !important;
-    top: 0 !important;
-    z-index: 50 !important;
+    position: relative !important;
+    z-index: 10 !important;
     padding: 12px 14px !important;
     background: #0d1424 !important;
     border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
@@ -6442,14 +6442,15 @@ body {
   #admin-modal .admin-header-actions {
     display: flex !important;
     align-items: center !important;
-    gap: 6px !important;
+    gap: 8px !important;
   }
 
   #admin-modal .modal-body {
     flex: 1 1 auto !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
-    padding: 12px 10px 40px !important;
+    overscroll-behavior-y: contain !important;
+    padding: 12px 12px 60px !important;
   }
 
   #admin-modal .admin-kpi-bar {
@@ -6467,12 +6468,13 @@ body {
   }
 }
 
-.th-dropdown-btn {
+.th-dropdown-btn,
+.th-single-text-btn {
   display: inline-flex !important;
   align-items: center !important;
-  gap: 7px !important;
+  gap: 6px !important;
   cursor: pointer !important;
-  padding: 6px 12px !important;
+  padding: 5px 12px !important;
   border-radius: var(--radius-sm) !important;
   background: rgba(255, 255, 255, 0.08) !important;
   border: 1.5px solid rgba(0, 242, 152, 0.45) !important;
@@ -6484,15 +6486,17 @@ body {
   user-select: none !important;
 }
 
-.th-dropdown-btn:hover {
+.th-dropdown-btn:hover,
+.th-single-text-btn:hover {
   background: rgba(0, 242, 152, 0.22) !important;
   border-color: var(--accent-green) !important;
   color: var(--accent-green) !important;
   box-shadow: 0 0 14px rgba(0, 242, 152, 0.35) !important;
 }
 
-.th-dropdown-caret {
-  font-size: 0.7rem !important;
+.th-dropdown-caret,
+.th-small-arrow {
+  font-size: 0.72rem !important;
   color: var(--accent-green) !important;
   transition: transform 0.22s ease !important;
   pointer-events: none !important;
@@ -6500,13 +6504,15 @@ body {
 }
 
 .th-videos-dropdown-cell.open .th-dropdown-caret,
-.th-dropdown-btn.open .th-dropdown-caret {
+.th-dropdown-btn.open .th-dropdown-caret,
+.th-small-arrow.open {
   transform: rotate(180deg) !important;
 }
 
-.th-popdown-dropdown {
+.th-popdown-dropdown,
+.th-media-popdown {
   position: fixed !important;
-  min-width: 220px !important;
+  min-width: 160px !important;
   background: #090e17 !important;
   border: 1.5px solid rgba(0, 242, 152, 0.55) !important;
   border-radius: var(--radius-md) !important;

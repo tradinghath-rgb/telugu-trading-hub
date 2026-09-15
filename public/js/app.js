@@ -1162,12 +1162,14 @@ function renderCharts() {
                   <span>🔒 Unlock to View</span>
                 `}
               </button>
-              ${(isAdmin && item.isGallery) ? `
+              ${isAdmin ? `
                 <div style="display: flex; gap: 4px;">
-                  <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); promptRenameGalleryImage('${item.id}', '${escapedTitle}')" title="Rename Title" style="padding: 4px 8px; font-size: 0.72rem;">
-                    Rename
-                  </button>
-                  <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteGalleryImage('${item.id}')" title="Delete Chart" style="padding: 4px 8px; font-size: 0.72rem;">
+                  ${item.isGallery ? `
+                    <button class="btn btn-sm btn-secondary" onclick="event.stopPropagation(); promptRenameGalleryImage('${item.id}', '${escapedTitle}')" title="Rename Title" style="padding: 4px 8px; font-size: 0.72rem;">
+                      Rename
+                    </button>
+                  ` : ''}
+                  <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); ${item.isGallery ? `deleteGalleryImage('${item.id}')` : `deleteSingleChart('${item.id}')`}" title="Delete Chart" style="padding: 4px 8px; font-size: 0.72rem;">
                     Delete
                   </button>
                 </div>
@@ -3704,6 +3706,8 @@ async function deleteSingleChart(id) {
       showToast('Chart deleted successfully!', 'success');
       state.adminSelectedChartIds.delete(id);
       await loadCharts();
+      if (typeof renderCharts === 'function') renderCharts();
+      if (typeof renderChartGallery === 'function') renderChartGallery();
       renderApp();
       renderAdminChartsTable();
     } else {
@@ -5801,6 +5805,12 @@ async function deleteGalleryImage(id) {
     if (data.success) {
       showToast('🗑️ Chart deleted successfully!', 'info');
       await loadChartGallery();
+      if (typeof renderChartGallery === 'function') renderChartGallery();
+      if (typeof renderCharts === 'function') renderCharts();
+      if (typeof loadCharts === 'function') await loadCharts();
+      if (typeof renderApp === 'function') renderApp();
+      if (typeof renderControlHubCharts === 'function') renderControlHubCharts();
+      if (typeof renderAdminChartsTable === 'function') renderAdminChartsTable();
     } else {
       showToast(data.error || 'Failed to delete chart', 'error');
     }
@@ -7229,11 +7239,11 @@ async function loadScheduledPostsCount() {
 async function cancelScheduledPost(postId, title) {
   const confirmed = await customConfirm({
     title: `Cancel Scheduled Post?`,
-    message: `"${title}" will be removed from the schedule and the uploaded file will be permanently deleted.`,
+    message: `Are you sure you want to cancel and delete the scheduled post <strong>"${escapeHtml(title)}"</strong>? It will not be published to the website.`,
     badge: '📅 SCHEDULE CANCEL',
-    type: 'warning',
-    confirmText: '✕ Yes, Cancel It',
-    cancelText: 'Keep It',
+    type: 'danger',
+    confirmText: 'Confirm',
+    cancelText: 'Cancel',
     icon: '📅'
   });
   if (!confirmed) return;
@@ -8594,3 +8604,44 @@ function initMobileQuickStripSpy() {
     }
   }, { passive: true });
 }
+
+// ==================== MOBILE ADMIN PANEL SWIPE-TO-REFRESH ====================
+function initAdminSwipeToRefresh() {
+  const modal = document.getElementById('admin-modal');
+  if (!modal) return;
+  const body = modal.querySelector('.modal-body');
+  if (!body) return;
+
+  let touchStartY = 0;
+  let touchDiff = 0;
+  let isAtTop = false;
+
+  body.addEventListener('touchstart', (e) => {
+    if (body.scrollTop <= 0) {
+      isAtTop = true;
+      touchStartY = e.touches[0].clientY;
+      touchDiff = 0;
+    } else {
+      isAtTop = false;
+    }
+  }, { passive: true });
+
+  body.addEventListener('touchmove', (e) => {
+    if (!isAtTop) return;
+    const currentY = e.touches[0].clientY;
+    touchDiff = currentY - touchStartY;
+  }, { passive: true });
+
+  body.addEventListener('touchend', () => {
+    if (isAtTop && touchDiff > 80) {
+      showToast('🔄 Refreshing Admin CMS...', 'info', 1500);
+      refreshAdminPanelData();
+    }
+    isAtTop = false;
+    touchDiff = 0;
+  }, { passive: true });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initAdminSwipeToRefresh();
+});
