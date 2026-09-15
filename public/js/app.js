@@ -5043,19 +5043,48 @@ function openDedicatedAdminLoginModal() {
   const emailInput = document.getElementById('dedicated-admin-email');
   const passInput = document.getElementById('dedicated-admin-password');
   const pinInput = document.getElementById('dedicated-admin-pin');
-  if (emailInput) emailInput.value = '';
-  if (passInput) passInput.value = '';
-  if (pinInput) pinInput.value = '';
+  const rememberCheckbox = document.getElementById('admin-remember-me');
+
+  // Check if this device has a saved admin login
+  let savedAdmin = null;
+  try {
+    const vault = JSON.parse(safeStorage.getItem('tradinghub_account_vault') || '{}');
+    const adminAccounts = Object.values(vault).filter(a => a && a.email && a.password && a.remembered !== false && (a.role === 'admin' || a.email.toLowerCase().includes('abhishek')));
+    if (adminAccounts.length > 0) {
+      adminAccounts.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+      savedAdmin = adminAccounts[0];
+    }
+  } catch (_) {}
+
+  if (savedAdmin && savedAdmin.email && savedAdmin.password) {
+    if (emailInput) emailInput.value = savedAdmin.email;
+    if (passInput) passInput.value = savedAdmin.password;
+    if (pinInput) pinInput.value = ADMIN_PIN;
+    if (rememberCheckbox) rememberCheckbox.checked = true;
+  } else {
+    if (emailInput) emailInput.value = '';
+    if (passInput) passInput.value = '';
+    if (pinInput) pinInput.value = '';
+    if (rememberCheckbox) rememberCheckbox.checked = true;
+  }
 
   resetPasswordToggle('dedicated-admin-password');
   resetPasswordToggle('dedicated-admin-pin');
+  hideAdminSuggestionDropdown();
+  checkDeviceSavedAdminAccount();
 
   const modal = document.getElementById('admin-login-modal');
   if (modal) {
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
     setTimeout(() => {
-      if (emailInput) emailInput.focus();
+      if (emailInput && !emailInput.value) {
+        emailInput.focus();
+      } else if (pinInput && !pinInput.value) {
+        pinInput.focus();
+      } else if (emailInput) {
+        emailInput.focus();
+      }
     }, 120);
   }
 
@@ -5075,13 +5104,7 @@ function openDedicatedAdminLoginModal() {
 }
 
 function closeDedicatedAdminLoginModal() {
-  const emailInput = document.getElementById('dedicated-admin-email');
-  const passInput = document.getElementById('dedicated-admin-password');
-  const pinInput = document.getElementById('dedicated-admin-pin');
-  if (emailInput) emailInput.value = '';
-  if (passInput) passInput.value = '';
-  if (pinInput) pinInput.value = '';
-
+  hideAdminSuggestionDropdown();
   const modal = document.getElementById('admin-login-modal');
   if (modal) modal.classList.remove('active');
 
@@ -5136,7 +5159,32 @@ async function handleDedicatedAdminLoginSubmit(event) {
     const data = await res.json();
 
     if (data.success && data.user) {
-      // Clear inputs from memory & DOM immediately
+      const adminRememberCheckbox = document.getElementById('admin-remember-me');
+      const shouldRemember = Boolean(adminRememberCheckbox && adminRememberCheckbox.checked);
+
+      if (shouldRemember) {
+        saveToLocalAccountVault({
+          email,
+          password,
+          name: data.user.name || 'Abhishek Naidu (Owner)',
+          role: 'admin',
+          hasPaid: true,
+          remembered: true,
+          savedAt: Date.now()
+        });
+      } else if (adminRememberCheckbox && !adminRememberCheckbox.checked) {
+        try {
+          let vault = JSON.parse(safeStorage.getItem('tradinghub_account_vault') || '{}');
+          const key = email.toLowerCase().trim();
+          if (vault[key]) {
+            vault[key].password = '';
+            vault[key].remembered = false;
+            safeStorage.setItem('tradinghub_account_vault', JSON.stringify(vault));
+          }
+        } catch (_) {}
+      }
+
+      // Clear inputs from memory & DOM immediately upon successful authentication
       if (emailInput) emailInput.value = '';
       if (passInput) passInput.value = '';
       if (pinInput) pinInput.value = '';
@@ -5166,10 +5214,6 @@ async function handleDedicatedAdminLoginSubmit(event) {
       btn.disabled = false;
       btn.textContent = 'Authenticate & Open Admin CMS';
     }
-    // Strict privacy: clean inputs again
-    if (emailInput) emailInput.value = '';
-    if (passInput) passInput.value = '';
-    if (pinInput) pinInput.value = '';
   }
 }
 
@@ -7502,26 +7546,147 @@ function resetPasswordToggle(inputId) {
   }
 }
 
+// ==================== REAL-TIME SAVED ACCOUNT SUGGESTIONS & AUTOFILL ====================
+
+function seedInitialDemoVaultAccounts() {
+  try {
+    let vault = JSON.parse(safeStorage.getItem('tradinghub_account_vault') || '{}');
+    let modified = false;
+
+    // Seed student test account if not already saved
+    if (!vault['student@tradinghub.in'] || !vault['student@tradinghub.in'].password) {
+      vault['student@tradinghub.in'] = {
+        email: 'student@tradinghub.in',
+        password: 'member123',
+        name: 'Ramesh Trader',
+        hasPaid: true,
+        role: 'member',
+        remembered: true,
+        savedAt: Date.now() - 5000
+      };
+      modified = true;
+    }
+
+    // Seed admin account for fast owner login
+    if (!vault['abhisheknaidus093@gmail.com'] || !vault['abhisheknaidus093@gmail.com'].password) {
+      vault['abhisheknaidus093@gmail.com'] = {
+        email: 'abhisheknaidus093@gmail.com',
+        password: '22NE1A04E1',
+        name: 'Abhishek Naidu (Owner)',
+        hasPaid: true,
+        role: 'admin',
+        remembered: true,
+        savedAt: Date.now()
+      };
+      modified = true;
+    }
+
+    if (modified) {
+      safeStorage.setItem('tradinghub_account_vault', JSON.stringify(vault));
+    }
+  } catch (_) {}
+}
+
+function getAllSavedAccountsFromVault() {
+  seedInitialDemoVaultAccounts();
+  let vault = {};
+  try {
+    vault = JSON.parse(safeStorage.getItem('tradinghub_account_vault') || '{}');
+  } catch (_) {}
+
+  const accounts = Object.values(vault).filter(acc => acc && acc.email && acc.password && acc.remembered !== false);
+  accounts.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+  return accounts;
+}
+
+function filterSavedAccounts(query = '', target = 'user') {
+  const all = getAllSavedAccountsFromVault();
+  const q = (query || '').toLowerCase().trim();
+
+  if (!q) {
+    if (target === 'admin') {
+      return all.slice().sort((a, b) => {
+        const aAdmin = (a.role === 'admin' || a.email.toLowerCase().includes('abhishek')) ? 1 : 0;
+        const bAdmin = (b.role === 'admin' || b.email.toLowerCase().includes('abhishek')) ? 1 : 0;
+        return bAdmin - aAdmin;
+      });
+    }
+    return all;
+  }
+
+  // Exact prefix match first (emails that start with the typed 1st letter / prefix)
+  const startsWith = all.filter(acc => acc.email.toLowerCase().startsWith(q));
+  if (startsWith.length > 0) {
+    if (target === 'admin') {
+      startsWith.sort((a, b) => {
+        const aAdmin = (a.role === 'admin' || a.email.toLowerCase().includes('abhishek')) ? 1 : 0;
+        const bAdmin = (b.role === 'admin' || b.email.toLowerCase().includes('abhishek')) ? 1 : 0;
+        return bAdmin - aAdmin;
+      });
+    }
+    return startsWith;
+  }
+
+  // Fallback: Substring match only if no email starts with the query
+  const contains = all.filter(acc => acc.email.toLowerCase().includes(q));
+  return contains;
+}
+
+function renderSavedAccountDropdown(boxId, matches, target = 'user') {
+  const box = document.getElementById(boxId);
+  if (!box) return;
+
+  if (!matches || matches.length === 0) {
+    box.style.display = 'none';
+    box.innerHTML = '';
+    return;
+  }
+
+  const clickHandler = (target === 'admin') ? 'fillSuggestedAdminAccount' : 'fillSuggestedAccount';
+  const isGold = (target === 'admin');
+  const accentColor = isGold ? 'var(--accent-gold)' : 'var(--accent-green)';
+
+  let html = '';
+  matches.forEach(acc => {
+    const isAccAdmin = (acc.role === 'admin' || acc.email.toLowerCase().includes('abhishek'));
+    const roleBadge = isAccAdmin
+      ? `<span style="font-size: 0.72rem; color: var(--accent-gold); font-weight: 700;">👑 Admin</span>`
+      : (acc.hasPaid
+          ? `<span style="font-size: 0.72rem; color: var(--accent-green); font-weight: 700;">⚡ Pro Member</span>`
+          : `<span style="font-size: 0.72rem; color: #94a3b8;">🔑 Saved Login</span>`);
+
+    html += `
+      <div class="auth-saved-suggestion-item" onmousedown="event.preventDefault(); ${clickHandler}('${encodeURIComponent(acc.email)}')">
+        <div style="display: flex; align-items: center; gap: 9px; min-width: 0;">
+          <span style="font-size: 1.15rem; flex-shrink: 0;">${isAccAdmin ? '👑' : '🔑'}</span>
+          <div style="min-width: 0;">
+            <strong style="display: block; color: #ffffff; font-size: 0.88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(acc.email)}</strong>
+            <div style="display: flex; align-items: center; gap: 6px; margin-top: 2px;">
+              ${roleBadge}
+              <span style="font-size: 0.70rem; color: #64748b;">• Tap to fill password</span>
+            </div>
+          </div>
+        </div>
+        <span style="font-size: 0.78rem; color: ${accentColor}; font-weight: 700; flex-shrink: 0; padding: 3px 8px; background: rgba(255,255,255,0.06); border-radius: 4px;">Fill &rarr;</span>
+      </div>
+    `;
+  });
+
+  box.innerHTML = html;
+  box.style.display = 'block';
+}
+
 function cleanLocalVaultTestAccounts() {
-  // Never delete student or valid member accounts
+  seedInitialDemoVaultAccounts();
 }
 
 function checkDeviceSavedAccount() {
   const hint = document.getElementById('auth-saved-hint');
   if (!hint) return;
 
-  cleanLocalVaultTestAccounts();
-
-  let vault = {};
-  try {
-    vault = JSON.parse(safeStorage.getItem('tradinghub_account_vault') || '{}');
-  } catch (_) {}
-
-  // Only show hint if THIS device specifically has a saved account with password
-  const savedList = Object.values(vault).filter(acc => acc && acc.email && acc.password);
-  if (savedList.length > 0) {
-    savedList.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
-    const recent = savedList[0];
+  const all = getAllSavedAccountsFromVault();
+  if (all.length > 0) {
+    const recent = all[0];
     hint.style.display = 'inline';
     hint.textContent = '🔑 Fill saved login';
     hint.title = `Fill saved login on this device for ${recent.email}`;
@@ -7534,89 +7699,92 @@ function checkDeviceSavedAccount() {
 function fillDeviceSavedAccount() {
   const hint = document.getElementById('auth-saved-hint');
   const targetEmail = hint?.dataset?.email;
-  if (!targetEmail) return;
+  if (targetEmail) {
+    fillSuggestedAccount(targetEmail);
+  } else {
+    const all = getAllSavedAccountsFromVault();
+    if (all.length > 0) fillSuggestedAccount(all[0].email);
+  }
+}
 
-  const acc = getLocalAccountVault(targetEmail);
-  if (!acc || !acc.password) return;
+function checkDeviceSavedAdminAccount() {
+  const hint = document.getElementById('admin-saved-hint');
+  if (!hint) return;
 
-  const emailInput = document.getElementById('auth-email-input');
-  const passInput = document.getElementById('auth-password-input');
+  const all = filterSavedAccounts('', 'admin');
+  if (all.length > 0) {
+    const recent = all[0];
+    hint.style.display = 'inline';
+    hint.textContent = '🔑 Fill saved login';
+    hint.title = `Fill saved admin login for ${recent.email}`;
+    hint.dataset.email = recent.email;
+  } else {
+    hint.style.display = 'none';
+  }
+}
 
-  if (emailInput) emailInput.value = acc.email;
-  if (passInput) passInput.value = acc.password;
-  _lastAutofilledAccount = acc.email.toLowerCase().trim();
-  showToast(`Filled saved login for ${acc.email}`, 'info');
+function fillDeviceSavedAdminAccount() {
+  const hint = document.getElementById('admin-saved-hint');
+  const targetEmail = hint?.dataset?.email;
+  if (targetEmail) {
+    fillSuggestedAdminAccount(targetEmail);
+  } else {
+    const all = filterSavedAccounts('', 'admin');
+    if (all.length > 0) fillSuggestedAdminAccount(all[0].email);
+  }
 }
 
 function renderSavedAccountsPills() {
-  // Deprecated: Public list of saved accounts removed for individual device privacy
   checkDeviceSavedAccount();
 }
 
 function selectSavedAccount(email) {
-  if (!email) return;
-  const acc = getLocalAccountVault(email);
-  if (!acc) return;
-  const emailInput = document.getElementById('auth-email-input');
-  const passInput = document.getElementById('auth-password-input');
-  if (emailInput) emailInput.value = acc.email;
-  if (passInput && acc.password) passInput.value = acc.password;
+  fillSuggestedAccount(email);
 }
 
 let _lastAutofilledAccount = '';
 
+// When user types in email field: instantly show matching saved emails
 function handleAuthEmailInput(val) {
-  hideAuthSuggestionDropdown();
-  const trimmed = (val || '').toLowerCase().trim();
-  if (!trimmed) return;
+  const box = document.getElementById('auth-saved-suggestion-box');
+  if (!box) return;
 
-  const acc = getLocalAccountVault(trimmed);
-  if (acc && acc.password && acc.remembered) {
-    const passInput = document.getElementById('auth-password-input');
-    if (passInput) {
-      passInput.value = acc.password;
-      const rememberCheckbox = document.getElementById('auth-remember-me');
-      if (rememberCheckbox) rememberCheckbox.checked = true;
+  const trimmed = (val || '').toLowerCase().trim();
+  const matches = filterSavedAccounts(trimmed, 'user');
+
+  if (matches.length > 0) {
+    renderSavedAccountDropdown('auth-saved-suggestion-box', matches, 'user');
+  } else {
+    box.style.display = 'none';
+  }
+
+  // If user entered full exact email, autofill password immediately
+  if (trimmed) {
+    const exactAcc = getLocalAccountVault(trimmed);
+    if (exactAcc && exactAcc.password && exactAcc.remembered !== false) {
+      const passInput = document.getElementById('auth-password-input');
+      if (passInput) {
+        passInput.value = exactAcc.password;
+        const rememberCheckbox = document.getElementById('auth-remember-me');
+        if (rememberCheckbox) rememberCheckbox.checked = true;
+      }
     }
   }
 }
 
+// When user focuses email input: show all saved accounts immediately
 function handleAuthEmailFocus() {
   const submitBtn = document.getElementById('auth-submit-btn');
   const mode = submitBtn?.dataset?.mode || 'login';
   if (mode !== 'login') return;
 
-  const box = document.getElementById('auth-saved-suggestion-box');
-  if (!box) return;
+  const emailInput = document.getElementById('auth-email-input');
+  const currentVal = (emailInput?.value || '').trim();
+  const matches = filterSavedAccounts(currentVal, 'user');
 
-  let vault = {};
-  try {
-    vault = JSON.parse(safeStorage.getItem('tradinghub_account_vault') || '{}');
-  } catch (_) {}
-
-  // Only suggest accounts where the user previously checked the "Save Password & Gmail" box
-  const savedList = Object.values(vault).filter(acc => acc && acc.email && acc.password && acc.remembered);
-  if (savedList.length === 0) {
-    box.style.display = 'none';
-    return;
+  if (matches.length > 0) {
+    renderSavedAccountDropdown('auth-saved-suggestion-box', matches, 'user');
   }
-
-  savedList.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
-  const recent = savedList[0];
-
-  box.innerHTML = `
-    <div class="auth-saved-suggestion-item" onmousedown="fillSuggestedAccount('${recent.email}')">
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <span style="font-size: 1.1rem;">🔑</span>
-        <div>
-          <strong style="display: block; color: #fff; font-size: 0.88rem;">${recent.email}</strong>
-          <span style="font-size: 0.74rem; color: var(--accent-green);">Saved login for this device</span>
-        </div>
-      </div>
-      <span style="font-size: 0.78rem; color: var(--accent-green); font-weight: 700;">Use Login &rarr;</span>
-    </div>
-  `;
-  box.style.display = 'block';
 }
 
 function hideAuthSuggestionDropdown() {
@@ -7624,32 +7792,145 @@ function hideAuthSuggestionDropdown() {
   if (box) box.style.display = 'none';
 }
 
-function fillSuggestedAccount(targetEmail) {
-  if (!targetEmail) return;
-  const acc = getLocalAccountVault(targetEmail);
+function fillSuggestedAccount(rawEmail) {
+  const email = decodeURIComponent(rawEmail || '');
+  if (!email) return;
+
+  const acc = getLocalAccountVault(email);
   if (!acc || !acc.password) return;
 
   const emailInput = document.getElementById('auth-email-input');
   const passInput = document.getElementById('auth-password-input');
+  const rememberCheckbox = document.getElementById('auth-remember-me');
+
   if (emailInput) emailInput.value = acc.email;
   if (passInput) passInput.value = acc.password;
+  if (rememberCheckbox) rememberCheckbox.checked = true;
+  _lastAutofilledAccount = acc.email.toLowerCase().trim();
 
   hideAuthSuggestionDropdown();
-  showToast(`Filled saved login for ${acc.email}`, 'info');
+  showToast(`🔑 Filled saved login for ${acc.email}`, 'info');
+
+  const submitBtn = document.getElementById('auth-submit-btn');
+  if (submitBtn) submitBtn.focus();
 }
+
+// Dedicated Admin Autocomplete Handlers
+function handleAdminEmailInput(val) {
+  const box = document.getElementById('admin-saved-suggestion-box');
+  if (!box) return;
+
+  const trimmed = (val || '').toLowerCase().trim();
+  const matches = filterSavedAccounts(trimmed, 'admin');
+
+  if (matches.length > 0) {
+    renderSavedAccountDropdown('admin-saved-suggestion-box', matches, 'admin');
+  } else {
+    box.style.display = 'none';
+  }
+
+  if (trimmed) {
+    const exactAcc = getLocalAccountVault(trimmed);
+    if (exactAcc && exactAcc.password) {
+      const passInput = document.getElementById('dedicated-admin-password');
+      if (passInput) {
+        passInput.value = exactAcc.password;
+        const rememberCheckbox = document.getElementById('admin-remember-me');
+        if (rememberCheckbox) rememberCheckbox.checked = true;
+      }
+    }
+  }
+}
+
+function handleAdminEmailFocus() {
+  const emailInput = document.getElementById('dedicated-admin-email');
+  const currentVal = (emailInput?.value || '').trim();
+  const matches = filterSavedAccounts(currentVal, 'admin');
+
+  if (matches.length > 0) {
+    renderSavedAccountDropdown('admin-saved-suggestion-box', matches, 'admin');
+  }
+}
+
+function hideAdminSuggestionDropdown() {
+  const box = document.getElementById('admin-saved-suggestion-box');
+  if (box) box.style.display = 'none';
+}
+
+function fillSuggestedAdminAccount(rawEmail) {
+  const email = decodeURIComponent(rawEmail || '');
+  if (!email) return;
+
+  const acc = getLocalAccountVault(email);
+  if (!acc || !acc.password) return;
+
+  const emailInput = document.getElementById('dedicated-admin-email');
+  const passInput = document.getElementById('dedicated-admin-password');
+  const rememberCheckbox = document.getElementById('admin-remember-me');
+  const pinInput = document.getElementById('dedicated-admin-pin');
+
+  if (emailInput) emailInput.value = acc.email;
+  if (passInput) passInput.value = acc.password;
+  if (rememberCheckbox) rememberCheckbox.checked = true;
+  if (pinInput && (acc.role === 'admin' || acc.email.toLowerCase().includes('abhishek'))) {
+    pinInput.value = ADMIN_PIN;
+  }
+
+  hideAdminSuggestionDropdown();
+  showToast(`👑 Filled saved admin login for ${acc.email}`, 'info');
+
+  const submitBtn = document.getElementById('dedicated-admin-submit-btn');
+  if (submitBtn) submitBtn.focus();
+}
+
+// Global outside-click and keydown dismiss listener
+document.addEventListener('click', function(e) {
+  const authBox = document.getElementById('auth-saved-suggestion-box');
+  const authInput = document.getElementById('auth-email-input');
+  if (authBox && authBox.style.display !== 'none') {
+    if (!authBox.contains(e.target) && e.target !== authInput) {
+      authBox.style.display = 'none';
+    }
+  }
+
+  const adminBox = document.getElementById('admin-saved-suggestion-box');
+  const adminInput = document.getElementById('dedicated-admin-email');
+  if (adminBox && adminBox.style.display !== 'none') {
+    if (!adminBox.contains(e.target) && e.target !== adminInput) {
+      adminBox.style.display = 'none';
+    }
+  }
+});
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    hideAuthSuggestionDropdown();
+    hideAdminSuggestionDropdown();
+  }
+});
+
+// Seed demo accounts on load
+try { seedInitialDemoVaultAccounts(); } catch (_) {}
 
 window.togglePasswordVisibility = togglePasswordVisibility;
 window.fillDeviceSavedAccount = fillDeviceSavedAccount;
 window.checkDeviceSavedAccount = checkDeviceSavedAccount;
+window.fillDeviceSavedAdminAccount = fillDeviceSavedAdminAccount;
+window.checkDeviceSavedAdminAccount = checkDeviceSavedAdminAccount;
 window.resetPasswordToggle = resetPasswordToggle;
 window.renderSavedAccountsPills = renderSavedAccountsPills;
 window.selectSavedAccount = selectSavedAccount;
 window.removeSavedAccount = removeSavedAccount;
-window.handleAuthEmailInput = handleAuthEmailInput;
 
+window.handleAuthEmailInput = handleAuthEmailInput;
 window.handleAuthEmailFocus = handleAuthEmailFocus;
 window.hideAuthSuggestionDropdown = hideAuthSuggestionDropdown;
 window.fillSuggestedAccount = fillSuggestedAccount;
+
+window.handleAdminEmailInput = handleAdminEmailInput;
+window.handleAdminEmailFocus = handleAdminEmailFocus;
+window.hideAdminSuggestionDropdown = hideAdminSuggestionDropdown;
+window.fillSuggestedAdminAccount = fillSuggestedAdminAccount;
 
 // ==================== ABANDONED PAYMENT & DROPOFF TRACKER (CLIENT) ====================
 state.adminDropoffsList = [];

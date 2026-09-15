@@ -980,9 +980,13 @@
         </p>
 
         <form id="admin-login-form" onsubmit="handleDedicatedAdminLoginSubmit(event)">
-          <div class="form-group">
-            <label class="form-label">Admin Email</label>
-            <input type="email" id="dedicated-admin-email" class="form-input" placeholder="Enter admin email" required autocomplete="off" value="" />
+          <div class="form-group" id="admin-email-group" style="position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <label class="form-label" for="dedicated-admin-email" style="margin-bottom: 0;">Admin Email</label>
+              <span id="admin-saved-hint" style="display: none; font-size: 0.78rem; color: var(--accent-gold); cursor: pointer; text-decoration: underline;" onclick="fillDeviceSavedAdminAccount()">🔑 Use saved login</span>
+            </div>
+            <input type="email" id="dedicated-admin-email" class="form-input" placeholder="Enter admin email" required autocomplete="off" value="" onfocus="handleAdminEmailFocus()" oninput="handleAdminEmailInput(this.value)" />
+            <div id="admin-saved-suggestion-box" class="auth-saved-suggestion-dropdown admin-dropdown" style="display: none;"></div>
           </div>
 
           <div class="form-group">
@@ -1024,7 +1028,15 @@
             </div>
           </div>
 
-          <button type="submit" id="dedicated-admin-submit-btn" class="btn btn-gold" style="width: 100%; margin-top: 10px;">
+          <!-- Admin Remember Me Checkbox -->
+          <div class="form-group-checkbox" id="admin-remember-group" style="margin-top: 10px; margin-bottom: 14px;">
+            <label class="custom-checkbox-label">
+              <input type="checkbox" id="admin-remember-me" style="accent-color: var(--accent-gold); width: 16px; height: 16px; cursor: pointer;" />
+              <span style="color: #cbd5e1; font-size: 0.84rem;">Save Password &amp; Gmail for fast login</span>
+            </label>
+          </div>
+
+          <button type="submit" id="dedicated-admin-submit-btn" class="btn btn-gold" style="width: 100%; margin-top: 4px;">
             Authenticate &amp; Open Admin CMS
           </button>
         </form>
