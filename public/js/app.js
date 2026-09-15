@@ -1496,7 +1496,15 @@ function openUploadedVideoPlayer(id, url, title) {
 // Delete uploaded video (admin only)
 async function deleteUploadedVideo(videoId) {
   if (!videoId) return;
-  const confirmDelete = await showCustomConfirm('Delete this uploaded video permanently?');
+  const confirmDelete = await customConfirm({
+    title: 'Delete Uploaded Video?',
+    message: 'Are you sure you want to permanently delete this video? This cannot be undone.',
+    badge: '🎬 VIDEO DELETION',
+    type: 'danger',
+    confirmText: 'Delete Video',
+    cancelText: 'Cancel',
+    icon: '🗑️'
+  });
   if (!confirmDelete) return;
   try {
     const res = await fetch(`/api/uploaded-videos/${videoId}`, { method: 'DELETE' });
@@ -2850,6 +2858,10 @@ function handleAdminPinSubmit(event) {
     showToast('👑 Admin Security Code Verified! Full controls unlocked.', 'success');
     renderNavbar();
     renderApp();
+    // Directly open Admin Control Center without redirection or delay
+    setTimeout(() => {
+      openAdminModal();
+    }, 100);
   } else {
     showToast('❌ Invalid Admin Security Code. Home remains locked.', 'error');
     if (input) {
@@ -3110,6 +3122,7 @@ function toggleThMediaDropdown(event) {
   }
   const popdown = document.getElementById('th-media-popdown');
   const arrow = document.getElementById('th-media-arrow');
+  const btn = document.getElementById('th-media-toggle-btn');
   if (!popdown) return;
 
   const isVisible = (popdown.style.display === 'block');
@@ -3124,8 +3137,27 @@ function toggleThMediaDropdown(event) {
     if (itemVid) itemVid.classList.toggle('active', currentMode === 'videos');
     if (itemChart) itemChart.classList.toggle('active', currentMode === 'charts');
 
+    // Position using fixed coordinates to escape overflow:auto clipping
+    if (btn) {
+      const rect = btn.getBoundingClientRect();
+      popdown.style.top = (rect.bottom + 5) + 'px';
+      popdown.style.left = Math.max(4, rect.left - (140 - rect.width) / 2) + 'px';
+    }
     popdown.style.display = 'block';
     if (arrow) arrow.classList.add('open');
+
+    // Close on outside click
+    setTimeout(() => {
+      const outsideClose = (e) => {
+        if (!popdown.contains(e.target) && e.target !== btn && !btn?.contains(e.target)) {
+          closeThMediaDropdown();
+          document.removeEventListener('mousedown', outsideClose, true);
+          document.removeEventListener('touchstart', outsideClose, true);
+        }
+      };
+      document.addEventListener('mousedown', outsideClose, true);
+      document.addEventListener('touchstart', outsideClose, true);
+    }, 0);
   }
 }
 
@@ -3568,7 +3600,8 @@ async function deleteControlHubChart(id, source, title) {
   }
 }
 
-window.toggleVideosHeaderDropdown = toggleVideosHeaderDropdown;
+// (toggleVideosHeaderDropdown already assigned above via window.toggleVideosHeaderDropdown)
+
 window.handleThMediaSelect = handleThMediaSelect;
 window.openAllChartsControlModal = openAllChartsControlModal;
 window.closeAllChartsControlModal = closeAllChartsControlModal;
@@ -7053,6 +7086,8 @@ async function executeScheduledUpload(uploadType, titleInputId) {
     // Format IST display time for the toast
     const istDisplay = formatUTCasIST(scheduledAtUTC);
     showToast(`📅 Scheduled! Goes live on ${istDisplay} IST`, 'success', 6000);
+    // Refresh scheduled posts list
+    loadScheduledPosts();
 
     // Clear the pending state — file is now on the server
     if (uploadType === 'chart' || uploadType === 'control-hub' || uploadType === 'daily-chart') {
@@ -7856,6 +7891,7 @@ function handleAuthEmailInput(val) {
 
   if (matches.length > 0) {
     renderSavedAccountDropdown('auth-saved-suggestion-box', matches, 'user');
+    positionFixedSuggestionBox(box);
   } else {
     box.style.display = 'none';
   }
@@ -7886,6 +7922,8 @@ function handleAuthEmailFocus() {
 
   if (matches.length > 0) {
     renderSavedAccountDropdown('auth-saved-suggestion-box', matches, 'user');
+    const box = document.getElementById('auth-saved-suggestion-box');
+    positionFixedSuggestionBox(box);
   }
 }
 

@@ -22,5 +22,13 @@
     "title": "Fair Value Gap (FVG) Sniper Retest",
     "imageUrl": "/assets/charts/chart-4.svg",
     "dateAdded": "2026-09-13"
+  },
+  {
+    "id": "gallery-1789450793302-w8l",
+    "title": "Test Scheduled Setup Nifty 50",
+    "imageUrl": "/assets/charts/chart-1.svg",
+    "dateAdded": "2026-09-15",
+    "isRecentlyUploaded": true,
+    "uploadedAt": 1789450793301
   }
 ]

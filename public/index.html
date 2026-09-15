@@ -812,7 +812,7 @@
               <label class="form-label" for="auth-email-input" style="margin-bottom: 0;">Gmail / Email Address</label>
               <span id="auth-saved-hint" style="display: none; font-size: 0.78rem; color: var(--accent-green); cursor: pointer; text-decoration: underline;" onclick="fillDeviceSavedAccount()">🔑 Use saved login</span>
             </div>
-            <input type="email" id="auth-email-input" class="form-input" placeholder="you@gmail.com" required autocomplete="email" onfocus="handleAuthEmailFocus()" oninput="handleAuthEmailInput(this.value)" />
+            <input type="text" id="auth-email-input" class="form-input" placeholder="you@gmail.com" required autocomplete="off" onfocus="handleAuthEmailFocus()" oninput="handleAuthEmailInput(this.value)" onkeyup="handleAuthEmailInput(this.value)" />
             <div id="auth-saved-suggestion-box" class="auth-saved-suggestion-dropdown" style="display: none;"></div>
           </div>
 
@@ -2503,7 +2503,7 @@
   </div>
 
   <!-- ==================== UNIVERSAL CUSTOM DIALOG POPUP (CONFIRM / PROMPT / ALERT) ==================== -->
-  <div id="custom-dialog-modal" class="modal-overlay custom-dialog-overlay" style="display: none; z-index: 100000;">
+  <div id="custom-dialog-modal" class="modal-overlay custom-dialog-overlay" style="display: none; z-index: 999999999;">
     <div class="custom-dialog-card type-primary" id="custom-dialog-card">
       <div class="custom-dialog-header">
         <span id="custom-dialog-badge" class="custom-dialog-badge">⚠️ ADMIN ACTION</span>

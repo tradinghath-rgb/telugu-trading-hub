@@ -4011,7 +4011,7 @@ body.admin-home-blurred > *:not(#admin-pin-modal):not(#toast-container) {
   border: 1px solid var(--accent-green);
   border-radius: var(--radius-md);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 16px rgba(0, 242, 152, 0.25);
-  z-index: 1000;
+  z-index: 999999;
   padding: 6px;
   max-height: 240px;
   overflow-y: auto;
@@ -6289,17 +6289,14 @@ body {
 }
 
 .th-media-popdown {
-  position: absolute !important;
-  top: calc(100% + 5px) !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
+  position: fixed !important;
   background: #0d1424 !important;
   border: 1px solid var(--accent-green) !important;
   border-radius: 8px !important;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.95), 0 0 16px rgba(0, 242, 152, 0.25) !important;
-  min-width: 135px !important;
+  min-width: 140px !important;
   padding: 5px !important;
-  z-index: 99999 !important;
+  z-index: 9999999 !important;
   animation: fadeIn 0.15s ease-out !important;
 }
 
@@ -6376,9 +6373,8 @@ body {
   #admin-modal .modal-card {
     width: 96vw !important;
     max-width: 1540px !important;
-    min-height: 86vh !important;
+    height: 90vh !important;
     max-height: 94vh !important;
-    aspect-ratio: 16 / 9 !important;
     border-radius: var(--radius-xl) !important;
     border: 1px solid rgba(0, 242, 152, 0.3) !important;
     box-shadow: 0 25px 70px rgba(0, 0, 0, 0.95), 0 0 40px rgba(0, 242, 152, 0.12) !important;
@@ -6640,7 +6636,7 @@ body {
   align-items: center !important;
   justify-content: center !important;
   padding: 16px !important;
-  z-index: 100000 !important;
+  z-index: 999999999 !important;
   animation: customDialogFadeIn 0.22s ease-out !important;
 }
 
