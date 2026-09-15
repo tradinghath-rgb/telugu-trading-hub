@@ -2910,6 +2910,7 @@ function openAdminModal() {
 
   modal.classList.add('active');
   document.body.style.overflow = 'hidden';
+  if (typeof initAdminSwipeToRefresh === 'function') initAdminSwipeToRefresh();
 
   // Persist admin modal state across page refresh (F5 / mobile pull-to-refresh)
   safeSessionStorage.setItem('tradinghub_admin_modal_open', 'true');
@@ -7361,15 +7362,12 @@ function switchScheduleComposerType(type) {
   currentScheduleComposerType = type;
   
   ['chart', 'video', 'both'].forEach(t => {
-    const lbl = document.getElementById(`sched-type-lbl-${t}`);
-    if (lbl) {
-      const radio = lbl.querySelector('input[type="radio"]');
+    const btn = document.getElementById(`sched-type-lbl-${t}`);
+    if (btn) {
       if (t === type) {
-        lbl.classList.add('active');
-        if (radio) radio.checked = true;
+        btn.classList.add('active');
       } else {
-        lbl.classList.remove('active');
-        if (radio) radio.checked = false;
+        btn.classList.remove('active');
       }
     }
   });
@@ -8606,18 +8604,22 @@ function initMobileQuickStripSpy() {
 }
 
 // ==================== MOBILE ADMIN PANEL SWIPE-TO-REFRESH ====================
+let _adminSwipeInitialized = false;
 function initAdminSwipeToRefresh() {
   const modal = document.getElementById('admin-modal');
   if (!modal) return;
   const body = modal.querySelector('.modal-body');
   if (!body) return;
 
+  if (_adminSwipeInitialized) return;
+  _adminSwipeInitialized = true;
+
   let touchStartY = 0;
   let touchDiff = 0;
   let isAtTop = false;
 
   body.addEventListener('touchstart', (e) => {
-    if (body.scrollTop <= 0) {
+    if (body.scrollTop <= 2) {
       isAtTop = true;
       touchStartY = e.touches[0].clientY;
       touchDiff = 0;
@@ -8633,7 +8635,7 @@ function initAdminSwipeToRefresh() {
   }, { passive: true });
 
   body.addEventListener('touchend', () => {
-    if (isAtTop && touchDiff > 80) {
+    if (isAtTop && touchDiff > 70) {
       showToast('🔄 Refreshing Admin CMS...', 'info', 1500);
       refreshAdminPanelData();
     }

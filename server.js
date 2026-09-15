@@ -144,6 +144,7 @@ const systemRevisions = {
 function syncReelsFromFolders() {
   try {
     let charts = readJson('charts.json', []);
+    const deletedCharts = new Set(readJson('deleted_charts.json', []));
     const existingReelNumbers = new Set(charts.map(c => Number(c.reelNumber)));
 
     const teluguFiles = fs.existsSync(TELUGU_VIDEO_DIR) ? fs.readdirSync(TELUGU_VIDEO_DIR) : [];
@@ -179,7 +180,7 @@ function syncReelsFromFolders() {
     const sortedReelNumbers = Array.from(folderReels.keys()).sort((a, b) => a - b);
 
     sortedReelNumbers.forEach(num => {
-      if (!existingReelNumbers.has(num)) {
+      if (!existingReelNumbers.has(num) && !deletedCharts.has(num) && !deletedCharts.has(`chart-${num < 10 ? '0' + num : num}`)) {
         const info = folderReels.get(num);
         const cleanTitleName = info.rawTitle 
           ? info.rawTitle.charAt(0).toUpperCase() + info.rawTitle.slice(1)
@@ -1080,8 +1081,15 @@ app.delete('/api/charts/:id', (req, res) => {
   try {
     let charts = readJson('charts.json', []);
     const initialLen = charts.length;
+    const targetChart = charts.find(c => c.id === req.params.id);
     charts = charts.filter(c => c.id !== req.params.id);
     if (charts.length === initialLen) return res.status(404).json({ error: 'Chart not found' });
+
+    // Mark as deleted so auto-sync folder scan does not resurrect it
+    let deletedList = readJson('deleted_charts.json', []);
+    deletedList.push(req.params.id);
+    if (targetChart && targetChart.reelNumber) deletedList.push(Number(targetChart.reelNumber));
+    writeJson('deleted_charts.json', Array.from(new Set(deletedList)));
 
     writeJson('charts.json', charts);
     systemRevisions.charts = Date.now();
@@ -1101,8 +1109,15 @@ app.post('/api/charts/bulk-delete', (req, res) => {
 
     let charts = readJson('charts.json', []);
     const beforeCount = charts.length;
+    const targets = charts.filter(c => ids.includes(c.id));
     charts = charts.filter(c => !ids.includes(c.id));
     const deletedCount = beforeCount - charts.length;
+
+    // Mark deleted IDs & reelNumbers so auto-sync folder scan does not resurrect them
+    let deletedList = readJson('deleted_charts.json', []);
+    ids.forEach(id => deletedList.push(id));
+    targets.forEach(t => { if (t && t.reelNumber) deletedList.push(Number(t.reelNumber)); });
+    writeJson('deleted_charts.json', Array.from(new Set(deletedList)));
 
     writeJson('charts.json', charts);
     systemRevisions.charts = Date.now();
@@ -1202,6 +1217,7 @@ app.delete('/api/uploaded-videos/:id', (req, res) => {
     }
 
     writeJson('videos_uploaded.json', videos);
+    try { writeJson('videos_uploaded_permanent.json', videos); } catch (_) {}
     systemRevisions.charts = Date.now();
     res.json({ success: true, message: 'Video deleted successfully!' });
   } catch (err) {
@@ -1409,6 +1425,7 @@ app.delete('/api/chart-gallery/:id', (req, res) => {
     }
 
     writeJson('chart_gallery.json', gallery);
+    try { writeJson('chart_gallery_permanent.json', gallery); } catch (_) {}
     systemRevisions.gallery = Date.now();
     res.json({ success: true, message: 'Chart deleted successfully!' });
   } catch (err) {

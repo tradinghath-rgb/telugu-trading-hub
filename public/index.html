@@ -1806,30 +1806,27 @@
               <div class="form-group" style="margin-bottom: 14px;">
                 <label class="form-label" style="color: #fff; font-weight: 700; font-size: 0.84rem; margin-bottom: 8px;">1. Select Post Type to Publish</label>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px;">
-                  <label class="schedule-type-radio active" id="sched-type-lbl-chart" onclick="switchScheduleComposerType('chart')">
-                    <input type="radio" name="sched_post_type" value="chart" checked style="display: none;" />
-                    <span style="font-size: 1.2rem;">📊</span>
-                    <div>
-                      <strong style="display: block; color: #fff; font-size: 0.85rem;">Chart Only</strong>
-                      <small style="color: var(--text-muted); font-size: 0.72rem;">Hand-drawn chart setup</small>
+                  <button type="button" class="schedule-type-btn active" id="sched-type-lbl-chart" onclick="switchScheduleComposerType('chart')">
+                    <span class="sched-type-icon">📊</span>
+                    <div class="sched-type-text">
+                      <strong>Chart Only</strong>
+                      <small>Hand-drawn chart setup</small>
                     </div>
-                  </label>
-                  <label class="schedule-type-radio" id="sched-type-lbl-video" onclick="switchScheduleComposerType('video')">
-                    <input type="radio" name="sched_post_type" value="video" style="display: none;" />
-                    <span style="font-size: 1.2rem;">🎬</span>
-                    <div>
-                      <strong style="display: block; color: #fff; font-size: 0.85rem;">Video Only</strong>
-                      <small style="color: var(--text-muted); font-size: 0.72rem;">Uploaded video lesson</small>
+                  </button>
+                  <button type="button" class="schedule-type-btn" id="sched-type-lbl-video" onclick="switchScheduleComposerType('video')">
+                    <span class="sched-type-icon">🎬</span>
+                    <div class="sched-type-text">
+                      <strong>Video Only</strong>
+                      <small>Uploaded video lesson</small>
                     </div>
-                  </label>
-                  <label class="schedule-type-radio" id="sched-type-lbl-both" onclick="switchScheduleComposerType('both')">
-                    <input type="radio" name="sched_post_type" value="both" style="display: none;" />
-                    <span style="font-size: 1.2rem;">🌟</span>
-                    <div>
-                      <strong style="display: block; color: #fff; font-size: 0.85rem;">Both Chart &amp; Video</strong>
-                      <small style="color: var(--text-muted); font-size: 0.72rem;">Complete paired setup</small>
+                  </button>
+                  <button type="button" class="schedule-type-btn" id="sched-type-lbl-both" onclick="switchScheduleComposerType('both')">
+                    <span class="sched-type-icon">🌟</span>
+                    <div class="sched-type-text">
+                      <strong>Both Chart &amp; Video</strong>
+                      <small>Complete paired setup</small>
                     </div>
-                  </label>
+                  </button>
                 </div>
               </div>
 
