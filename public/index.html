@@ -675,73 +675,6 @@
           </div>
         </div>
 
-        <!-- Tab 4: UTRs & Payments Table -->
-        <div id="admin-tab-payments" class="admin-tab-content" style="display: none;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
-            <p style="color: var(--text-secondary); font-size: 0.88rem; margin: 0;">
-              Verify UTR transactions, cross-check payment screenshots, and manually approve or revoke ₹399 PRO access.
-            </p>
-            <button class="btn btn-sm btn-secondary" onclick="loadAdminPayments()">
-              🔄 Refresh Payments
-            </button>
-          </div>
-
-          <div class="admin-table-container">
-            <table class="admin-table">
-              <thead>
-                <tr>
-                  <th>Date &amp; Time</th>
-                  <th>Gmail / Email</th>
-                  <th>12-Digit UTR</th>
-                  <th>Screenshot Proof</th>
-                  <th>Status</th>
-                  <th style="width: 170px;">Action</th>
-                </tr>
-              </thead>
-              <tbody id="admin-payments-table-body">
-                <tr>
-                  <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">
-                    No payment verification submissions yet.
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Tab 5: Comments Moderation -->
-        <div id="admin-tab-comments" class="admin-tab-content" style="display: none;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
-            <p style="color: var(--text-secondary); font-size: 0.88rem; margin: 0;">
-              Moderate trader community feedback, reviews, and discussion messages. Delete any inappropriate content.
-            </p>
-            <button class="btn btn-sm btn-secondary" onclick="loadAdminComments()">
-              🔄 Refresh Comments
-            </button>
-          </div>
-
-          <div class="admin-table-container">
-            <table class="admin-table">
-              <thead>
-                <tr>
-                  <th>Author</th>
-                  <th>Role</th>
-                  <th>Protected Email</th>
-                  <th>Comment Message</th>
-                  <th>Posted</th>
-                  <th style="width: 90px; text-align: right;">Action</th>
-                </tr>
-              </thead>
-              <tbody id="admin-comments-table-body">
-                <tr>
-                  <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">
-                    Loading comments...
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
       </div>
     </div>
   </div>
@@ -1530,6 +1463,61 @@
                 <!-- Dynamically populated -->
               </tbody>
             </table>
+          </div>
+        </div>
+
+        <!-- Tab: UTRs & Payments Table -->
+        <div id="admin-tab-payments" class="admin-tab-content" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+            <p style="color: var(--text-secondary); font-size: 0.88rem; margin: 0;">
+              Verify UTR transactions, cross-check payment screenshots, and manually approve or revoke ₹399 PRO access.
+            </p>
+            <button class="btn btn-sm btn-secondary" onclick="loadAdminPayments()">
+              🔄 Refresh Payments
+            </button>
+          </div>
+
+          <div class="admin-table-container">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Date &amp; Time</th>
+                  <th>Gmail / Email</th>
+                  <th>12-Digit UTR</th>
+                  <th>Screenshot Proof</th>
+                  <th>Status</th>
+                  <th style="width: 170px;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="admin-payments-table-body">
+                <tr>
+                  <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                    No payment verification submissions yet.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab: Comments Moderation -->
+        <div id="admin-tab-comments" class="admin-tab-content" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+            <div>
+              <h4 style="margin: 0 0 4px; color: #fff; font-size: 1rem;">💬 Community Comments Moderation</h4>
+              <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0;">Moderate trader feedback &amp; discussion. Delete inappropriate content instantly.</p>
+            </div>
+            <button class="btn btn-sm btn-secondary" onclick="loadAdminComments()" style="flex-shrink: 0;">
+              🔄 Refresh
+            </button>
+          </div>
+
+          <div id="admin-comments-cards-container">
+            <!-- Dynamically rendered by loadAdminComments() -->
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 40px 20px; color: var(--text-muted); font-size: 0.9rem;">
+              <div style="font-size: 2rem;">💬</div>
+              <span>Loading comments...</span>
+            </div>
           </div>
         </div>
 

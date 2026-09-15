@@ -6369,8 +6369,21 @@ async function handleAdminSubmitCreateUser(e) {
 
 // Fetch and Render Community Comments in Admin Tab
 async function loadAdminComments() {
-  const tbody = document.getElementById('admin-comments-table-body');
-  if (!tbody) return;
+  const container = document.getElementById('admin-comments-cards-container');
+  // Also support legacy table body fallback
+  const legacyTbody = document.getElementById('admin-comments-table-body');
+  
+  const target = container || legacyTbody;
+  if (!target) return;
+
+  // Loading state
+  if (container) {
+    container.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:40px 20px;color:var(--text-muted);font-size:0.9rem;">
+        <div style="font-size:2rem;">💬</div>
+        <span>Loading comments...</span>
+      </div>`;
+  }
 
   try {
     const res = await fetch('/api/comments');
@@ -6378,50 +6391,98 @@ async function loadAdminComments() {
     const comments = await res.json();
 
     if (!Array.isArray(comments) || comments.length === 0) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">
-            No community comments posted yet.
-          </td>
-        </tr>
-      `;
+      if (container) {
+        container.innerHTML = `
+          <div style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:60px 20px;text-align:center;">
+            <div style="width:64px;height:64px;border-radius:50%;background:rgba(0,242,152,0.08);border:1.5px solid rgba(0,242,152,0.2);display:flex;align-items:center;justify-content:center;font-size:2rem;">💬</div>
+            <div>
+              <div style="color:#fff;font-weight:700;font-size:1rem;margin-bottom:4px;">No Comments Yet</div>
+              <div style="color:var(--text-muted);font-size:0.85rem;max-width:320px;">No trader community comments have been posted yet. Comments will appear here as traders share their feedback and discussion.</div>
+            </div>
+          </div>`;
+      } else if (legacyTbody) {
+        legacyTbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:30px;">No community comments posted yet.</td></tr>`;
+      }
       return;
     }
 
-    tbody.innerHTML = comments.map(c => {
-      const timeStr = c.timestamp ? new Date(c.timestamp).toLocaleString() : '-';
-      const roleBadge = c.role === 'admin' 
-        ? '<span class="user-badge-pro" style="background: #ffd700; color: #000; font-weight: 900; border: 1px solid #ffe600;">OWNER</span>'
-        : (c.role === 'member' ? '<span class="user-badge-pro">PRO</span>' : '<span class="user-badge-free">TRADER</span>');
+    if (container) {
+      const totalBar = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding:10px 14px;background:rgba(0,242,152,0.06);border:1px solid rgba(0,242,152,0.15);border-radius:10px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="color:var(--accent-green);font-size:1.1rem;">💬</span>
+            <span style="color:#fff;font-weight:700;font-size:0.95rem;">${comments.length} Trader Comment${comments.length !== 1 ? 's' : ''}</span>
+          </div>
+          <span style="font-size:0.78rem;color:var(--text-muted);">Newest first • Click 🗑️ to delete</span>
+        </div>`;
 
-      return `
-        <tr>
-          <td><strong style="color: #fff;">${escapeHtml(c.name || 'Anonymous')}</strong></td>
-          <td>${roleBadge}</td>
-          <td><span style="font-size: 0.8rem; color: var(--text-muted);">${escapeHtml(c.email || 'None')}</span></td>
-          <td style="max-width: 320px; font-size: 0.84rem; color: var(--text-secondary); line-height: 1.4;">
-            "${escapeHtml(c.text || '')}"
-          </td>
-          <td style="font-size: 0.8rem; color: var(--text-muted); white-space: nowrap;">${timeStr}</td>
-          <td style="text-align: right;">
-            <button class="btn btn-sm btn-danger" style="padding: 4px 8px; font-size: 0.74rem;" onclick="adminDeleteComment('${c.id}')" title="Delete Comment">
-              🗑️ Delete
+      const cards = comments.slice().reverse().map(c => {
+        const timeStr = c.timestamp ? new Date(c.timestamp).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+        const initials = (c.name || 'A').slice(0, 2).toUpperCase();
+        const roleBadge = c.role === 'admin'
+          ? `<span style="font-size:0.68rem;font-weight:900;padding:1px 7px;border-radius:999px;background:#ffd700;color:#000;letter-spacing:0.04em;">👑 OWNER</span>`
+          : (c.role === 'member'
+            ? `<span style="font-size:0.68rem;font-weight:800;padding:1px 7px;border-radius:999px;background:rgba(0,242,152,0.15);color:var(--accent-green);border:1px solid rgba(0,242,152,0.3);">⭐ PRO</span>`
+            : `<span style="font-size:0.68rem;font-weight:700;padding:1px 7px;border-radius:999px;background:rgba(255,255,255,0.08);color:var(--text-muted);">TRADER</span>`);
+        const avatarColor = c.role === 'admin' ? '#ffd700' : (c.role === 'member' ? 'var(--accent-green)' : 'rgba(255,255,255,0.4)');
+        const avatarBg = c.role === 'admin' ? 'rgba(255,215,0,0.15)' : (c.role === 'member' ? 'rgba(0,242,152,0.12)' : 'rgba(255,255,255,0.06)');
+
+        return `
+          <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:12px;padding:14px 16px;display:flex;align-items:flex-start;gap:12px;transition:background 0.2s;" onmouseenter="this.style.background='rgba(255,255,255,0.05)'" onmouseleave="this.style.background='rgba(255,255,255,0.03)'">
+            <div style="width:38px;height:38px;border-radius:50%;background:${avatarBg};border:1.5px solid ${avatarColor};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:800;font-size:0.88rem;color:${avatarColor};">${initials}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+                <span style="font-weight:700;color:#fff;font-size:0.92rem;">${escapeHtml(c.name || 'Anonymous')}</span>
+                ${roleBadge}
+                <span style="font-size:0.72rem;color:var(--text-muted);margin-left:auto;">${timeStr}</span>
+              </div>
+              <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:8px;">${escapeHtml(c.email ? (c.email.replace(/(.{2}).*(@.*)/, '$1***$2')) : 'No email')}</div>
+              <div style="font-size:0.88rem;color:var(--text-secondary);line-height:1.55;background:rgba(255,255,255,0.03);padding:10px 12px;border-radius:8px;border-left:2px solid rgba(0,242,152,0.25);">"${escapeHtml(c.text || '')}"</div>
+            </div>
+            <button onclick="adminDeleteComment('${c.id}')" title="Delete comment" style="flex-shrink:0;background:rgba(255,82,82,0.1);border:1px solid rgba(255,82,82,0.25);border-radius:8px;color:#ff5252;padding:6px 10px;font-size:0.8rem;cursor:pointer;transition:all 0.2s;" onmouseenter="this.style.background='rgba(255,82,82,0.2)'" onmouseleave="this.style.background='rgba(255,82,82,0.1)'">
+              🗑️
             </button>
-          </td>
-        </tr>
-      `;
-    }).join('');
+          </div>`;
+      }).join('');
+
+      container.innerHTML = totalBar + `<div style="display:flex;flex-direction:column;gap:10px;">${cards}</div>`;
+    } else if (legacyTbody) {
+      legacyTbody.innerHTML = comments.map(c => {
+        const timeStr = c.timestamp ? new Date(c.timestamp).toLocaleString() : '-';
+        const roleBadge = c.role === 'admin'
+          ? '<span class="user-badge-pro" style="background: #ffd700; color: #000; font-weight: 900; border: 1px solid #ffe600;">OWNER</span>'
+          : (c.role === 'member' ? '<span class="user-badge-pro">PRO</span>' : '<span class="user-badge-free">TRADER</span>');
+        return `
+          <tr>
+            <td><strong style="color: #fff;">${escapeHtml(c.name || 'Anonymous')}</strong></td>
+            <td>${roleBadge}</td>
+            <td><span style="font-size: 0.8rem; color: var(--text-muted);">${escapeHtml(c.email || 'None')}</span></td>
+            <td style="max-width: 320px; font-size: 0.84rem; color: var(--text-secondary); line-height: 1.4;">"${escapeHtml(c.text || '')}"</td>
+            <td style="font-size: 0.8rem; color: var(--text-muted); white-space: nowrap;">${timeStr}</td>
+            <td style="text-align: right;">
+              <button class="btn btn-sm btn-danger" style="padding: 4px 8px; font-size: 0.74rem;" onclick="adminDeleteComment('${c.id}')" title="Delete Comment">
+                🗑️ Delete
+              </button>
+            </td>
+          </tr>`;
+      }).join('');
+    }
   } catch (err) {
     console.error('Error loading admin comments:', err);
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="6" style="text-align: center; color: var(--accent-red); padding: 20px;">
-          Failed to load comments.
-        </td>
-      </tr>
-    `;
+    if (container) {
+      container.innerHTML = `
+        <div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:40px 20px;text-align:center;">
+          <div style="font-size:2rem;">⚠️</div>
+          <div style="color:#ff5252;font-weight:700;">Failed to load comments</div>
+          <div style="color:var(--text-muted);font-size:0.84rem;">${err.message}</div>
+          <button class="btn btn-sm btn-secondary" onclick="loadAdminComments()" style="margin-top:8px;">🔄 Try Again</button>
+        </div>`;
+    } else if (legacyTbody) {
+      legacyTbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--accent-red); padding: 20px;">Failed to load comments.</td></tr>`;
+    }
   }
 }
+
 
 // Admin Delete Comment
 async function adminDeleteComment(commentId) {
