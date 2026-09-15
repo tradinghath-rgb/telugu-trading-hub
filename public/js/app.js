@@ -3033,64 +3033,19 @@ function renderAdminChartsTable() {
   setupVideosHeaderDropdownEvents();
 }
 
-// ==================== TABLE HEADER VIDEOS / CHARTS POP-DOWN DROPDOWN ====================
-// "in adims page the converting videos to charts button arrow not working every buttom should work there"
-let _lastDropdownToggleTime = 0;
+// ==================== TABLE HEADER VIDEOS / CHARTS SEGMENTED SWITCHER ====================
+// "this switch videos charts and charts videos arrow also not working"
 function toggleVideosHeaderDropdown(event) {
   if (event) {
     event.stopPropagation();
     event.preventDefault();
   }
-  const now = Date.now();
-  if (now - _lastDropdownToggleTime < 220) return; // Prevent double execution from inline onclick + event listener
-  _lastDropdownToggleTime = now;
-
-  const btn = document.getElementById('th-dropdown-btn') || document.querySelector('.th-dropdown-btn');
-  const menu = document.getElementById('th-media-popdown');
-  const cell = document.getElementById('th-videos-dropdown-cell');
-  if (!menu) return;
-
-  const isOpen = menu.style.display === 'flex' || menu.classList.contains('active');
-  if (isOpen) {
-    menu.style.display = 'none';
-    menu.classList.remove('active');
-    btn?.classList.remove('open');
-    cell?.classList.remove('open');
-  } else {
-    // Fixed screen positioning to guarantee table overflow-x never clips the dropdown!
-    const targetBtn = btn || (event ? event.currentTarget : null) || document.querySelector('.th-dropdown-btn');
-    if (targetBtn) {
-      const rect = targetBtn.getBoundingClientRect();
-      menu.style.position = 'fixed';
-      menu.style.top = (rect.bottom + 6) + 'px';
-      const leftPos = Math.max(12, Math.min(window.innerWidth - 240, rect.left));
-      menu.style.left = leftPos + 'px';
-      menu.style.zIndex = '9999999';
-    }
-    menu.style.display = 'flex';
-    menu.classList.add('active');
-    btn?.classList.add('open');
-    cell?.classList.add('open');
-  }
+  // Toggle between videos and charts mode instantly
+  const newMode = (state.adminTableMediaView === 'charts') ? 'videos' : 'charts';
+  handleThMediaSelect(newMode, event);
 }
 
 window.toggleVideosHeaderDropdown = toggleVideosHeaderDropdown;
-
-// Global click listener to close popdown dropdown when clicking outside
-document.addEventListener('click', (e) => {
-  const cell = document.getElementById('th-videos-dropdown-cell');
-  const btn = document.getElementById('th-dropdown-btn');
-  const menu = document.getElementById('th-media-popdown');
-  if (menu && (menu.style.display === 'flex' || menu.classList.contains('active'))) {
-    if (btn && btn.contains(e.target)) return;
-    if (cell && cell.contains(e.target)) return;
-    if (menu.contains(e.target)) return;
-    menu.style.display = 'none';
-    menu.classList.remove('active');
-    btn?.classList.remove('open');
-    cell?.classList.remove('open');
-  }
-});
 
 function handleThMediaSelect(mode, event) {
   if (event) {
@@ -3099,55 +3054,29 @@ function handleThMediaSelect(mode, event) {
   }
   state.adminTableMediaView = mode;
 
-  // Close popdown
-  const menu = document.getElementById('th-media-popdown');
-  const cell = document.getElementById('th-videos-dropdown-cell');
-  const btn = document.getElementById('th-dropdown-btn');
-  if (menu) {
-    menu.style.display = 'none';
-    menu.classList.remove('active');
-  }
-  if (cell) cell.classList.remove('open');
-  if (btn) btn.classList.remove('open');
-
-  // Update header text and active items
-  const labelEl = document.getElementById('th-media-col-text');
-  if (labelEl) {
-    labelEl.textContent = (mode === 'charts' ? 'Charts' : 'Videos');
-  }
-
-  const optVideos = document.getElementById('th-popdown-videos');
-  const optCharts = document.getElementById('th-popdown-charts');
-  if (optVideos && optCharts) {
-    optVideos.classList.toggle('active', mode === 'videos');
-    optCharts.classList.toggle('active', mode === 'charts');
-  }
+  // Sync active classes on segmented buttons
+  const btnVid = document.getElementById('btn-switch-col-videos');
+  const btnChart = document.getElementById('btn-switch-col-charts');
+  if (btnVid) btnVid.classList.toggle('active', mode === 'videos');
+  if (btnChart) btnChart.classList.toggle('active', mode === 'charts');
 
   // Re-render table with selected column mode
   renderAdminChartsTable();
 
-  // If Charts selected, immediately open the All Charts Control Center modal!
   if (mode === 'charts') {
-    openAllChartsControlModal();
+    showToast('📊 Table column switched to Charts view (Drawn Charts & Pairings).', 'success', 3000);
   } else {
-    showToast('🎬 Table column updated to Videos mode.', 'info');
+    showToast('🎬 Table column switched to Videos view (Telugu & English videos).', 'info', 3000);
   }
 }
 
 window.handleThMediaSelect = handleThMediaSelect;
 
 function setupVideosHeaderDropdownEvents() {
-  const itemVid = document.getElementById('th-popdown-videos');
-  const itemChart = document.getElementById('th-popdown-charts');
-
-  if (itemVid && !itemVid.__boundClick) {
-    itemVid.__boundClick = true;
-    itemVid.addEventListener('click', e => handleThMediaSelect('videos', e));
-  }
-  if (itemChart && !itemChart.__boundClick) {
-    itemChart.__boundClick = true;
-    itemChart.addEventListener('click', e => handleThMediaSelect('charts', e));
-  }
+  const btnVid = document.getElementById('btn-switch-col-videos');
+  const btnChart = document.getElementById('btn-switch-col-charts');
+  if (btnVid) btnVid.classList.toggle('active', state.adminTableMediaView !== 'charts');
+  if (btnChart) btnChart.classList.toggle('active', state.adminTableMediaView === 'charts');
 }
 
 // ==================== ALL CHARTS CONTROL CENTER MODAL ====================

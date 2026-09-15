@@ -6217,6 +6217,75 @@ body {
   overflow: visible !important;
 }
 
+.th-media-switch-container {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  user-select: none !important;
+}
+
+.th-segmented-switcher {
+  display: inline-flex !important;
+  background: rgba(0, 0, 0, 0.65) !important;
+  border: 1.5px solid rgba(0, 242, 152, 0.4) !important;
+  border-radius: 999px !important;
+  padding: 3px !important;
+  gap: 3px !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6) !important;
+}
+
+.th-seg-btn {
+  background: transparent !important;
+  border: none !important;
+  color: var(--text-secondary) !important;
+  font-size: 0.78rem !important;
+  font-weight: 700 !important;
+  padding: 5px 12px !important;
+  border-radius: 999px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  white-space: nowrap !important;
+}
+
+.th-seg-btn:hover {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.th-seg-btn.active {
+  background: linear-gradient(135deg, rgba(0, 242, 152, 0.3), rgba(0, 210, 255, 0.25)) !important;
+  border: 1px solid var(--accent-green) !important;
+  color: #00f298 !important;
+  font-weight: 800 !important;
+  box-shadow: 0 0 12px rgba(0, 242, 152, 0.4) !important;
+}
+
+.th-quick-toggle-btn {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1.5px solid rgba(0, 242, 152, 0.4) !important;
+  color: var(--accent-green) !important;
+  width: 30px !important;
+  height: 30px !important;
+  border-radius: 50% !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 0.95rem !important;
+  font-weight: 900 !important;
+  transition: all 0.22s ease !important;
+}
+
+.th-quick-toggle-btn:hover {
+  background: rgba(0, 242, 152, 0.25) !important;
+  border-color: var(--accent-green) !important;
+  box-shadow: 0 0 12px rgba(0, 242, 152, 0.4) !important;
+  transform: rotate(180deg) !important;
+}
+
 .th-dropdown-btn {
   display: inline-flex !important;
   align-items: center !important;
